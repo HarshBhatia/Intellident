@@ -19,10 +19,27 @@ export const metadata: Metadata = {
     template: "%s | IntelliDent",
     default: "IntelliDent",
   },
-  description: "Dental Patient Management",
+  description: "Dental Patient Management Platform",
   icons: {
     icon: "/favicon.svg",
+    apple: "/favicon.svg",
   },
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "IntelliDent",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+};
+
+export const viewport = {
+  themeColor: "#2563eb",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
 };
 
 export default function RootLayout({

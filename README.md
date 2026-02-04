@@ -1,36 +1,63 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# IntelliDent
+
+IntelliDent is a modern Dental Patient Management Platform designed for dental clinics to manage patient records, treatments, financials, and more.
+
+## Features
+
+- **Patient Records**: Manage and view all clinic patients with ease.
+- **Odontogram**: Visual dental chart for tracking procedures.
+- **Financials**: Track earnings, expenses, and net profit with intuitive charts.
+- **Expense Tracking**: Categorize and log clinic expenses.
+- **Clinic Profile**: Customize clinic information and settings.
+- **Dark Mode**: Fully supported dark mode for better user experience.
+- **PWA Support**: Add to Home Screen support for mobile devices.
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- Node.js (v18 or higher)
+- PostgreSQL database (Neon/Netlify Neon recommended)
+
+### Environment Variables
+
+Create a `.env` file in the root directory and add the following:
+
+```env
+DATABASE_URL=your_postgresql_url
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Installation
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/HarshBhatia/Intellident.git
+   cd intellident2
+   ```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
 
-## Learn More
+3. Run the development server:
+   ```bash
+   npm run dev
+   ```
 
-To learn more about Next.js, take a look at the following resources:
+4. Build for production:
+   ```bash
+   npm run build
+   ```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Tech Stack
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- **Framework**: Next.js 15
+- **Styling**: Tailwind CSS 4
+- **Database**: PostgreSQL (Neon)
+- **Charts**: Recharts
+- **Components**: React 19
 
-## Deploy on Vercel
+## License
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+This project is private and intended for clinic use.
