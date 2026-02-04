@@ -68,7 +68,7 @@ export default function PatientTable({ patients }: PatientTableProps) {
   );
 
   return (
-    <div className="overflow-hidden border border-gray-200 rounded-lg shadow-sm">
+    <div className="overflow-hidden border border-gray-200 rounded shadow-sm">
       <div className="overflow-x-auto">
         <table className="min-w-full bg-white text-sm text-left text-gray-600">
           <thead className="bg-gray-50 text-gray-700 uppercase tracking-wider text-xs font-semibold">

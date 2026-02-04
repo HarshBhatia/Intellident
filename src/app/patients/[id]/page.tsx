@@ -1,11 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Patient } from '@/types';
 import ToothSelector from '@/components/ToothSelector';
 import { useToast } from '@/components/ToastProvider';
-
 import Skeleton from '@/components/Skeleton';
 
 interface XRay {
@@ -29,14 +28,14 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
   const [unwrappedParams, setUnwrappedParams] = useState<{ id: string } | null>(null);
   
   const [patient, setPatient] = useState<Patient | null>(null);
+  const [initialPatient, setInitialPatient] = useState<Patient | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   
-  // Lists
   const [xrayList, setXrayList] = useState<XRay[]>([]);
   const [paymentList, setPaymentList] = useState<PaymentRecord[]>([]);
 
-  // Payment Form State
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [newPayment, setNewPayment] = useState({
       amount: '',
@@ -45,18 +44,32 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
       date: new Date().toISOString().split('T')[0]
   });
   
-  // Data Lists
   const [treatments, setTreatments] = useState<{id: number, name: string}[]>([]);
   const [doctors, setDoctors] = useState<{id: number, name: string}[]>([]);
   
   const [isAddingTreatment, setIsAddingTreatment] = useState(false);
   const [newTreatmentName, setNewTreatmentName] = useState('');
 
+  const isDirty = useMemo(() => {
+      if (!patient || !initialPatient) return false;
+      return JSON.stringify(patient) !== JSON.stringify(initialPatient);
+  }, [patient, initialPatient]);
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isEditing && isDirty) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isEditing, isDirty]);
+
   useEffect(() => {
     params.then(setUnwrappedParams);
   }, [params]);
 
-  // Load Metadata
   useEffect(() => {
       fetch('/api/treatments').then(res => res.json()).then(data => Array.isArray(data) && setTreatments(data));
       fetch('/api/doctors').then(res => res.json()).then(data => Array.isArray(data) && setDoctors(data));
@@ -66,20 +79,17 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
     if (!unwrappedParams) return;
     
     async function fetchPatient() {
-// ... (rest of fetchPatient remains same)
       try {
         const res = await fetch(`/api/patients/${unwrappedParams!.id}`);
         if (!res.ok) throw new Error('Failed to fetch');
         const data = await res.json();
         
-        // --- Migration Logic ---
         let currentPayments: PaymentRecord[] = [];
         if (data.payments) {
             try {
                 currentPayments = JSON.parse(data.payments);
-            } catch (e) { console.error("Error parsing payments", e); }
+            } catch (e) { console.error(e); }
         } else if (data.amount > 0) {
-            // Migrating legacy single payment to list
             currentPayments = [{
                 id: 'legacy-1',
                 date: data.date || new Date().toISOString().split('T')[0],
@@ -89,11 +99,11 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
             }];
         }
         setPaymentList(currentPayments);
-        // Sync total just in case
         const total = currentPayments.reduce((sum, p) => sum + Number(p.amount), 0);
         data.amount = total;
-
+        
         setPatient(data);
+        setInitialPatient(JSON.parse(JSON.stringify(data)));
         
         if (data.xrays) {
             try {
@@ -110,16 +120,11 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
                     } else {
                         setXrayList(parsed);
                     }
-                } else {
-                    setXrayList([]);
                 }
-            } catch (e) {
-                setXrayList([]);
-            }
+            } catch (e) { setXrayList([]); }
         }
       } catch (err) {
-        console.error(err);
-        showToast('Error loading patient data', 'error');
+        showToast('Error loading patient', 'error');
         router.push('/');
       } finally {
         setLoading(false);
@@ -131,14 +136,11 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     if (!patient) return;
     const { name, value } = e.target;
-    
-    // Special handling for Treatment Dropdown (Adding items to list)
+    if (name === 'treatment_done' && value === 'ADD_NEW_TREATMENT_OPTION') {
+        setIsAddingTreatment(true);
+        return;
+    }
     if (name === 'treatment_done') {
-        if (value === 'ADD_NEW_TREATMENT_OPTION') {
-            setIsAddingTreatment(true);
-            return;
-        }
-        // Multi-select logic: Add if not already present
         const currentList = patient.treatment_done ? patient.treatment_done.split(',').map(s => s.trim()).filter(Boolean) : [];
         if (!currentList.includes(value)) {
             const newList = [...currentList, value];
@@ -146,7 +148,6 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
         }
         return;
     }
-
     setPatient({ ...patient, [name]: value });
   };
 
@@ -158,85 +159,51 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
   };
 
   const handleAddNewTreatment = async () => {
-      if (!newTreatmentName.trim()) {
-          setIsAddingTreatment(false);
-          return;
-      }
-
+      if (!newTreatmentName.trim()) { setIsAddingTreatment(false); return; }
       try {
           const res = await fetch('/api/treatments', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ name: newTreatmentName })
           });
-          
           if (res.ok) {
               const newT = await res.json();
               setTreatments(prev => [...prev, newT].sort((a,b) => a.name.localeCompare(b.name)));
-              // Add to patient list immediately
               if (patient) {
                   const currentList = patient.treatment_done ? patient.treatment_done.split(',').map(s => s.trim()).filter(Boolean) : [];
-                  const newList = [...currentList, newT.name];
-                  setPatient({ ...patient, treatment_done: newList.join(', ') });
+                  setPatient({ ...patient, treatment_done: [...currentList, newT.name].join(', ') });
               }
-              showToast('New treatment added', 'success');
+              showToast('Treatment added', 'success');
           }
-      } catch (e) {
-          showToast('Failed to add treatment', 'error');
-      } finally {
-          setIsAddingTreatment(false);
-          setNewTreatmentName('');
-      }
+      } catch (e) { showToast('Error', 'error'); } finally { setIsAddingTreatment(false); setNewTreatmentName(''); }
   };
 
-  // --- Payment Logic ---
   const handleAddPayment = () => {
       if (!newPayment.amount || isNaN(Number(newPayment.amount))) {
-          showToast('Please enter a valid amount', 'error');
+          showToast('Invalid amount', 'error');
           return;
       }
-
-      const payment: PaymentRecord = {
+      const p: PaymentRecord = {
           id: Math.random().toString(36).substr(2, 9),
           amount: Number(newPayment.amount),
           date: newPayment.date,
           purpose: newPayment.purpose || 'Visit',
           mode: newPayment.mode
       };
-
-      const newList = [...paymentList, payment];
+      const newList = [...paymentList, p];
       setPaymentList(newList);
-      
-      // Update Total
-      const newTotal = newList.reduce((sum, p) => sum + Number(p.amount), 0);
-      if (patient) {
-          setPatient({ 
-              ...patient, 
-              amount: newTotal,
-              payments: JSON.stringify(newList)
-          });
-      }
-
-      setNewPayment({
-          amount: '',
-          purpose: '',
-          mode: 'Cash',
-          date: new Date().toISOString().split('T')[0]
-      });
+      const newTotal = newList.reduce((sum, x) => sum + Number(x.amount), 0);
+      if (patient) setPatient({ ...patient, amount: newTotal, payments: JSON.stringify(newList) });
+      setNewPayment({ amount: '', purpose: '', mode: 'Cash', date: new Date().toISOString().split('T')[0] });
+      setShowPaymentForm(false);
   };
 
   const removePayment = (id: string) => {
-      if (!confirm('Delete this payment record?')) return;
+      if (!confirm('Delete record?')) return;
       const newList = paymentList.filter(p => p.id !== id);
       setPaymentList(newList);
-      const newTotal = newList.reduce((sum, p) => sum + Number(p.amount), 0);
-      if (patient) {
-          setPatient({ 
-              ...patient, 
-              amount: newTotal,
-              payments: JSON.stringify(newList)
-          });
-      }
+      const newTotal = newList.reduce((sum, x) => sum + Number(x.amount), 0);
+      if (patient) setPatient({ ...patient, amount: newTotal, payments: JSON.stringify(newList) });
   };
 
   const handleToothChange = (value: string) => {
@@ -247,25 +214,14 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
-
       const reader = new FileReader();
       reader.onloadend = () => {
-          const base64String = reader.result as string;
-          const newXray: XRay = {
-              id: Math.random().toString(36).substr(2, 9),
-              image: base64String,
-              description: '',
-              date: new Date().toISOString().split('T')[0]
-          };
-          
-          const newList = [...xrayList, newXray];
+          const newX: XRay = { id: Math.random().toString(36).substr(2, 9), image: reader.result as string, description: '', date: new Date().toISOString().split('T')[0] };
+          const newList = [...xrayList, newX];
           setXrayList(newList);
-          if (patient) {
-              setPatient({ ...patient, xrays: JSON.stringify(newList) });
-          }
+          if (patient) setPatient({ ...patient, xrays: JSON.stringify(newList) });
       };
       reader.readAsDataURL(file);
-      // Reset input
       e.target.value = '';
   };
 
@@ -273,474 +229,258 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
       const newList = [...xrayList];
       newList[index] = { ...newList[index], [field]: value };
       setXrayList(newList);
-      if (patient) {
-          setPatient({ ...patient, xrays: JSON.stringify(newList) });
-      }
+      if (patient) setPatient({ ...patient, xrays: JSON.stringify(newList) });
   };
 
   const removeXray = (index: number) => {
-      if (!confirm('Are you sure you want to delete this X-Ray?')) return;
+      if (!confirm('Delete X-Ray?')) return;
       const newList = xrayList.filter((_, i) => i !== index);
       setXrayList(newList);
-      if (patient) {
-          setPatient({ ...patient, xrays: JSON.stringify(newList) });
-      }
+      if (patient) setPatient({ ...patient, xrays: JSON.stringify(newList) });
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!patient || !unwrappedParams) return;
     setSaving(true);
-
     try {
       const res = await fetch(`/api/patients/${unwrappedParams.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(patient),
       });
-
       if (res.ok) {
-        showToast('Patient updated successfully!', 'success');
-        router.push('/');
-      } else {
-        showToast('Failed to update patient', 'error');
-      }
-    } catch (err) {
-      console.error(err);
-      showToast('Error saving changes', 'error');
-    } finally {
-      setSaving(false);
-    }
+        showToast('Saved', 'success');
+        setInitialPatient(JSON.parse(JSON.stringify(patient)));
+        setIsEditing(false);
+      } else { showToast('Error', 'error'); }
+    } catch (err) { showToast('Error', 'error'); } finally { setSaving(false); }
   };
 
   const handleDelete = async () => {
-      if (!confirm('Are you sure you want to permanently delete this patient record? This cannot be undone.')) return;
+      if (!confirm('Delete patient?')) return;
       if (!unwrappedParams) return;
-
       try {
-          const res = await fetch(`/api/patients/${unwrappedParams.id}`, {
-              method: 'DELETE'
-          });
-          
-          if (res.ok) {
-              showToast('Patient deleted', 'success');
-              router.push('/');
-          } else {
-              showToast('Failed to delete patient', 'error');
-          }
-      } catch (error) {
-          console.error(error);
-          showToast('Error deleting patient', 'error');
-      }
+          const res = await fetch(`/api/patients/${unwrappedParams.id}`, { method: 'DELETE' });
+          if (res.ok) { showToast('Deleted', 'success'); router.push('/'); }
+      } catch (error) { console.error(error); }
   };
 
-  if (loading || !patient) {
-    return (
-      <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
+  const handleBack = () => {
+      if (isEditing && isDirty) {
+          if (!confirm('You have unsaved changes. Are you sure you want to leave?')) return;
+      }
+      router.push('/');
+  };
+
+  if (loading || !patient) return (
+      <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8 font-sans">
         <div className="max-w-4xl mx-auto">
-          {/* Header Skeleton */}
-          <div className="flex items-center justify-between mb-8">
-            <Skeleton className="h-10 w-48" />
-            <Skeleton className="h-6 w-32" />
-          </div>
-          
-          <div className="bg-white shadow-xl rounded-lg overflow-hidden border border-gray-100">
-             <div className="bg-gray-100 px-6 py-4 border-b">
-                <div className="flex justify-between items-center">
-                    <div>
-                        <Skeleton className="h-6 w-40 mb-2" />
-                        <Skeleton className="h-4 w-24" />
-                    </div>
-                    <Skeleton className="h-8 w-32" />
-                </div>
-             </div>
-             <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                 {/* Simulate form fields */}
-                 {[1, 2, 3, 4, 5, 6].map(i => (
-                     <div key={i} className="space-y-2">
-                         <Skeleton className="h-4 w-24" />
-                         <Skeleton className="h-10 w-full" />
-                     </div>
-                 ))}
-                 <div className="col-span-full">
-                    <Skeleton className="h-32 w-full" />
-                 </div>
-             </div>
+          <div className="flex items-center justify-between mb-8"><Skeleton className="h-10 w-48" /><Skeleton className="h-6 w-32" /></div>
+          <div className="bg-white shadow rounded overflow-hidden border border-gray-100">
+             <div className="bg-gray-100 px-6 py-4 border-b"><div className="flex justify-between items-center"><div><Skeleton className="h-6 w-40 mb-2" /><Skeleton className="h-4 w-24" /></div><Skeleton className="h-8 w-32" /></div></div>
+             <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{[1, 2, 3, 4, 5, 6].map(i => (<div key={i} className="space-y-2"><Skeleton className="h-4 w-24" /><Skeleton className="h-10 w-full" /></div>))}<div className="col-span-full"><Skeleton className="h-32 w-full" /></div></div>
           </div>
         </div>
       </div>
-    );
-  }
+  );
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8 font-sans">
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center justify-between mb-8">
             <h1 className="text-3xl font-bold text-gray-900">Patient Details</h1>
-            <div className="flex gap-4 items-center">
-                <button 
-                    onClick={handleDelete}
-                    className="text-red-600 hover:text-red-800 text-sm font-medium flex items-center gap-1 bg-red-50 px-3 py-1 rounded border border-red-200 hover:bg-red-100 transition"
-                >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                    Delete Patient
-                </button>
-                <button 
-                    onClick={() => router.push('/')}
-                    className="text-gray-600 hover:text-gray-900 font-medium flex items-center gap-1"
-                >
-                    ← Back to Dashboard
+            <div className="flex gap-2 items-center bg-white p-1 rounded border border-gray-200 shadow-sm">
+                {!isEditing ? (
+                    <>
+                        <button onClick={() => setIsEditing(true)} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition flex items-center gap-2 text-sm font-semibold">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                            Edit
+                        </button>
+                        <button onClick={handleDelete} className="px-4 py-2 text-red-600 hover:bg-red-50 rounded transition flex items-center gap-2 text-sm font-medium border border-transparent hover:border-red-100">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                            Delete
+                        </button>
+                    </>
+                ) : (
+                    <>
+                        <button onClick={handleSave} disabled={saving} className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition flex items-center gap-2 text-sm font-semibold shadow-sm">
+                            {saving ? 'Saving...' : 'Save Changes'}
+                        </button>
+                        <button onClick={() => { if (isDirty && !confirm('Discard changes?')) return; setIsEditing(false); setPatient(JSON.parse(JSON.stringify(initialPatient))); }} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded transition text-sm font-medium">
+                            Cancel
+                        </button>
+                    </>
+                )}
+                <div className="w-px h-6 bg-gray-200 mx-1"></div>
+                <button onClick={handleBack} className="px-4 py-2 text-gray-500 hover:text-gray-800 transition text-sm font-medium flex items-center gap-1">
+                    ← Back
                 </button>
             </div>
         </div>
 
-        <form onSubmit={handleSave} className="bg-white shadow-xl rounded-lg overflow-hidden border border-gray-100">
-            {/* Header Section */}
-            <div className="bg-blue-600 px-6 py-4 border-b border-blue-700">
+        <form onSubmit={handleSave} className="bg-white shadow rounded overflow-hidden border border-gray-100">
+            <div className="bg-blue-600 px-8 py-6 border-b border-blue-700">
                 <div className="flex justify-between items-center text-white">
-                    <div>
-                        <h2 className="text-xl font-semibold">{patient.name}</h2>
-                        <p className="text-blue-100 text-sm">ID: {patient.patient_id}</p>
+                    <div className="flex-1 mr-4">
+                        {isEditing ? (
+                            <input 
+                                name="name" 
+                                value={patient.name} 
+                                onChange={handleChange}
+                                className="bg-blue-700 text-white border-none rounded-lg px-3 py-1 text-2xl font-bold w-full focus:ring-2 focus:ring-white outline-none capitalize shadow-inner"
+                                placeholder="Patient Name"
+                            />
+                        ) : (
+                            <h2 className="text-2xl font-bold capitalize tracking-tight">{patient.name}</h2>
+                        )}
+                        <p className="text-blue-100/80 text-sm font-medium mt-1">Patient ID: {patient.patient_id}</p>
                     </div>
-                    <div className="text-right">
-                         <span className="block text-sm opacity-80">Last Visit</span>
-                         <input 
-                            name="date" 
-                            type="date" 
-                            value={patient.date || ''} 
-                            onChange={handleChange}
-                            className="bg-blue-700 text-white border-none rounded p-1 text-sm focus:ring-2 focus:ring-white outline-none cursor-pointer"
-                        />
+                    <div className="text-right whitespace-nowrap">
+                         <span className="block text-xs uppercase tracking-widest text-blue-200 mb-1">Last Visit</span>
+                         {isEditing ? (
+                             <input name="date" type="date" value={patient.date || ''} onChange={handleChange} className="bg-blue-700 text-white border-none rounded-lg p-2 text-sm focus:ring-2 focus:ring-white outline-none shadow-inner" />
+                         ) : (
+                             <span className="text-xl font-bold">{new Date(patient.date).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                         )}
                     </div>
                 </div>
             </div>
 
-            <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                
-                {/* Personal Info */}
-                <div className="col-span-full md:col-span-1 space-y-4">
-                    <h3 className="text-sm uppercase tracking-wide text-gray-500 font-bold border-b pb-2">Personal Info</h3>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                        <input name="name" value={patient.name} onChange={handleChange} className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none transition text-gray-900" />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                        <input name="phone_number" value={patient.phone_number} onChange={handleChange} className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none transition text-gray-900" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
+            <div className="p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div className="col-span-full md:col-span-1 space-y-5">
+                    <h3 className="text-xs uppercase tracking-[0.2em] text-gray-400 font-bold border-b pb-2">Personal Information</h3>
+                    <div className="space-y-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Age</label>
-                            <input name="age" type="number" value={patient.age} onChange={handleChange} className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none transition text-gray-900" />
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Phone Number</label>
+                            {isEditing ? <input name="phone_number" value={patient.phone_number} onChange={handleChange} className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none text-gray-900 bg-gray-50 transition" /> : <div className="p-2 bg-gray-50 rounded text-gray-900 border border-transparent">{patient.phone_number || 'N/A'}</div>}
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Age</label>
+                                {isEditing ? <input name="age" type="number" value={patient.age} onChange={handleChange} className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none text-gray-900 bg-gray-50 transition h-[38px]" /> : <div className="p-2 bg-gray-50 rounded text-gray-900 h-[38px] flex items-center">{patient.age || '0'} Years</div>}
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Gender</label>
+                                {isEditing ? <select name="gender" value={patient.gender} onChange={handleChange} className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none transition bg-gray-50 text-gray-900 h-[38px]"><option>Male</option><option>Female</option><option>Other</option></select> : <div className="p-2 bg-gray-50 rounded text-gray-900 h-[38px] flex items-center">{patient.gender}</div>}
+                            </div>
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
-                            <select name="gender" value={patient.gender} onChange={handleChange} className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none transition bg-white text-gray-900">
-                                <option>Male</option>
-                                <option>Female</option>
-                                <option>Other</option>
-                            </select>
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Patient Type</label>
+                            {isEditing ? <select name="patient_type" value={patient.patient_type} onChange={handleChange} className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none transition bg-gray-50 text-gray-900 h-[38px]"><option>New</option><option>Returning</option></select> : <div className="p-2 bg-gray-50 rounded text-gray-900 h-[38px] flex items-center">{patient.patient_type || 'N/A'}</div>}
                         </div>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Patient Type</label>
-                        <select name="patient_type" value={patient.patient_type} onChange={handleChange} className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none transition bg-white text-gray-900">
-                            <option>New</option>
-                            <option>Returning</option>
-                        </select>
                     </div>
                 </div>
 
-                {/* Treatment Details */}
-                <div className="col-span-full md:col-span-1 space-y-4">
-                    <h3 className="text-sm uppercase tracking-wide text-gray-500 font-bold border-b pb-2">Treatment Info</h3>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Treatment Done</label>
-                        
-                        {/* Selected Tags */}
-                        <div className="flex flex-wrap gap-2 mb-2">
-                            {patient.treatment_done?.split(',').map(s => s.trim()).filter(Boolean).map((t, idx) => (
-                                <span key={idx} className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full flex items-center gap-1">
-                                    {t}
-                                    <button 
-                                        type="button" 
-                                        onClick={() => removeTreatment(t)}
-                                        className="hover:text-blue-900 font-bold focus:outline-none"
-                                    >
-                                        ×
-                                    </button>
-                                </span>
-                            ))}
-                        </div>
-
-                        {isAddingTreatment ? (
-                            <div className="flex gap-2">
-                                <input 
-                                    autoFocus
-                                    value={newTreatmentName}
-                                    onChange={(e) => setNewTreatmentName(e.target.value)}
-                                    placeholder="Enter new treatment..."
-                                    className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none text-gray-900"
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Enter') {
-                                            e.preventDefault();
-                                            handleAddNewTreatment();
-                                        }
-                                    }}
-                                />
-                                <button type="button" onClick={handleAddNewTreatment} className="bg-blue-600 text-white px-3 rounded text-sm">Save</button>
-                                <button type="button" onClick={() => setIsAddingTreatment(false)} className="text-gray-500 hover:text-gray-700 px-1">✕</button>
-                            </div>
-                        ) : (
-                            <select 
-                                name="treatment_done" 
-                                value=""
-                                onChange={handleChange} 
-                                className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none transition text-gray-900 bg-white"
-                            >
-                                <option value="" disabled>+ Add Treatment</option>
-                                {treatments.filter(t => !patient.treatment_done?.includes(t.name)).map(t => (
-                                    <option key={t.id} value={t.name}>{t.name}</option>
+                <div className="col-span-full md:col-span-1 space-y-5">
+                    <h3 className="text-xs uppercase tracking-[0.2em] text-gray-400 font-bold border-b pb-2">Treatment</h3>
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Procedures Done</label>
+                            <div className="flex flex-wrap gap-2 mb-3">
+                                {patient.treatment_done?.split(',').map(s => s.trim()).filter(Boolean).map((t, idx) => (
+                                    <span key={idx} className="bg-blue-50 text-blue-700 text-[11px] font-bold px-2 py-1 rounded border border-blue-100 uppercase tracking-tighter">
+                                        {t}
+                                        {isEditing && <button type="button" onClick={() => removeTreatment(t)} className="ml-1.5 text-blue-400 hover:text-blue-900">×</button>}
+                                    </span>
                                 ))}
-                                <option disabled>──────────</option>
-                                <option value="ADD_NEW_TREATMENT_OPTION" className="font-semibold text-blue-600">+ Create New Treatment...</option>
-                            </select>
+                            </div>
+                            {isEditing && (
+                                isAddingTreatment ? (
+                                    <div className="flex gap-2">
+                                        <input autoFocus value={newTreatmentName} onChange={(e) => setNewTreatmentName(e.target.value)} placeholder="New..." className="flex-1 p-2 border rounded outline-none text-sm text-gray-900" onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddNewTreatment())} />
+                                        <button type="button" onClick={handleAddNewTreatment} className="bg-blue-600 text-white px-3 rounded text-xs font-bold uppercase tracking-widest">Add</button>
+                                    </div>
+                                ) : (
+                                    <select value="" onChange={handleChange} name="treatment_done" className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none text-sm text-gray-900 bg-white shadow-sm">
+                                        <option value="" disabled>+ Add Procedure</option>
+                                        {treatments.filter(t => !patient.treatment_done?.includes(t.name)).map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
+                                        <option value="ADD_NEW_TREATMENT_OPTION" className="font-bold text-blue-600">+ Create New...</option>
+                                    </select>
+                                )
+                            )}
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Attending Doctor</label>
+                            {isEditing ? <select name="doctor" value={patient.doctor || ''} onChange={handleChange} className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none transition text-gray-900 bg-gray-50 h-[38px]"><option value="">Select Doctor</option>{doctors.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}</select> : <div className="p-2 bg-gray-50 rounded text-gray-900 font-semibold capitalize h-[38px] flex items-center">{patient.doctor || 'N/A'}</div>}
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Share</label>
+                            {isEditing ? <input name="share" value={patient.share || ''} onChange={handleChange} className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none transition text-gray-900 bg-gray-50" /> : <div className="p-2 bg-gray-50 rounded text-gray-900">{patient.share || 'N/A'}</div>}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="col-span-full md:col-span-1 space-y-5 border-l md:pl-8 border-gray-100">
+                    <h3 className="text-xs uppercase tracking-[0.2em] text-gray-400 font-bold border-b pb-2">Financials</h3>
+                    <div className="bg-green-50 rounded p-6 border border-green-100 shadow-inner">
+                        <label className="block text-[10px] font-bold text-green-600 uppercase mb-1 tracking-widest">Total Collection</label>
+                        <div className="text-4xl font-black text-green-700 tracking-tighter">₹{patient.amount.toLocaleString()}</div>
+                        <div className="mt-4 overflow-hidden rounded border border-green-200">
+                            <table className="min-w-full text-[11px] bg-white/50">
+                                <thead className="bg-green-100/50 text-green-800 uppercase tracking-widest text-[9px] font-bold"><tr><th className="px-3 py-1.5 text-left">Date</th><th className="px-3 py-1.5 text-right">Amt</th></tr></thead>
+                                <tbody className="divide-y divide-green-100">
+                                    {paymentList.slice(-3).map(p => <tr key={p.id}><td className="px-3 py-1.5 text-green-700">{p.date}</td><td className="px-3 py-1.5 text-right font-bold text-green-800">₹{p.amount}</td></tr>)}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Billing History */}
+                <div className="col-span-full space-y-4 pt-4 border-t border-gray-100">
+                    <div className="flex justify-between items-center">
+                        <h3 className="text-xs uppercase tracking-[0.2em] text-gray-400 font-bold">Payment History</h3>
+                        {isEditing && !showPaymentForm && (
+                            <button type="button" onClick={() => setShowPaymentForm(true)} className="text-blue-600 text-xs font-bold hover:underline tracking-widest">+ NEW PAYMENT</button>
                         )}
                     </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Doctor</label>
-                        <select 
-                            name="doctor" 
-                            value={patient.doctor || ''} 
-                            onChange={handleChange} 
-                            className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none transition text-gray-900 bg-white"
-                        >
-                            <option value="">Select Doctor</option>
-                            {doctors.map(d => (
-                                <option key={d.id} value={d.name}>{d.name}</option>
-                            ))}
-                        </select>
-                    </div>
-                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Share</label>
-                        <input name="share" value={patient.share || ''} onChange={handleChange} className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none transition text-gray-900" />
-                    </div>
-                </div>
-
-                {/* Billing History Section */}
-                <div className="col-span-full space-y-4">
-                    <div className="flex justify-between items-center border-b pb-2">
-                        <h3 className="text-sm uppercase tracking-wide text-gray-500 font-bold">Billing & Payments</h3>
-                        <div className="text-lg font-bold text-green-700">
-                            Total Paid: ₹{patient.amount}
+                    {isEditing && showPaymentForm && (
+                        <div className="bg-gray-50 p-5 rounded border border-blue-100 flex flex-wrap gap-3 items-end animate-in fade-in slide-in-from-top-2 shadow-inner">
+                            <div className="flex-1 min-w-[120px]"><label className="block text-[10px] font-bold text-gray-400 uppercase mb-1 ml-1">Date</label><input type="date" value={newPayment.date} onChange={(e) => setNewPayment({...newPayment, date: e.target.value})} className="w-full p-2 border rounded text-sm text-gray-900" /></div>
+                            <div className="flex-[2] min-w-[150px]"><label className="block text-[10px] font-bold text-gray-400 uppercase mb-1 ml-1">Purpose</label><input type="text" placeholder="Details" value={newPayment.purpose} onChange={(e) => setNewPayment({...newPayment, purpose: e.target.value})} className="w-full p-2 border rounded text-sm text-gray-900" /></div>
+                            <div className="flex-1 min-w-[100px]"><label className="block text-[10px] font-bold text-gray-400 uppercase mb-1 ml-1">Mode</label><select value={newPayment.mode} onChange={(e) => setNewPayment({...newPayment, mode: e.target.value})} className="w-full p-2 border rounded text-sm text-gray-900 bg-white"><option>Cash</option><option>Card</option><option>UPI</option></select></div>
+                            <div className="flex-1 min-w-[100px]"><label className="block text-[10px] font-bold text-gray-400 uppercase mb-1 ml-1">Amount</label><input type="number" value={newPayment.amount} onChange={(e) => setNewPayment({...newPayment, amount: e.target.value})} className="w-full p-2 border rounded text-sm text-gray-900" /></div>
+                            <div className="flex gap-2">
+                                <button type="button" onClick={handleAddPayment} className="bg-blue-600 text-white px-4 py-2 rounded text-xs font-bold shadow-sm uppercase tracking-widest h-10">Save</button>
+                                <button type="button" onClick={() => setShowPaymentForm(false)} className="bg-white text-gray-500 border px-3 py-2 rounded text-xs font-bold uppercase tracking-widest h-10">Cancel</button>
+                            </div>
                         </div>
-                    </div>
-
-                    {/* Payment List Table */}
-                    <div className="overflow-hidden border rounded-lg">
-                        <table className="min-w-full bg-white text-sm">
-                            <thead className="bg-gray-50 text-gray-600">
-                                <tr>
-                                    <th className="px-4 py-2 text-left">Date</th>
-                                    <th className="px-4 py-2 text-left">Purpose</th>
-                                    <th className="px-4 py-2 text-left">Mode</th>
-                                    <th className="px-4 py-2 text-right">Amount</th>
-                                    <th className="px-4 py-2 text-center">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y">
-                                {paymentList.length === 0 && (
-                                    <tr>
-                                        <td colSpan={5} className="px-4 py-4 text-center text-gray-400">No payments recorded yet.</td>
-                                    </tr>
-                                )}
+                    )}
+                    <div className="overflow-hidden border border-gray-100 rounded shadow-sm">
+                        <table className="min-w-full bg-white text-xs">
+                            <thead className="bg-gray-50 text-gray-500 uppercase tracking-widest text-[9px] font-bold"><tr><th className="px-6 py-3 text-left">Date</th><th className="px-6 py-3 text-left">Description</th><th className="px-6 py-3 text-left">Mode</th><th className="px-6 py-3 text-right">Amount</th>{isEditing && <th className="px-6 py-3 text-center w-10"></th>}</tr></thead>
+                            <tbody className="divide-y divide-gray-50 text-gray-700">
+                                {paymentList.length === 0 && <tr><td colSpan={5} className="px-6 py-8 text-center text-gray-400 italic">No records found.</td></tr>}
                                 {paymentList.map((p) => (
-                                    <tr key={p.id}>
-                                        <td className="px-4 py-2 text-gray-800">{p.date}</td>
-                                        <td className="px-4 py-2 text-gray-600">{p.purpose}</td>
-                                        <td className="px-4 py-2 text-gray-600">{p.mode}</td>
-                                        <td className="px-4 py-2 text-right font-medium text-gray-900">₹{p.amount}</td>
-                                        <td className="px-4 py-2 text-center">
-                                            <button 
-                                                type="button" 
-                                                onClick={() => removePayment(p.id)}
-                                                className="text-red-400 hover:text-red-600"
-                                            >
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                                            </button>
-                                        </td>
+                                    <tr key={p.id} className="hover:bg-gray-50 transition">
+                                        <td className="px-6 py-3 font-medium">{p.date}</td><td className="px-6 py-3 capitalize">{p.purpose}</td><td className="px-6 py-3"><span className="bg-gray-100 px-2 py-0.5 rounded text-[10px]">{p.mode}</span></td><td className="px-6 py-3 text-right font-bold text-gray-900">₹{p.amount.toLocaleString()}</td>
+                                        {isEditing && <td className="px-6 py-3 text-center"><button type="button" onClick={() => removePayment(p.id)} className="text-red-300 hover:text-red-600 transition text-lg leading-none">×</button></td>}
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
                     </div>
-
-                    {/* Add Payment Form */}
-                    {showPaymentForm ? (
-                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 flex flex-wrap gap-2 items-end animate-in fade-in slide-in-from-top-2">
-                            <div className="flex-1 min-w-[120px]">
-                                <label className="block text-xs font-medium text-gray-500 mb-1">Date</label>
-                                <input 
-                                    type="date" 
-                                    value={newPayment.date}
-                                    onChange={(e) => setNewPayment({...newPayment, date: e.target.value})}
-                                    className="w-full p-2 border rounded text-sm outline-none text-gray-900"
-                                />
-                            </div>
-                            <div className="flex-[2] min-w-[150px]">
-                                <label className="block text-xs font-medium text-gray-500 mb-1">Purpose</label>
-                                <input 
-                                    type="text" 
-                                    placeholder="e.g. Root Canal - 1st Sitting"
-                                    value={newPayment.purpose}
-                                    onChange={(e) => setNewPayment({...newPayment, purpose: e.target.value})}
-                                    className="w-full p-2 border rounded text-sm outline-none text-gray-900"
-                                />
-                            </div>
-                            <div className="flex-1 min-w-[100px]">
-                                <label className="block text-xs font-medium text-gray-500 mb-1">Mode</label>
-                                <select 
-                                    value={newPayment.mode}
-                                    onChange={(e) => setNewPayment({...newPayment, mode: e.target.value})}
-                                    className="w-full p-2 border rounded text-sm outline-none bg-white text-gray-900"
-                                >
-                                    <option>Cash</option>
-                                    <option>Card</option>
-                                    <option>UPI</option>
-                                    <option>Insurance</option>
-                                </select>
-                            </div>
-                            <div className="flex-1 min-w-[100px]">
-                                <label className="block text-xs font-medium text-gray-500 mb-1">Amount (₹)</label>
-                                <input 
-                                    type="number" 
-                                    value={newPayment.amount}
-                                    onChange={(e) => setNewPayment({...newPayment, amount: e.target.value})}
-                                    className="w-full p-2 border rounded text-sm outline-none text-gray-900"
-                                    placeholder="0"
-                                />
-                            </div>
-                            <button 
-                                type="button" 
-                                onClick={handleAddPayment}
-                                className="bg-green-600 text-white px-4 py-2 rounded shadow hover:bg-green-700 text-sm font-medium h-10"
-                            >
-                                Save
-                            </button>
-                            <button 
-                                type="button" 
-                                onClick={() => setShowPaymentForm(false)}
-                                className="bg-gray-200 text-gray-700 px-3 py-2 rounded hover:bg-gray-300 text-sm font-medium h-10"
-                            >
-                                Cancel
-                            </button>
-                        </div>
-                    ) : (
-                        <button 
-                            type="button" 
-                            onClick={() => setShowPaymentForm(true)}
-                            className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1"
-                        >
-                            + Add New Payment
-                        </button>
-                    )}
                 </div>
 
-                {/* Large Text Areas */}
-                <div className="col-span-full grid grid-cols-1 md:grid-cols-2 gap-6 mt-2">
+                {/* Notes */}
+                <div className="col-span-full grid grid-cols-1 md:grid-cols-2 gap-8 pt-4 border-t border-gray-100">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Medicine Prescribed</label>
-                        <textarea name="medicine_prescribed" value={patient.medicine_prescribed || ''} onChange={handleChange} className="w-full p-3 border border-gray-300 rounded h-32 focus:ring-2 focus:ring-blue-500 outline-none transition resize-none text-gray-900" placeholder="List medicines..." />
+                        <label className="block text-xs font-bold text-gray-400 uppercase mb-2 tracking-widest">Medicines</label>
+                        {isEditing ? <textarea name="medicine_prescribed" value={patient.medicine_prescribed || ''} onChange={handleChange} className="w-full p-4 border rounded h-32 focus:ring-2 focus:ring-blue-500 outline-none text-gray-900 bg-gray-50 transition text-sm" /> : <div className="p-4 bg-gray-50 rounded text-gray-900 text-sm min-h-[8rem] whitespace-pre-wrap italic text-gray-600 shadow-inner">{patient.medicine_prescribed || 'None.'}</div>}
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-                        <textarea name="notes" value={patient.notes || ''} onChange={handleChange} className="w-full p-3 border border-gray-300 rounded h-32 focus:ring-2 focus:ring-blue-500 outline-none transition resize-none text-gray-900" placeholder="Internal notes..." />
+                        <label className="block text-xs font-bold text-gray-400 uppercase mb-2 tracking-widest">Clinical Notes</label>
+                        {isEditing ? <textarea name="notes" value={patient.notes || ''} onChange={handleChange} className="w-full p-4 border rounded h-32 focus:ring-2 focus:ring-blue-500 outline-none text-gray-900 bg-gray-50 transition text-sm" /> : <div className="p-4 bg-gray-50 rounded text-gray-900 text-sm min-h-[8rem] whitespace-pre-wrap italic text-gray-600 shadow-inner">{patient.notes || 'None.'}</div>}
                     </div>
                 </div>
 
-                {/* X-Ray Upload Section */}
-                <div className="col-span-full mt-6 pt-6 border-t border-gray-100">
-                    <h3 className="text-sm font-medium text-gray-700 mb-4">X-Ray Images</h3>
-                    <div className="flex flex-col gap-4">
-                         <div className="flex items-center gap-4">
-                            <label className="cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-md transition text-sm font-medium flex items-center gap-2">
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
-                                Upload X-Ray
-                                <input type="file" accept="image/*" onChange={handleFileUpload} className="hidden" />
-                            </label>
-                            <span className="text-xs text-gray-400">Supported: JPG, PNG (Max 5MB)</span>
-                         </div>
-                         
-                         {/* Gallery Grid */}
-                         {xrayList.length > 0 && (
-                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-2">
-                                 {xrayList.map((xray, idx) => (
-                                     <div key={xray.id} className="relative group border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm flex flex-col">
-                                         {/* Image */}
-                                         <div className="h-48 bg-gray-900 relative">
-                                            <img src={xray.image} alt="X-Ray" className="w-full h-full object-contain" />
-                                            <button 
-                                                type="button"
-                                                onClick={() => removeXray(idx)}
-                                                className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition shadow-sm hover:bg-red-700"
-                                                title="Delete Image"
-                                            >
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                                            </button>
-                                         </div>
-                                         
-                                         {/* Metadata Inputs */}
-                                         <div className="p-3 bg-gray-50 space-y-2 border-t border-gray-200">
-                                             <input 
-                                                type="date"
-                                                value={xray.date}
-                                                onChange={(e) => updateXray(idx, 'date', e.target.value)}
-                                                className="w-full text-xs p-1.5 border rounded text-gray-700 focus:ring-1 focus:ring-blue-500 outline-none"
-                                             />
-                                             <input 
-                                                type="text"
-                                                placeholder="Add description..."
-                                                value={xray.description}
-                                                onChange={(e) => updateXray(idx, 'description', e.target.value)}
-                                                className="w-full text-xs p-1.5 border rounded text-gray-700 focus:ring-1 focus:ring-blue-500 outline-none"
-                                             />
-                                         </div>
-                                     </div>
-                                 ))}
-                             </div>
-                         )}
-                    </div>
+                {/* Odontogram */}
+                <div className="col-span-full mt-6 pt-8 border-t border-gray-100">
+                    <div className="text-center mb-6"><label className="text-xs font-bold text-gray-400 uppercase tracking-[0.3em]">Dental Odontogram</label></div>
+                    <div className={!isEditing ? "pointer-events-none opacity-90" : ""}><div className="overflow-x-auto pb-4"><ToothSelector value={patient.tooth_number || ''} onChange={handleToothChange} /></div></div>
+                    {!isEditing && patient.tooth_number && <div className="text-center text-xs font-bold text-blue-600 mt-2 uppercase tracking-widest">Selected Teeth: {patient.tooth_number}</div>}
                 </div>
-
-                {/* Tooth Chart Section - Full Width at Bottom */}
-                <div className="col-span-full mt-6 pt-6 border-t border-gray-100">
-                    <label className="block text-sm font-medium text-gray-700 mb-4 text-center">Dental Chart (Select Teeth)</label>
-                    <div className="overflow-x-auto pb-4">
-                        <ToothSelector 
-                            value={patient.tooth_number || ''} 
-                            onChange={handleToothChange}
-                        />
-                    </div>
-                </div>
-
-            </div>
-
-            {/* Footer Actions */}
-            <div className="bg-gray-50 px-6 py-4 border-t border-gray-100 flex justify-end gap-3">
-                 <button 
-                    type="button" 
-                    onClick={() => router.push('/')}
-                    className="px-6 py-2 border border-gray-300 rounded shadow-sm text-gray-700 bg-white hover:bg-gray-50 transition font-medium"
-                >
-                    Cancel
-                </button>
-                <button 
-                    type="submit" 
-                    disabled={saving} 
-                    className="px-6 py-2 bg-blue-600 text-white rounded shadow-md hover:bg-blue-700 transition font-medium disabled:opacity-70 flex items-center gap-2"
-                >
-                    {saving ? 'Saving...' : 'Save Changes'}
-                </button>
             </div>
         </form>
       </div>
