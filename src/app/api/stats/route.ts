@@ -13,14 +13,15 @@ interface Payment {
  * Normalizes clinical treatment names and removes any pricing or trash data.
  */
 function normalizeCategory(name: string): string {
-    // Remove numbers, currency symbols, and extra whitespace
+    // Remove numbers, currency symbols, and extra whitespace, then lowercase
     let clean = name.replace(/[0-9₹,]/g, '').toLowerCase().trim();
     
+    // Specific standardizations
     if (clean.includes('rct') || clean.includes('root canal')) return 'Root Canal (RCT)';
     if (clean.includes('xray') || clean.includes('x ray') || clean.includes('x-ray')) return 'X-Ray';
     if (clean.includes('scaling') || clean.includes('polishing') || clean.includes('cleaning')) return 'Scaling & Polishing';
-    if (clean.includes('extraction') || clean.includes('removal')) return 'Extraction';
-    if (clean.includes('crown') || clean.includes('cap') || clean.includes('ceramic') || clean.includes('zirconia')) return 'Crown / Cap';
+    if (clean.includes('extraction') || clean.includes('remove tooth')) return 'Extraction';
+    if (clean.includes('crown') || clean.includes('cap') || clean.includes('ceramic') || clean.includes('zirconia') || clean.includes('prosthesis')) return 'Crown / Prosthetics';
     if (clean.includes('consultation') || clean.includes('consultaion') || clean.includes('constulation') || clean.includes('examination')) return 'Consultation';
     if (clean.includes('filling') || clean.includes('composite') || clean.includes('restoration')) return 'Filling';
     if (clean.includes('denture')) return 'Denture';
@@ -28,7 +29,7 @@ function normalizeCategory(name: string): string {
     if (clean.includes('ortho') || clean.includes('braces')) return 'Orthodontics';
     if (clean.includes('medicine')) return 'Medicines';
     
-    // Default: Title Case the remainder
+    // Default: Title Case the remainder. Use "General" if it ends up empty.
     return clean.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') || 'General';
 }
 
@@ -45,7 +46,6 @@ export async function GET(request: Request) {
     endDate.setHours(23, 59, 59, 999);
 
     const sql = getDb();
-    // Fetch all patients and expenses
     const [patients, expenses] = await Promise.all([
         sql`SELECT payments FROM patients WHERE payments IS NOT NULL`,
         sql`SELECT * FROM expenses WHERE date >= ${start} AND date <= ${end}`
@@ -69,25 +69,26 @@ export async function GET(request: Request) {
                     const monthKey = pDate.toISOString().slice(0, 7); 
                     monthlyMap[monthKey] = (monthlyMap[monthKey] || 0) + amt;
 
-                    // Filtered range logic
+                    // Filtered range for categories
                     if (pDate >= startDate && pDate <= endDate) {
                         filteredRevenue += amt;
                         const purpose = p.purpose || 'Other';
                         
-                        // Smart parsing: Split combined treatments
+                        // Smart parsing: Split combined treatments by comma or "and"
                         const parts = purpose.split(/,| and /).map(s => s.trim()).filter(Boolean);
                         
-                        // Look for amounts inside the note (e.g. "RCT 2000, Xray 200")
-                        const foundAmounts = purpose.match(/(\d+)/g)?.map(Number).filter(n => n > 50) || [];
-                        
-                        if (foundAmounts.length > 0 && foundAmounts.length === parts.length) {
-                            // Match specific amounts to categories
+                        // Try to find numbers that are likely specific amounts (not tooth numbers or sitting numbers)
+                        const allNumbersInPurpose = purpose.match(/(\d+)/g)?.map(Number) || [];
+                        const specificAmounts = allNumbersInPurpose.filter(n => n > 10 && n < 100000); // Filter out common tooth/sitting numbers
+
+                        if (specificAmounts.length === parts.length) {
+                            // If number of detected specific amounts matches number of parts, attribute them specifically
                             parts.forEach((part, idx) => {
                                 const cat = normalizeCategory(part);
-                                categoryMap[cat] = (categoryMap[cat] || 0) + foundAmounts[idx];
+                                categoryMap[cat] = (categoryMap[cat] || 0) + specificAmounts[idx];
                             });
                         } else {
-                            // Fallback: Split equally
+                            // Fallback: Split total payment equally among parts, then normalize
                             const splitAmt = amt / (parts.length || 1);
                             if (parts.length === 0) {
                                 categoryMap['Other'] = (categoryMap['Other'] || 0) + amt;
@@ -101,7 +102,7 @@ export async function GET(request: Request) {
                     }
                 });
             }
-        } catch (e) { }
+        } catch (e) { /* Ignore parsing errors for robustnes */ }
     });
 
     // 2. Process Expenses
@@ -109,31 +110,29 @@ export async function GET(request: Request) {
 
     // 3. Final Formatting with Rounding
     const pieData = Object.entries(categoryMap)
-        .map(([name, value]) => ({ 
-            name, 
-            value: Math.round(value) // REMOVE DECIMALS
-        }))
-        .filter(item => item.value > 0)
+        .map(([name, value]) => ({ name, value: Math.round(value) })) // ENSURE ROUNDING
+        .filter(item => item.value > 0) // Filter out categories with 0 amounts
         .sort((a, b) => b.value - a.value);
 
     const monthlyTrend = Object.entries(monthlyMap)
         .sort(([a],[b])=>a.localeCompare(b))
         .map(([k,v]) => {
-            const date = new Date(k + '-02'); 
+            const date = new Date(k + '-02'); // Using '02' as day to avoid timezone issues with '01'
             return {
                 month: date.toLocaleString('default', { month: 'short', year: '2-digit' }),
-                revenue: Math.round(v)
+                revenue: Math.round(v) // ENSURE ROUNDING
             };
         });
 
     return NextResponse.json({
-        totalRevenue: Math.round(filteredRevenue),
-        totalExpenses: Math.round(totalExpenses),
-        profit: Math.round(filteredRevenue - totalExpenses),
+        totalRevenue: Math.round(filteredRevenue), // ENSURE ROUNDING
+        totalExpenses: Math.round(totalExpenses), // ENSURE ROUNDING
+        profit: Math.round(filteredRevenue - totalExpenses), // ENSURE ROUNDING
         pieData,
         monthlyTrend
     });
-  } catch (error) { 
-    return NextResponse.json({ error: 'Failed' }, { status: 500 }); 
+  } catch (error: any) { 
+    console.error('Stats aggregation error:', error);
+    return NextResponse.json({ error: 'Failed to fetch stats', details: error.message || error.toString() }, { status: 500 });
   }
 }

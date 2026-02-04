@@ -177,7 +177,15 @@ export default function EarningsPage() {
                                 {loading ? [1,2,3,4,5].map(i => <tr key={i}><td className="px-6 py-4"><Skeleton className="h-4 w-full" /></td></tr>) : 
                                  data?.pieData.map((item, idx) => (
                                     <tr key={idx} className="hover:bg-blue-50 transition-colors">
-                                        <td className="px-6 py-4"><div className="flex items-center justify-between"><div className="flex items-center"><span className="w-2 h-2 rounded-full mr-3" style={{ backgroundColor: COLORS[idx % COLORS.length] }}></span><span className="text-sm font-semibold text-gray-900 truncate max-w-[120px]">{item.name}</span></div><span className="text-sm font-bold text-gray-900 font-mono font-sans">₹{item.value.toLocaleString()}</span></div></td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center">
+                                                    <span className="w-2 h-2 rounded-full mr-3" style={{ backgroundColor: COLORS[idx % COLORS.length] }}></span>
+                                                    <span className="text-sm font-semibold text-gray-900 truncate max-w-[120px]">{item.name}</span>
+                                                </div>
+                                                <span className="text-sm font-bold text-gray-900 font-mono">₹{Math.round(item.value).toLocaleString()}</span>
+                                            </div>
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>
