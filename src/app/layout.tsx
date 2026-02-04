@@ -16,6 +16,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "IntelliDent",
   description: "Dental Patient Management",
+  icons: {
+    icon: "/favicon.svg",
+  },
 };
 
 export default function RootLayout({

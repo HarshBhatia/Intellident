@@ -30,8 +30,7 @@ export default function LoginPage() {
         <div className="flex flex-col items-center mb-8">
             <div className="bg-blue-100 p-4 rounded mb-4 shadow-inner">
                 <svg className="w-12 h-12 text-blue-600" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2zm0 15l-5-2.18L7 18V5h10v13z" opacity="0.3"/>
-                    <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/>
+                    <path d="M18.5 2h-13C4.1 2 3 4.1 3 6.5c0 2.5 1.5 4.5 3 6v7c0 1.4 1.1 2.5 2.5 2.5h1c1.1 0 2-0.9 2-2v-4h1v4c0 1.1 0.9 2 2 2h1c1.4 0 2.5-1.1 2.5-2.5v-7c1.5-1.5 3-3.5 3-6 0-2.4-1.1-4.5-2.5-4.5z" />
                 </svg>
             </div>
             <h1 className="text-3xl font-bold text-gray-800 tracking-tight">IntelliDent</h1>

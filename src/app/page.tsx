@@ -57,7 +57,7 @@ export default function Dashboard() {
             <div className="flex items-center gap-2">
                <div className="bg-blue-600 text-white p-1.5 rounded shadow-sm">
                  <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 2C8 2 5 5 5 9c0 2.5 1.5 4.5 3 6v5c0 1.1.9 2 2 2h1c1.1 0 2-.9 2-2v-4h2v4c0 1.1.9 2 2 2h1c1.1 0 2-.9 2-2v-5c1.5-1.5 3-3.5 3-6 0-4-3-7-7-7z" />
+                    <path d="M18.5 2h-13C4.1 2 3 4.1 3 6.5c0 2.5 1.5 4.5 3 6v7c0 1.4 1.1 2.5 2.5 2.5h1c1.1 0 2-0.9 2-2v-4h1v4c0 1.1 0.9 2 2 2h1c1.4 0 2.5-1.1 2.5-2.5v-7c1.5-1.5 3-3.5 3-6 0-2.4-1.1-4.5-2.5-4.5z" />
                  </svg>
                </div>
               <span className="font-bold text-xl tracking-tight">IntelliDent</span>
