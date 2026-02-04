@@ -95,7 +95,7 @@ export default function PatientTable({ patients }: PatientTableProps) {
               <tr 
                 key={patient.id} 
                 className="hover:bg-blue-50 transition duration-150 cursor-pointer group"
-                onClick={() => router.push(`/patients/${patient.id}`)}
+                onClick={() => router.push(`/patients/${patient.patient_id}`)}
               >
                 <td className="px-6 py-4 whitespace-nowrap text-blue-600 font-medium group-hover:underline">
                   View
@@ -106,9 +106,20 @@ export default function PatientTable({ patients }: PatientTableProps) {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">{patient.age || '-'}</td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                   <span className={`px-2 py-1 rounded-full text-xs ${patient.gender === 'Male' ? 'bg-blue-100 text-blue-700' : patient.gender === 'Female' ? 'bg-pink-100 text-pink-700' : 'bg-gray-100 text-gray-700'}`}>
-                     {patient.gender}
-                   </span>
+                   {(() => {
+                     const g = patient.gender?.toLowerCase();
+                     const isMale = g === 'm' || g === 'male';
+                     const isFemale = g === 'f' || g === 'female';
+                     return (
+                       <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                         isMale ? 'bg-blue-100 text-blue-700' : 
+                         isFemale ? 'bg-pink-100 text-pink-700' : 
+                         'bg-gray-100 text-gray-600'
+                       }`}>
+                         {patient.gender || '-'}
+                       </span>
+                     );
+                   })()}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">{patient.phone_number || '-'}</td>
                 <td className="px-6 py-4 whitespace-nowrap">{patient.date}</td>

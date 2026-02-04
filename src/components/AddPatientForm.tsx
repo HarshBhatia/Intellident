@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Patient } from '@/types';
 import { useToast } from '@/components/ToastProvider';
 
@@ -10,6 +11,7 @@ interface AddPatientFormProps {
 }
 
 export default function AddPatientForm({ onSuccess, onCancel }: AddPatientFormProps) {
+  const router = useRouter();
   const { showToast } = useToast();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<Partial<Patient>>({
@@ -49,8 +51,9 @@ export default function AddPatientForm({ onSuccess, onCancel }: AddPatientFormPr
       });
 
       if (res.ok) {
+        const data = await res.json();
         showToast('Patient added successfully!', 'success');
-        onSuccess();
+        router.push(`/patients/${data.patient_id}`);
       } else {
         showToast('Failed to add patient', 'error');
       }

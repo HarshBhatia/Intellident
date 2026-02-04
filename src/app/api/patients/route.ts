@@ -32,7 +32,7 @@ export async function POST(request: Request) {
       )
     `;
     
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, patient_id: body.patient_id });
   } catch (error) {
     console.error('Insert error:', error);
     return NextResponse.json({ error: 'Failed to add patient' }, { status: 500 });

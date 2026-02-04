@@ -15,13 +15,7 @@ export async function GET(
         const id = (await params).id;
         const sql = getDb();
         
-        // Fetch patient by ID (assuming `id` is the primary key or unique identifier)
-        // Adjusting query to match your schema (using `patient_id` or `id`).
-        // Since `patient_id` in your schema is TEXT (e.g., 'PID-1234'), we'll query by that or the numeric `id` if available.
-        // The table has `id` (serial) and `patient_id` (text). The URL param is likely the numeric ID for simplicity, or the string ID.
-        // Let's assume we use the numeric ID for the route: /patients/1
-        
-        const rows = await sql`SELECT * FROM patients WHERE id = ${id}`;
+        const rows = await sql`SELECT * FROM patients WHERE patient_id = ${id}`;
         
         if (rows.length === 0) {
             return NextResponse.json({ error: 'Patient not found' }, { status: 404 });
@@ -62,7 +56,7 @@ export async function PUT(
                 treatment_done = ${body.treatment_done},
                 xrays = ${body.xrays},
                 payments = ${body.payments}
-            WHERE id = ${id}
+            WHERE patient_id = ${id}
         `;
 
         return NextResponse.json({ success: true });
@@ -79,7 +73,7 @@ export async function DELETE(
     try {
         const id = (await params).id;
         const sql = getDb();
-        await sql`DELETE FROM patients WHERE id = ${id}`;
+        await sql`DELETE FROM patients WHERE patient_id = ${id}`;
         return NextResponse.json({ success: true });
     } catch (error) {
         console.error('Delete error:', error);
