@@ -191,9 +191,9 @@ export default function SettingsClient() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 font-sans text-gray-900 dark:text-gray-100 transition-colors flex flex-col">
       <Navbar activePage="Settings" />
 
-      <div className="flex-1 flex max-w-7xl mx-auto w-full">
+      <div className="flex-1 flex flex-col md:flex-row max-w-7xl mx-auto w-full">
         {/* Sidebar */}
-        <aside className="w-64 border-r border-gray-200 dark:border-gray-800 pt-8 px-4 hidden md:block transition-colors">
+        <aside className="w-64 border-r border-gray-200 dark:border-gray-800 pt-8 px-4 hidden md:block transition-colors shrink-0">
             <nav className="space-y-1">
                 {menuItems.map((item) => (
                     <button
@@ -213,22 +213,24 @@ export default function SettingsClient() {
         </aside>
 
         {/* Mobile Tab Bar */}
-        <div className="md:hidden flex bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 overflow-x-auto scrollbar-hide transition-colors">
-            {menuItems.map((item) => (
-                <button
-                    key={item.id}
-                    onClick={() => setActiveSection(item.id as any)}
-                    className={`flex-1 px-4 py-3 text-[9px] font-black uppercase tracking-widest whitespace-nowrap border-b-2 transition-all ${
-                        activeSection === item.id ? 'border-blue-600 text-blue-600 bg-blue-50/50 dark:bg-blue-900/20' : 'border-transparent text-gray-400'
-                    }`}
-                >
-                    {item.label}
-                </button>
-            ))}
+        <div className="md:hidden flex bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 overflow-x-auto sticky top-16 z-10 transition-colors scrollbar-hide">
+            <div className="flex min-w-full">
+                {menuItems.map((item) => (
+                    <button
+                        key={item.id}
+                        onClick={() => setActiveSection(item.id as any)}
+                        className={`flex-1 px-5 py-4 text-[10px] font-black uppercase tracking-widest whitespace-nowrap border-b-2 transition-all ${
+                            activeSection === item.id ? 'border-blue-600 text-blue-600 bg-blue-50/50 dark:bg-blue-900/20' : 'border-transparent text-gray-400'
+                        }`}
+                    >
+                        {item.label}
+                    </button>
+                ))}
+            </div>
         </div>
 
         {/* Content Area */}
-        <main className="flex-1 py-8 px-4 sm:px-10 lg:px-16 max-w-4xl">
+        <main className="flex-1 py-6 px-4 sm:py-8 sm:px-10 lg:px-16 max-w-4xl w-full mx-auto">
             {activeSection === 'profile' && <ClinicProfile />}
             {activeSection === 'treatments' && <Manager title="Treatments" apiEndpoint="/api/treatments" />}
             {activeSection === 'doctors' && <Manager title="Doctors" apiEndpoint="/api/doctors" />}
