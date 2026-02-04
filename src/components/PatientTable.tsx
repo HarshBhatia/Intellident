@@ -124,8 +124,8 @@ export default function PatientTable({ patients }: PatientTableProps) {
                 <td className="px-6 py-4 whitespace-nowrap">{patient.phone_number || '-'}</td>
                 <td className="px-6 py-4 whitespace-nowrap">{patient.date}</td>
                 <td className="px-6 py-4 whitespace-nowrap capitalize">{patient.doctor || '-'}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-right font-semibold text-gray-900">
-                  ₹{patient.amount}
+                <td className="px-6 py-4 whitespace-nowrap text-right font-semibold text-gray-900 font-mono">
+                  ₹{Math.round(Number(patient.amount)).toLocaleString()}
                 </td>
               </tr>
             ))}
