@@ -47,6 +47,26 @@ export async function GET() {
       );
     `;
 
+    // Create expense_categories table
+    await sql`
+      CREATE TABLE IF NOT EXISTS expense_categories (
+        id SERIAL PRIMARY KEY,
+        name TEXT UNIQUE NOT NULL
+      );
+    `;
+
+    // Create expenses table
+    await sql`
+      CREATE TABLE IF NOT EXISTS expenses (
+        id SERIAL PRIMARY KEY,
+        date TEXT NOT NULL,
+        amount NUMERIC NOT NULL,
+        category TEXT NOT NULL,
+        description TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `;
+
     // Seed treatments if empty
     const treatmentCount = await sql`SELECT COUNT(*) FROM treatments`;
     if (parseInt(treatmentCount[0].count) === 0) {
@@ -56,6 +76,17 @@ export async function GET() {
         ('Extraction'), ('Composite Filling'), ('Ceramic Crown'), 
         ('Zirconia Crown'), ('Complete Denture'), ('Implants'), 
         ('Braces / Orthodontics'), ('Teeth Whitening'), ('X-Ray')
+      `;
+    }
+
+    // Seed expense categories if empty
+    const expCatCount = await sql`SELECT COUNT(*) FROM expense_categories`;
+    if (parseInt(expCatCount[0].count) === 0) {
+      await sql`
+        INSERT INTO expense_categories (name) VALUES 
+        ('Dental Materials'), ('Lab Charges'), ('Rent'), 
+        ('Staff Salary'), ('Electricity & Utilities'), ('Marketing'), 
+        ('Maintenance'), ('Miscellaneous')
       `;
     }
 

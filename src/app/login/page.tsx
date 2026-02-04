@@ -33,8 +33,10 @@ export default function LoginPage() {
                     <path d="M18.5 2h-13C4.1 2 3 4.1 3 6.5c0 2.5 1.5 4.5 3 6v7c0 1.4 1.1 2.5 2.5 2.5h1c1.1 0 2-0.9 2-2v-4h1v4c0 1.1 0.9 2 2 2h1c1.4 0 2.5-1.1 2.5-2.5v-7c1.5-1.5 3-3.5 3-6 0-2.4-1.1-4.5-2.5-4.5z" />
                 </svg>
             </div>
-            <h1 className="text-3xl font-bold text-gray-800 tracking-tight">IntelliDent</h1>
-            <p className="text-gray-500 text-sm mt-1 font-medium">Dental Excellence Platform</p>
+            <h1 className="text-4xl font-black text-gray-900 tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-900">
+                IntelliDent
+            </h1>
+            <p className="text-gray-500 text-xs mt-1 uppercase tracking-widest font-bold opacity-70">Dental Excellence Platform</p>
         </div>
 
         {error && (
