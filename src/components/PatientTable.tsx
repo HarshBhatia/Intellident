@@ -1,7 +1,7 @@
 'use client';
 
 import { Patient } from '@/types';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useMemo, useEffect } from 'react';
 
 interface PatientTableProps {
@@ -114,14 +114,41 @@ export default function PatientTable({ patients }: PatientTableProps) {
     direction: 'desc'
   });
 
+  const searchParams = useSearchParams();
   const [clinic, setClinic] = useState<any>(null);
   const [activeModal, setActiveModal] = useState<{ patient: Patient; type: 'whatsapp' | 'sms' } | null>(null);
+
+  // Pagination State - Init from URL
+  const [currentPage, setCurrentPage] = useState(Number(searchParams.get('page')) || 1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     fetch('/api/clinic-info')
       .then(res => res.json())
       .then(data => setClinic(data));
   }, []);
+
+  // Sync page to URL
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (currentPage > 1) {
+      params.set('page', currentPage.toString());
+    } else {
+      params.delete('page');
+    }
+    
+    if (params.get('page') !== searchParams.get('page')) {
+      router.replace(`?${params.toString()}`, { scroll: false });
+    }
+  }, [currentPage, router, searchParams]);
+
+  // Reset to page 1 when sorting or filtering changes
+  useEffect(() => {
+    // Only reset if we are not currently at page 1
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+    }
+  }, [sortConfig, patients]);
 
   const handleSort = (key: SortKey) => {
     setSortConfig((current) => ({
@@ -154,6 +181,12 @@ export default function PatientTable({ patients }: PatientTableProps) {
     });
     return sorted;
   }, [patients, sortConfig]);
+
+  const totalPages = Math.ceil(sortedPatients.length / itemsPerPage);
+  const paginatedPatients = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return sortedPatients.slice(startIndex, startIndex + itemsPerPage);
+  }, [sortedPatients, currentPage, itemsPerPage]);
 
   const SortIcon = ({ column }: { column: SortKey }) => {
     if (sortConfig.key !== column) return <span className="ml-1 text-gray-300">↕</span>;
@@ -198,7 +231,7 @@ export default function PatientTable({ patients }: PatientTableProps) {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-            {sortedPatients.map((patient) => (
+            {paginatedPatients.map((patient) => (
               <tr 
                 key={patient.id} 
                 className="hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition duration-150 cursor-pointer group"
@@ -266,7 +299,7 @@ export default function PatientTable({ patients }: PatientTableProps) {
                 </td>
               </tr>
             ))}
-            {sortedPatients.length === 0 && (
+            {paginatedPatients.length === 0 && (
               <tr>
                 <td colSpan={8} className="px-6 py-12 text-center text-gray-400 dark:text-gray-600">
                   <div className="flex flex-col items-center gap-2">
@@ -279,6 +312,34 @@ export default function PatientTable({ patients }: PatientTableProps) {
           </tbody>
         </table>
       </div>
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="px-6 py-4 bg-gray-50 dark:bg-gray-800/50 border-t dark:border-gray-800 flex items-center justify-between">
+          <div className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+            Showing <span className="font-bold text-gray-700 dark:text-gray-200">{(currentPage - 1) * itemsPerPage + 1}</span> to <span className="font-bold text-gray-700 dark:text-gray-200">{Math.min(currentPage * itemsPerPage, sortedPatients.length)}</span> of <span className="font-bold text-gray-700 dark:text-gray-200">{sortedPatients.length}</span> patients
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-700 text-xs font-bold bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            >
+              Previous
+            </button>
+            <div className="flex items-center px-4 text-xs font-bold text-gray-600 dark:text-gray-400">
+              Page {currentPage} of {totalPages}
+            </div>
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-700 text-xs font-bold bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
 
       {activeModal && (
         <MessageModal 

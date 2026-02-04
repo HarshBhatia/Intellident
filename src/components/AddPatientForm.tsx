@@ -14,6 +14,7 @@ export default function AddPatientForm({ onSuccess, onCancel }: AddPatientFormPr
   const router = useRouter();
   const { showToast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [showMore, setShowMore] = useState(false);
   const [formData, setFormData] = useState<Partial<Patient>>({
     patient_id: `PID-${Math.floor(Math.random() * 10000)}`, 
     date: new Date().toISOString().split('T')[0],
@@ -140,6 +141,51 @@ export default function AddPatientForm({ onSuccess, onCancel }: AddPatientFormPr
             </div>
         </div>
       </div>
+
+      {!showMore ? (
+        <button 
+          type="button" 
+          onClick={() => setShowMore(true)}
+          className="w-full py-2.5 mb-8 border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-lg text-gray-400 dark:text-gray-500 text-xs font-bold uppercase tracking-widest hover:border-blue-400 hover:text-blue-500 transition-all flex items-center justify-center gap-2"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+          Add More Details
+        </button>
+      ) : (
+        <div className="space-y-5 mb-8 animate-in fade-in slide-in-from-top-2 duration-300">
+           <div>
+              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5 ml-1">Treatment Fees (₹)</label>
+              <input 
+                name="amount" 
+                type="number"
+                value={formData.amount} 
+                onChange={handleChange} 
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md focus:ring-2 focus:ring-blue-500 outline-none transition text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-800 focus:bg-white dark:focus:bg-gray-700 font-mono"
+                placeholder="0"
+              />
+            </div>
+            <div>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5 ml-1">Doctor</label>
+                <input 
+                    name="doctor" 
+                    value={formData.doctor} 
+                    onChange={handleChange} 
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md focus:ring-2 focus:ring-blue-500 outline-none transition text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-800 focus:bg-white dark:focus:bg-gray-700"
+                    placeholder="Doctor Name"
+                />
+            </div>
+            <div>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5 ml-1">Notes</label>
+                <textarea 
+                    name="notes" 
+                    value={formData.notes} 
+                    onChange={(e: any) => setFormData(prev => ({ ...prev, notes: e.target.value }))} 
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md focus:ring-2 focus:ring-blue-500 outline-none transition text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-800 focus:bg-white dark:focus:bg-gray-700 text-sm h-24 resize-none"
+                    placeholder="Extra notes..."
+                />
+            </div>
+        </div>
+      )}
 
       <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
         <button 

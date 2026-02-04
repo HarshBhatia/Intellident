@@ -521,6 +521,15 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                     </div>
                 </div>
 
+                {/* Dental Odontogram */}
+                <div className="col-span-full pt-8 border-t border-gray-100 dark:border-gray-800 font-sans">
+                    <div className="text-center mb-6"><label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-[0.3em] font-sans">Dental Odontogram</label></div>
+                    <div className={!isEditing ? "pointer-events-none opacity-90" : ""}>
+                        <ToothSelector value={patient.tooth_number || ''} onChange={handleToothChange} />
+                    </div>
+                    {!isEditing && patient.tooth_number && <div className="text-center text-[10px] font-bold text-blue-600 dark:text-blue-400 mt-2 uppercase tracking-widest font-mono font-sans">Selected: {patient.tooth_number}</div>}
+                </div>
+
                 {/* X-Ray Records */}
                 <div className="col-span-full space-y-4 pt-4 border-t border-gray-100 dark:border-gray-800">
                     <div className="flex justify-between items-center">
@@ -608,26 +617,11 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                     </div>
                 </div>
 
-                                  <div className="col-span-full mt-6 pt-8 border-t border-gray-100 dark:border-gray-800 font-sans">
-
-                                      <div className="text-center mb-6"><label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-[0.3em] font-sans">Dental Odontogram</label></div>
-
-                                      <div className={!isEditing ? "pointer-events-none opacity-90" : ""}>
-
-                                        <ToothSelector value={patient.tooth_number || ''} onChange={handleToothChange} />
-
-                                      </div>
-
-                                      {!isEditing && patient.tooth_number && <div className="text-center text-[10px] font-bold text-blue-600 dark:text-blue-400 mt-2 uppercase tracking-widest font-mono font-sans">Selected: {patient.tooth_number}</div>}
-
-                                  </div>
-
-                
-            </div>
-        </form>
-      </div>
-
-      {/* X-Ray Lightbox Modal with Zoom/Pan */}
+                                                  
+                                              </div>
+                                          </form>
+                                        </div>
+                                        {/* X-Ray Lightbox Modal with Zoom/Pan */}
       {selectedXray && (
           <div 
             className="fixed inset-0 bg-black/95 z-[100] flex flex-col items-center justify-center p-4 animate-in fade-in overflow-hidden" 

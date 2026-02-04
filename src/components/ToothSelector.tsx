@@ -7,7 +7,38 @@ interface ToothSelectorProps {
   onChange: (value: string) => void;
 }
 
-const TOOTH_PATH = "M12 2C8 2 5 5 5 9c0 2.5 1.5 4.5 3 6v5c0 1.1.9 2 2 2h4c1.1 0 2-.9 2-2v-5c1.5-1.5 3-3.5 3-6 0-4-3-7-7-7z";
+// Custom SVG Paths for realistic tooth shapes
+const SHAPES = {
+  Molar: "M4 4c0-1 2-2 4-2s4 1 4 2v4c0 2-1 3-2 5v7c0 1-1 2-2 2s-2-1-2-2v-7c-1-2-2-3-2-5V4z M12 4c0-1 2-2 4-2s4 1 4 2v4c0 2-1 3-2 5v7c0 1-1 2-2 2s-2-1-2-2v-7c-1-2-2-3-2-5V4z",
+  Premolar: "M8 4c0-1 2-2 4-2s4 1 4 2v6c0 3-1 5-2 7v4c0 1-1 2-2 2s-2-1-2-2v-4c-1-2-2-4-2-7V4z",
+  Canine: "M9 2c1-1 3-1 4 0l1 4c1 2 1 5 0 8l-1 6c0 1-1 2-2 2s-2-1-2-2l-1-6c-1-3-1-6 0-8l1-4z",
+  Incisor: "M9 2h6v6c0 3-1 6-2 9v5c0 1-1 2-2 2s-2-1-2-2v-5c-1-3-2-6-2-9V2z"
+};
+
+// Simplified but anatomical SVG components
+const MolarIcon = () => (
+  <svg viewBox="0 0 24 24" className="w-full h-full">
+    <path d="M6 4c-1 0-2 1-2 2v4c0 2 1 4 2 6v6c0 1 1 2 2 2s2-1 2-2v-6c1-2 2-4 2-6V6c0-1-1-2-2-2H6z M14 4c-1 0-2 1-2 2v4c0 2 1 4 2 6v6c0 1 1 2 2 2s2-1 2-2v-6c1-2 2-4 2-6V6c0-1-1-2-2-2H14z" fill="currentColor" />
+  </svg>
+);
+
+const PremolarIcon = () => (
+  <svg viewBox="0 0 24 24" className="w-full h-full">
+    <path d="M8 4c-1 0-2 1-2 2v6c0 3 1 6 3 8v2c0 1 1 2 2 2s2-1 2-2v-2c2-2 3-5 3-8V6c0-1-1-2-2-2H8z" fill="currentColor" />
+  </svg>
+);
+
+const CanineIcon = () => (
+  <svg viewBox="0 0 24 24" className="w-full h-full">
+    <path d="M12 2l-3 4v6c0 3 1 7 3 10 2-3 3-7 3-10V6l-3-4z" fill="currentColor" />
+  </svg>
+);
+
+const IncisorIcon = () => (
+  <svg viewBox="0 0 24 24" className="w-full h-full">
+    <path d="M8 2h8v8c0 4-2 8-4 12-2-4-4-8-4-12V2z" fill="currentColor" />
+  </svg>
+);
 
 export default function ToothSelector({ value, onChange }: ToothSelectorProps) {
   const [selected, setSelected] = useState<Set<number>>(new Set());
@@ -32,81 +63,70 @@ export default function ToothSelector({ value, onChange }: ToothSelectorProps) {
     onChange(Array.from(newSet).sort((a, b) => a - b).join(', '));
   };
 
-  const Tooth = ({ num, displayLabel }: { num: number; displayLabel: number }) => {
+  const getToothIcon = (q: number) => {
+    if (q >= 6) return <MolarIcon />;
+    if (q >= 4) return <PremolarIcon />;
+    if (q === 3) return <CanineIcon />;
+    return <IncisorIcon />;
+  };
+
+  const Tooth = ({ num, q, flipped = false }: { num: number; q: number; flipped?: boolean }) => {
     const isSelected = selected.has(num);
     return (
       <div 
         onClick={() => toggleTooth(num)}
         className="flex flex-col items-center cursor-pointer group px-0.5"
       >
+        <span className="text-[9px] font-bold text-gray-400 mb-1">{q}</span>
         <div className={`
-          w-9 h-12 relative transition-all duration-200 
-          ${isSelected ? 'scale-110 drop-shadow-md' : 'hover:scale-105'}
+          w-7 h-10 relative transition-all duration-200 
+          ${isSelected ? 'scale-110 drop-shadow-[0_0_8px_rgba(34,197,94,0.5)]' : 'hover:scale-105 opacity-60 hover:opacity-100'}
+          ${flipped ? 'rotate-180' : ''}
+          ${isSelected ? 'text-green-500' : 'text-gray-300 dark:text-gray-600'}
         `}>
-          <svg viewBox="0 0 24 24" className="w-full h-full drop-shadow-sm">
-             <path 
-               d={TOOTH_PATH} 
-               fill={isSelected ? '#3B82F6' : 'var(--card)'} 
-               stroke={isSelected ? '#2563EB' : 'var(--muted-foreground)'}
-               strokeWidth="1.5"
-             />
-             {!isSelected && (
-                <path d="M10 5 Q12 8 14 5" fill="none" stroke="var(--border)" strokeWidth="1" />
-             )}
-          </svg>
-          {isSelected && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
-            </div>
-          )}
-        </div>
-        <div className="flex flex-col items-center mt-1 leading-none">
-            <span className={`text-xs font-bold ${isSelected ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400'}`}>
-            {displayLabel}
-            </span>
+          {getToothIcon(q)}
         </div>
       </div>
     );
   };
 
-  // Internal Universal Mapping (1-32) displayed as Quadrant (1-8)
-  // Logic: 
-  // Viewer Top Left (Patient UR): Univ 1..8 -> Display 8,7,6,5,4,3,2,1
   const upperLeft = [1,2,3,4,5,6,7,8].map(n => ({ u: n, q: 9-n }));
-  // Viewer Top Right (Patient UL): Univ 9..16 -> Display 1,2,3,4,5,6,7,8
   const upperRight = [9,10,11,12,13,14,15,16].map(n => ({ u: n, q: n-8 }));
-  // Viewer Bottom Left (Patient LR): Univ 32..25 -> Display 8,7,6,5,4,3,2,1
   const lowerLeft = [32,31,30,29,28,27,26,25].map(n => ({ u: n, q: n-24 }));
-  // Viewer Bottom Right (Patient LL): Univ 17..24 -> Display 1,2,3,4,5,6,7,8
   const lowerRight = [17,18,19,20,21,22,23,24].map(n => ({ u: n, q: n-16 }));
 
   return (
-    <div className="bg-white dark:bg-gray-900 p-4 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm select-none w-full overflow-x-auto transition-colors">
-      <div className="min-w-[600px]">
-        <h3 className="text-center text-sm font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-6">Odontogram (1-8 Quadrant)</h3>
+    <div className="bg-[#111] p-8 rounded-2xl border border-gray-800 shadow-2xl select-none w-full overflow-x-auto transition-colors">
+      <div className="min-w-[650px] flex flex-col items-center">
         
         {/* Upper Arch */}
-        <div className="flex justify-center mb-4">
-            <div className="flex gap-1 border-b-2 border-r-2 border-gray-200 dark:border-gray-800 px-4 pb-2">
-                 {upperLeft.map(t => <Tooth key={t.u} num={t.u} displayLabel={t.q} />)}
+        <div className="flex items-end gap-12 mb-8">
+            <div className="flex gap-2 items-end border-r border-gray-800 pr-6">
+                 {upperLeft.map(t => <Tooth key={t.u} num={t.u} q={t.q} />)}
             </div>
-            <div className="flex gap-1 border-b-2 border-l-2 border-gray-200 dark:border-gray-800 px-4 pb-2">
-                 {upperRight.map(t => <Tooth key={t.u} num={t.u} displayLabel={t.q} />)}
+            <div className="flex gap-2 items-end">
+                 {upperRight.map(t => <Tooth key={t.u} num={t.u} q={t.q} />)}
             </div>
         </div>
+
+        {/* Midline */}
+        <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-800 to-transparent mb-8"></div>
 
         {/* Lower Arch */}
-        <div className="flex justify-center">
-             <div className="flex gap-1 border-t-2 border-r-2 border-gray-200 dark:border-gray-800 px-4 pt-2">
-                {lowerLeft.map(t => <Tooth key={t.u} num={t.u} displayLabel={t.q} />)}
+        <div className="flex items-start gap-12">
+             <div className="flex gap-2 items-start border-r border-gray-800 pr-6">
+                {lowerLeft.map(t => <Tooth key={t.u} num={t.u} q={t.q} flipped />)}
             </div>
-            <div className="flex gap-1 border-t-2 border-l-2 border-gray-200 dark:border-gray-800 px-4 pt-2">
-                 {lowerRight.map(t => <Tooth key={t.u} num={t.u} displayLabel={t.q} />)}
+            <div className="flex gap-2 items-start">
+                 {lowerRight.map(t => <Tooth key={t.u} num={t.u} q={t.q} flipped />)}
             </div>
         </div>
 
-        <div className="mt-6 text-center">
-            <p className="text-xs text-gray-400 dark:text-gray-600 italic">Showing center-out quadrant numbering</p>
+        <div className="mt-10 flex items-center gap-4">
+            <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-green-500 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.5)]"></div>
+                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Selected Treatment Area</span>
+            </div>
         </div>
       </div>
     </div>

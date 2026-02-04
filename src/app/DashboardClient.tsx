@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Patient } from '@/types';
 import PatientTable from '@/components/PatientTable';
 import AddPatientForm from '@/components/AddPatientForm';
@@ -9,11 +9,26 @@ import Skeleton from '@/components/Skeleton';
 import Navbar from '@/components/Navbar';
 
 export default function DashboardClient() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [view, setView] = useState<'list' | 'add'>('list');
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const router = useRouter();
+  const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '');
+
+  // Update URL when search term changes
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (searchTerm) {
+      params.set('search', searchTerm);
+    } else {
+      params.delete('search');
+    }
+    // Only update if the search param actually changed to avoid redundant history entries
+    if (params.get('search') !== searchParams.get('search')) {
+      router.replace(`?${params.toString()}`, { scroll: false });
+    }
+  }, [searchTerm, router, searchParams]);
 
   const fetchPatients = async () => {
     try {
