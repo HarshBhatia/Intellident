@@ -46,12 +46,12 @@ export default function ToothSelector({ value, onChange }: ToothSelectorProps) {
           <svg viewBox="0 0 24 24" className="w-full h-full drop-shadow-sm">
              <path 
                d={TOOTH_PATH} 
-               fill={isSelected ? '#3B82F6' : '#FFFFFF'} 
-               stroke={isSelected ? '#2563EB' : '#9CA3AF'}
+               fill={isSelected ? '#3B82F6' : 'var(--card)'} 
+               stroke={isSelected ? '#2563EB' : 'var(--muted-foreground)'}
                strokeWidth="1.5"
              />
              {!isSelected && (
-                <path d="M10 5 Q12 8 14 5" fill="none" stroke="#E5E7EB" strokeWidth="1" />
+                <path d="M10 5 Q12 8 14 5" fill="none" stroke="var(--border)" strokeWidth="1" />
              )}
           </svg>
           {isSelected && (
@@ -61,7 +61,7 @@ export default function ToothSelector({ value, onChange }: ToothSelectorProps) {
           )}
         </div>
         <div className="flex flex-col items-center mt-1 leading-none">
-            <span className={`text-xs font-bold ${isSelected ? 'text-blue-600' : 'text-gray-600'}`}>
+            <span className={`text-xs font-bold ${isSelected ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400'}`}>
             {displayLabel}
             </span>
         </div>
@@ -81,32 +81,32 @@ export default function ToothSelector({ value, onChange }: ToothSelectorProps) {
   const lowerRight = [17,18,19,20,21,22,23,24].map(n => ({ u: n, q: n-16 }));
 
   return (
-    <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm select-none w-full overflow-x-auto">
+    <div className="bg-white dark:bg-gray-900 p-4 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm select-none w-full overflow-x-auto transition-colors">
       <div className="min-w-[600px]">
-        <h3 className="text-center text-sm font-semibold text-gray-400 uppercase tracking-wider mb-6">Odontogram (1-8 Quadrant)</h3>
+        <h3 className="text-center text-sm font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-6">Odontogram (1-8 Quadrant)</h3>
         
         {/* Upper Arch */}
         <div className="flex justify-center mb-4">
-            <div className="flex gap-1 border-b-2 border-r-2 border-gray-200 px-4 pb-2">
+            <div className="flex gap-1 border-b-2 border-r-2 border-gray-200 dark:border-gray-800 px-4 pb-2">
                  {upperLeft.map(t => <Tooth key={t.u} num={t.u} displayLabel={t.q} />)}
             </div>
-            <div className="flex gap-1 border-b-2 border-l-2 border-gray-200 px-4 pb-2">
+            <div className="flex gap-1 border-b-2 border-l-2 border-gray-200 dark:border-gray-800 px-4 pb-2">
                  {upperRight.map(t => <Tooth key={t.u} num={t.u} displayLabel={t.q} />)}
             </div>
         </div>
 
         {/* Lower Arch */}
         <div className="flex justify-center">
-             <div className="flex gap-1 border-t-2 border-r-2 border-gray-200 px-4 pt-2">
+             <div className="flex gap-1 border-t-2 border-r-2 border-gray-200 dark:border-gray-800 px-4 pt-2">
                 {lowerLeft.map(t => <Tooth key={t.u} num={t.u} displayLabel={t.q} />)}
             </div>
-            <div className="flex gap-1 border-t-2 border-l-2 border-gray-200 px-4 pt-2">
+            <div className="flex gap-1 border-t-2 border-l-2 border-gray-200 dark:border-gray-800 px-4 pt-2">
                  {lowerRight.map(t => <Tooth key={t.u} num={t.u} displayLabel={t.q} />)}
             </div>
         </div>
 
         <div className="mt-6 text-center">
-            <p className="text-xs text-gray-400 italic">Showing center-out quadrant numbering</p>
+            <p className="text-xs text-gray-400 dark:text-gray-600 italic">Showing center-out quadrant numbering</p>
         </div>
       </div>
     </div>

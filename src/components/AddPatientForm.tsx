@@ -66,62 +66,62 @@ export default function AddPatientForm({ onSuccess, onCancel }: AddPatientFormPr
   };
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white p-8 rounded-lg shadow-lg border border-gray-100 text-gray-800 max-w-lg mx-auto transform transition-all">
+    <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-900 p-8 rounded-lg shadow-lg border border-gray-100 dark:border-gray-800 text-gray-800 dark:text-gray-200 max-w-lg mx-auto transform transition-all">
       <div className="text-center mb-8">
-        <h2 className="text-2xl font-bold text-gray-900">New Patient</h2>
-        <p className="text-sm text-gray-500 mt-1">Enter basic details to create a record</p>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">New Patient</h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Enter basic details to create a record</p>
       </div>
       
       <div className="space-y-5 mb-8">
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1.5 ml-1">Full Name</label>
+          <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5 ml-1">Full Name</label>
           <input 
             name="name" 
             value={formData.name} 
             onChange={handleChange} 
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-900 placeholder-gray-400 bg-gray-50 focus:bg-white"
+            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 bg-gray-50 dark:bg-gray-800 focus:bg-white dark:focus:bg-gray-700"
             placeholder="e.g. John Doe"
             required 
           />
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1.5 ml-1">Phone Number</label>
+          <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5 ml-1">Phone Number</label>
           <input 
             name="phone_number" 
             value={formData.phone_number} 
             onChange={handleChange} 
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-900 placeholder-gray-400 bg-gray-50 focus:bg-white"
+            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 bg-gray-50 dark:bg-gray-800 focus:bg-white dark:focus:bg-gray-700"
             placeholder="e.g. +1 234 567 8900"
           />
         </div>
 
         <div className="grid grid-cols-2 gap-4">
             <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1.5 ml-1">Age</label>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5 ml-1">Age</label>
                 <input 
                     name="age" 
                     type="number"
                     value={formData.age} 
                     onChange={handleChange} 
-                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-900 bg-gray-50 focus:bg-white"
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-800 focus:bg-white dark:focus:bg-gray-700"
                     placeholder="0"
                 />
             </div>
             <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1.5 ml-1">Gender</label>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5 ml-1">Gender</label>
                 <div className="relative">
                     <select 
                         name="gender" 
                         value={formData.gender} 
                         onChange={handleChange} 
-                        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-900 bg-gray-50 focus:bg-white appearance-none cursor-pointer h-[42px]"
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-800 focus:bg-white dark:focus:bg-gray-700 appearance-none cursor-pointer h-[42px]"
                     >
                         <option>Male</option>
                         <option>Female</option>
                         <option>Other</option>
                     </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 dark:text-gray-400">
                         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
                     </div>
                 </div>
@@ -129,11 +129,11 @@ export default function AddPatientForm({ onSuccess, onCancel }: AddPatientFormPr
         </div>
       </div>
 
-      <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+      <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
         <button 
           type="button" 
           onClick={onCancel} 
-          className="px-5 py-2.5 rounded-md text-gray-600 font-medium hover:bg-gray-100 transition active:scale-[0.98]"
+          className="px-5 py-2.5 rounded-md text-gray-600 dark:text-gray-400 font-medium hover:bg-gray-100 dark:hover:bg-gray-800 transition active:scale-[0.98]"
         >
           Cancel
         </button>
