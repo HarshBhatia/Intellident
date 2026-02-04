@@ -67,19 +67,20 @@ export async function GET() {
       );
     `;
 
-    // Seed treatments if empty
-    const treatmentCount = await sql`SELECT COUNT(*) FROM treatments`;
-    if (parseInt(treatmentCount[0].count) === 0) {
-      await sql`
-        INSERT INTO treatments (name) VALUES 
-        ('Consultation'), ('Scaling & Polishing'), ('Root Canal Treatment'), 
-        ('Extraction'), ('Composite Filling'), ('Ceramic Crown'), 
-        ('Zirconia Crown'), ('Complete Denture'), ('Implants'), 
-        ('Braces / Orthodontics'), ('Teeth Whitening'), ('X-Ray')
-      `;
-    }
+    // Create clinic_info table
+    await sql`
+      CREATE TABLE IF NOT EXISTS clinic_info (
+        id INTEGER PRIMARY KEY DEFAULT 1,
+        clinic_name TEXT,
+        owner_name TEXT,
+        phone TEXT,
+        address TEXT,
+        email TEXT,
+        CONSTRAINT one_row CHECK (id = 1)
+      );
+    `;
 
-    // Seed expense categories if empty
+    // Seed expense categories if empty ...
     const expCatCount = await sql`SELECT COUNT(*) FROM expense_categories`;
     if (parseInt(expCatCount[0].count) === 0) {
       await sql`

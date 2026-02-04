@@ -9,23 +9,37 @@ interface Payment {
     mode: string;
 }
 
+function normalizeCategory(name: string): string {
+    let clean = name.toLowerCase().trim();
+    if (clean.includes('rct') || clean.includes('root canal')) return 'Root Canal (RCT)';
+    if (clean.includes('xray') || clean.includes('x ray') || clean.includes('x-ray')) return 'X-Ray';
+    if (clean.includes('scaling')) return 'Scaling';
+    if (clean.includes('extraction')) return 'Extraction';
+    if (clean.includes('crown')) return 'Crown';
+    if (clean.includes('consultation') || clean.includes('consultaion') || clean.includes('constulation') || clean.includes('examination')) return 'Consultation';
+    if (clean.includes('filling') || clean.includes('composite')) return 'Filling';
+    if (clean.includes('denture')) return 'Denture';
+    if (clean.includes('implant')) return 'Implant';
+    if (clean.includes('cleaning')) return 'Cleaning';
+    if (clean.includes('ortho') || clean.includes('braces')) return 'Orthodontics';
+    
+    // Default: Title Case
+    return clean.replace(/\b\w/g, c => c.toUpperCase());
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const start = searchParams.get('start');
     const end = searchParams.get('end');
 
-    if (!start || !end) {
-        return NextResponse.json({ error: 'Start and End dates are required' }, { status: 400 });
-    }
+    if (!start || !end) return NextResponse.json({ error: 'Dates required' }, { status: 400 });
 
     const startDate = new Date(start);
     const endDate = new Date(end);
     endDate.setHours(23, 59, 59, 999);
 
     const sql = getDb();
-    
-    // Fetch all patients and expenses
     const [patients, expenses] = await Promise.all([
         sql`SELECT payments FROM patients WHERE payments IS NOT NULL`,
         sql`SELECT * FROM expenses WHERE date >= ${start} AND date <= ${end}`
@@ -33,12 +47,9 @@ export async function GET(request: Request) {
 
     const categoryMap: Record<string, number> = {};
     const monthlyMap: Record<string, number> = {}; 
-    const expenseCategoryMap: Record<string, number> = {};
-
     let filteredRevenue = 0;
     let totalExpenses = 0;
 
-    // 1. Process Revenue
     patients.forEach(row => {
         try {
             const payments: Payment[] = JSON.parse(row.payments);
@@ -46,69 +57,59 @@ export async function GET(request: Request) {
                 payments.forEach(p => {
                     const pDate = new Date(p.date);
                     const amt = Number(p.amount) || 0;
-
-                    // All-time trend (for Bar Chart)
                     const monthKey = pDate.toISOString().slice(0, 7); 
                     monthlyMap[monthKey] = (monthlyMap[monthKey] || 0) + amt;
 
-                    // Filtered Stats
                     if (pDate >= startDate && pDate <= endDate) {
                         filteredRevenue += amt;
-                        let rawPurpose = (p.purpose || 'Other').replace(/[0-9₹]/g, '').trim();
-                        let parts = rawPurpose.split(/,| and /).map(s => s.trim()).filter(s => s.length > 0);
-                        if (parts.length === 0) parts = ['Other'];
-                        const amountPerPart = amt / parts.length;
-
-                        parts.forEach(part => {
-                            let cleanName = part.toLowerCase();
-                            if (cleanName.includes('rct') || cleanName.includes('root canal')) cleanName = 'Root Canal (RCT)';
-                            else if (cleanName.includes('xray') || cleanName.includes('x ray') || cleanName.includes('x-ray')) cleanName = 'X-Ray';
-                            else if (cleanName.includes('scaling')) cleanName = 'Scaling';
-                            else if (cleanName.includes('extraction')) cleanName = 'Extraction';
-                            else if (cleanName.includes('crown')) cleanName = 'Crown';
-                            else if (cleanName.includes('consultation') || cleanName.includes('consultaion') || cleanName.includes('constulation')) cleanName = 'Consultation';
-                            else if (cleanName.includes('access opening')) cleanName = 'Access Opening';
-                            else cleanName = cleanName.replace(/\b\w/g, c => c.toUpperCase());
-
-                            categoryMap[cleanName] = (categoryMap[cleanName] || 0) + amountPerPart;
-                        });
+                        const purpose = p.purpose || 'Other';
+                        
+                        // Try to find individual amounts in the purpose string (e.g. "RCT 2000, Xray 200")
+                        const matches = purpose.match(/(\d+)/g);
+                        const parts = purpose.split(/,| and /).map(s => s.trim()).filter(Boolean);
+                        
+                        if (matches && matches.length === parts.length) {
+                            // Map amounts to their respective parts
+                            parts.forEach((part, idx) => {
+                                const partAmt = parseInt(matches[idx]);
+                                const cat = normalizeCategory(part.replace(/[0-9₹,]/g, ''));
+                                categoryMap[cat] = (categoryMap[cat] || 0) + partAmt;
+                            });
+                        } else {
+                            // Fallback to equal split
+                            const splitAmt = amt / (parts.length || 1);
+                            if (parts.length === 0) {
+                                categoryMap['Other'] = (categoryMap['Other'] || 0) + amt;
+                            } else {
+                                parts.forEach(part => {
+                                    const cat = normalizeCategory(part.replace(/[0-9₹,]/g, ''));
+                                    categoryMap[cat] = (categoryMap[cat] || 0) + splitAmt;
+                                });
+                            }
+                        }
                     }
                 });
             }
         } catch (e) { }
     });
 
-    // 2. Process Expenses
-    expenses.forEach(e => {
-        const amt = Number(e.amount) || 0;
-        totalExpenses += amt;
-        const cat = e.category || 'Miscellaneous';
-        expenseCategoryMap[cat] = (expenseCategoryMap[cat] || 0) + amt;
-    });
+    expenses.forEach(e => { totalExpenses += Number(e.amount) || 0; });
 
-    // Format for Recharts
+    // Format and round values for cleaner display
     const pieData = Object.entries(categoryMap)
-        .map(([name, value]) => ({ name, value }))
+        .map(([name, value]) => ({ name, value: Math.round(value) }))
+        .filter(item => item.value > 0)
         .sort((a, b) => b.value - a.value);
 
-    const monthlyTrend = Object.entries(monthlyMap)
-        .sort(([a], [b]) => a.localeCompare(b))
-        .map(([key, value]) => {
-            const [y, m] = key.split('-');
-            const d = new Date(parseInt(y), parseInt(m) - 1);
-            return { month: d.toLocaleString('default', { month: 'short', year: '2-digit' }), revenue: value };
-        });
-
     return NextResponse.json({
-        totalRevenue: filteredRevenue,
-        totalExpenses,
-        profit: filteredRevenue - totalExpenses,
+        totalRevenue: Math.round(filteredRevenue),
+        totalExpenses: Math.round(totalExpenses),
+        profit: Math.round(filteredRevenue - totalExpenses),
         pieData,
-        monthlyTrend,
-        expenseBreakdown: Object.entries(expenseCategoryMap).map(([name, value]) => ({ name, value })).sort((a,b) => b.value - a.value)
+        monthlyTrend: Object.entries(monthlyMap).sort(([a],[b])=>a.localeCompare(b)).map(([k,v]) => ({
+            month: new Date(k + '-01').toLocaleString('default', { month: 'short', year: '2-digit' }),
+            revenue: Math.round(v)
+        }))
     });
-
-  } catch (error) {
-    return NextResponse.json({ error: 'Failed' }, { status: 500 });
-  }
+  } catch (error) { return NextResponse.json({ error: 'Failed' }, { status: 500 }); }
 }
