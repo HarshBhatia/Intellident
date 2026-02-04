@@ -112,14 +112,17 @@ const ClinicProfile = () => {
         owner_name: '',
         phone: '',
         address: '',
-        email: ''
+        email: '',
+        google_maps_link: ''
     });
 
     useEffect(() => {
         fetch('/api/clinic-info')
             .then(res => res.json())
             .then(data => {
-                if (data.clinic_name !== undefined) setForm(data);
+                if (data && !data.error) {
+                    setForm(prev => ({ ...prev, ...data }));
+                }
             })
             .finally(() => setLoading(false));
     }, []);
@@ -160,6 +163,10 @@ const ClinicProfile = () => {
                     <div>
                         <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1 tracking-widest">Email Address</label>
                         <input value={form.email} onChange={e => setForm({...form, email: e.target.value})} className="w-full p-2.5 border dark:border-gray-700 rounded-md outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 dark:bg-gray-800 focus:bg-white dark:focus:bg-gray-700 transition" placeholder="clinic@example.com" />
+                    </div>
+                    <div className="sm:col-span-2">
+                        <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1 tracking-widest">Google Maps Review Link</label>
+                        <input value={form.google_maps_link} onChange={e => setForm({...form, google_maps_link: e.target.value})} className="w-full p-2.5 border dark:border-gray-700 rounded-md outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 dark:bg-gray-800 focus:bg-white dark:focus:bg-gray-700 transition" placeholder="https://maps.app.goo.gl/..." />
                     </div>
                     <div className="sm:col-span-2">
                         <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1 tracking-widest">Clinic Address</label>

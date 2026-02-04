@@ -1,12 +1,13 @@
 'use client';
 
 import { useEffect, useState, useMemo, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Patient } from '@/types';
 import ToothSelector from '@/components/ToothSelector';
 import { useToast } from '@/components/ToastProvider';
 import Skeleton from '@/components/Skeleton';
 import Navbar from '@/components/Navbar';
+import { generatePrescriptionPDF } from '@/lib/pdf-generator';
 
 interface XRay {
     id: string;
@@ -25,14 +26,22 @@ interface PaymentRecord {
 
 export default function PatientDetailClient({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { showToast } = useToast();
   const [unwrappedParams, setUnwrappedParams] = useState<{ id: string } | null>(null);
   
   const [patient, setPatient] = useState<Patient | null>(null);
+  const [clinic, setClinic] = useState<any>(null);
   const [initialPatient, setInitialPatient] = useState<Patient | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get('edit') === 'true') {
+      setIsEditing(true);
+    }
+  }, [searchParams]);
   
   const [xrayList, setXrayList] = useState<XRay[]>([]);
   const [paymentList, setPaymentList] = useState<PaymentRecord[]>([]);
@@ -81,6 +90,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
   useEffect(() => {
       fetch('/api/treatments').then(res => res.json()).then(data => Array.isArray(data) && setTreatments(data));
       fetch('/api/doctors').then(res => res.json()).then(data => Array.isArray(data) && setDoctors(data));
+      fetch('/api/clinic-info').then(res => res.json()).then(data => setClinic(data));
   }, []);
 
   useEffect(() => {
@@ -281,6 +291,16 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
       router.push('/');
   };
 
+  const handleGeneratePrescription = () => {
+    if (!patient) return;
+    try {
+      generatePrescriptionPDF(patient, clinic || {});
+      showToast('Prescription generated!', 'success');
+    } catch (err) {
+      showToast('Failed to generate PDF', 'error');
+    }
+  };
+
   // --- Zoom & Pan Logic ---
   const handleMouseDown = (e: React.MouseEvent) => {
       if (zoom > 1) {
@@ -306,7 +326,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
 
   if (loading || !patient) return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-8 px-4 sm:px-6 lg:px-8 font-sans text-gray-900 dark:text-gray-100 transition-colors">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-6xl mx-auto">
           <div className="flex items-center justify-between mb-8"><Skeleton className="h-10 w-48" /><Skeleton className="h-6 w-32" /></div>
           <div className="bg-white dark:bg-gray-900 shadow rounded overflow-hidden border border-gray-100 dark:border-gray-800">
              <div className="bg-gray-100 dark:bg-gray-800 px-6 py-4 border-b dark:border-gray-700"><div className="flex justify-between items-center"><div><Skeleton className="h-6 w-40 mb-2" /><Skeleton className="h-4 w-24" /></div><Skeleton className="h-8 w-32" /></div></div>
@@ -320,12 +340,19 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 font-sans text-gray-900 dark:text-gray-100 transition-colors">
       <Navbar activePage="Patient Details" />
       
-      <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white tracking-tight">Patient Details</h1>
             <div className="flex flex-wrap gap-2 items-center bg-white dark:bg-gray-900 p-1 rounded border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden text-gray-900 dark:text-gray-100">
                 {!isEditing ? (
                     <>
+                        <button 
+                            onClick={handleGeneratePrescription} 
+                            className="px-3 sm:px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 rounded hover:bg-gray-50 dark:hover:bg-gray-700 transition flex items-center gap-2 text-xs sm:text-sm font-semibold"
+                        >
+                            <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                            Rx PDF
+                        </button>
                         <button onClick={() => setIsEditing(true)} className="px-3 sm:px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition flex items-center gap-2 text-xs sm:text-sm font-semibold">
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg> Edit
                         </button>
@@ -391,7 +418,35 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                                     />
                                 </div>
                             ) : (
-                                <div className="p-2 bg-gray-50 dark:bg-gray-800/50 rounded text-gray-900 dark:text-gray-100">{patient.phone_number || 'N/A'}</div>
+                                <div className="flex items-center gap-2">
+                                    <div className="flex-1 p-2 bg-gray-50 dark:bg-gray-800/50 rounded text-gray-900 dark:text-gray-100 flex items-center justify-between group">
+                                        <span>{patient.phone_number || 'N/A'}</span>
+                                        {patient.phone_number && (
+                                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <a 
+                                                    href={`https://wa.me/${patient.phone_number.replace(/\D/g, '')}?text=${encodeURIComponent(`Hi ${patient.name}, this is a reminder regarding your visit to ${clinic?.name || 'our clinic'}.`)}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="p-1.5 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-md transition-colors"
+                                                    title="Send WhatsApp Reminder"
+                                                >
+                                                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+                                                    </svg>
+                                                </a>
+                                                <a 
+                                                    href={`sms:${patient.phone_number}?&body=${encodeURIComponent(`Hi ${patient.name}, this is a reminder regarding your visit to ${clinic?.name || 'our clinic'}.`)}`}
+                                                    className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md transition-colors"
+                                                    title="Send SMS Reminder"
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                                                    </svg>
+                                                </a>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
                             )}
                         </div>
                         <div className="grid grid-cols-2 gap-4">
@@ -491,8 +546,8 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                                     </div>
                                     {isEditing ? (
                                         <div className="p-2 space-y-1 bg-white dark:bg-gray-900 border-t dark:border-gray-800">
-                                            <input type="date" value={x.date} onChange={(e) => updateXray(idx, 'date', e.target.value)} className="w-full text-[10px] p-1 border dark:border-gray-700 rounded text-gray-900 dark:text-white bg-white dark:bg-gray-800" />
-                                            <input type="text" placeholder="Note..." value={x.description} onChange={(e) => updateXray(idx, 'description', e.target.value)} className="w-full text-[10px] p-1 border dark:border-gray-700 rounded text-gray-900 dark:text-white bg-white dark:bg-gray-800" />
+                                            <input type="date" value={x.date} onChange={(e) => updateXray(idx, 'date', e.target.value)} className="w-full text-[10px] p-1 border dark:border-gray-700 rounded text-gray-900 dark:text-white bg-white dark:bg-gray-900" />
+                                            <input type="text" placeholder="Note..." value={x.description} onChange={(e) => updateXray(idx, 'description', e.target.value)} className="w-full text-[10px] p-1 border dark:border-gray-700 rounded text-gray-900 dark:text-white bg-white dark:bg-gray-900" />
                                         </div>
                                     ) : (
                                         <div className="p-2 text-[10px] text-gray-500 dark:text-gray-400 flex flex-col truncate">
@@ -553,11 +608,21 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                     </div>
                 </div>
 
-                <div className="col-span-full mt-6 pt-8 border-t border-gray-100 dark:border-gray-800 font-sans">
-                    <div className="text-center mb-6"><label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-[0.3em] font-sans">Dental Odontogram</label></div>
-                    <div className={!isEditing ? "pointer-events-none opacity-90" : ""}><div className="overflow-x-auto pb-4"><ToothSelector value={patient.tooth_number || ''} onChange={handleToothChange} /></div></div>
-                    {!isEditing && patient.tooth_number && <div className="text-center text-[10px] font-bold text-blue-600 dark:text-blue-400 mt-2 uppercase tracking-widest font-mono font-sans">Selected: {patient.tooth_number}</div>}
-                </div>
+                                  <div className="col-span-full mt-6 pt-8 border-t border-gray-100 dark:border-gray-800 font-sans">
+
+                                      <div className="text-center mb-6"><label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-[0.3em] font-sans">Dental Odontogram</label></div>
+
+                                      <div className={!isEditing ? "pointer-events-none opacity-90" : ""}>
+
+                                        <ToothSelector value={patient.tooth_number || ''} onChange={handleToothChange} />
+
+                                      </div>
+
+                                      {!isEditing && patient.tooth_number && <div className="text-center text-[10px] font-bold text-blue-600 dark:text-blue-400 mt-2 uppercase tracking-widest font-mono font-sans">Selected: {patient.tooth_number}</div>}
+
+                                  </div>
+
+                
             </div>
         </form>
       </div>

@@ -76,9 +76,17 @@ export async function GET() {
         phone TEXT,
         address TEXT,
         email TEXT,
+        google_maps_link TEXT,
         CONSTRAINT one_row CHECK (id = 1)
       );
     `;
+
+    // Ensure google_maps_link column exists for older databases
+    try {
+      await sql`ALTER TABLE clinic_info ADD COLUMN IF NOT EXISTS google_maps_link TEXT`;
+    } catch (e) {
+      console.log('Column google_maps_link might already exist');
+    }
 
     // Seed expense categories if empty ...
     const expCatCount = await sql`SELECT COUNT(*) FROM expense_categories`;

@@ -14,19 +14,20 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { clinic_name, owner_name, phone, address, email } = body;
+    const { clinic_name, owner_name, phone, address, email, google_maps_link } = body;
     const sql = getDb();
     
     // Upsert logic
     const result = await sql`
-      INSERT INTO clinic_info (id, clinic_name, owner_name, phone, address, email)
-      VALUES (1, ${clinic_name}, ${owner_name}, ${phone}, ${address}, ${email})
+      INSERT INTO clinic_info (id, clinic_name, owner_name, phone, address, email, google_maps_link)
+      VALUES (1, ${clinic_name}, ${owner_name}, ${phone}, ${address}, ${email}, ${google_maps_link})
       ON CONFLICT (id) DO UPDATE SET
         clinic_name = EXCLUDED.clinic_name,
         owner_name = EXCLUDED.owner_name,
         phone = EXCLUDED.phone,
         address = EXCLUDED.address,
-        email = EXCLUDED.email
+        email = EXCLUDED.email,
+        google_maps_link = EXCLUDED.google_maps_link
       RETURNING *
     `;
     
