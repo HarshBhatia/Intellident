@@ -80,7 +80,6 @@ export default function PatientTable({ patients }: PatientTableProps) {
               <th className="px-6 py-3 border-b">Phone</th>
               <Header label="Date" column="date" />
               <th className="px-6 py-3 border-b">Doctor</th>
-              <th className="px-6 py-3 border-b">Treatment</th>
               <th 
                 className="px-6 py-3 border-b text-right cursor-pointer hover:bg-gray-100 select-none"
                 onClick={() => handleSort('amount')}
@@ -114,7 +113,6 @@ export default function PatientTable({ patients }: PatientTableProps) {
                 <td className="px-6 py-4 whitespace-nowrap">{patient.phone_number || '-'}</td>
                 <td className="px-6 py-4 whitespace-nowrap">{patient.date}</td>
                 <td className="px-6 py-4 whitespace-nowrap capitalize">{patient.doctor || '-'}</td>
-                <td className="px-6 py-4 whitespace-nowrap max-w-xs truncate capitalize">{patient.treatment_done || '-'}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-right font-semibold text-gray-900">
                   ₹{patient.amount}
                 </td>
@@ -122,7 +120,7 @@ export default function PatientTable({ patients }: PatientTableProps) {
             ))}
             {sortedPatients.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-6 py-12 text-center text-gray-400">
+                <td colSpan={8} className="px-6 py-12 text-center text-gray-400">
                   <div className="flex flex-col items-center gap-2">
                     <svg className="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
                     <p>No patients found.</p>
