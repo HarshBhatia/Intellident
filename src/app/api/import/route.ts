@@ -212,8 +212,8 @@ export async function GET() {
         await Promise.all(insertPromises);
         
         return NextResponse.json({ message: `Imported ${insertPromises.length} unique patients` });
-    } catch (e) {
+    } catch (e: any) {
         console.error(e);
-        return NextResponse.json({ error: 'Import failed', details: e.toString() }, { status: 500 });
+        return NextResponse.json({ error: 'Import failed', details: e?.toString() || 'Unknown error' }, { status: 500 });
     }
 }
