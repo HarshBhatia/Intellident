@@ -244,15 +244,22 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
     e.preventDefault();
     if (!patient || !unwrappedParams) return;
     setSaving(true);
+
+    const submissionData = {
+      ...patient,
+      phone_number: patient.phone_number ? (patient.phone_number.startsWith('+91') ? patient.phone_number : `+91${patient.phone_number.replace(/\D/g, '')}`) : ''
+    };
+
     try {
       const res = await fetch(`/api/patients/${unwrappedParams.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(patient),
+        body: JSON.stringify(submissionData),
       });
       if (res.ok) {
         showToast('Saved', 'success');
-        setInitialPatient(JSON.parse(JSON.stringify(patient)));
+        setPatient(submissionData);
+        setInitialPatient(JSON.parse(JSON.stringify(submissionData)));
         setIsEditing(false);
       } else { showToast('Error', 'error'); }
     } catch (err) { showToast('Error', 'error'); } finally { setSaving(false); }
@@ -369,7 +376,23 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                     <div className="space-y-4">
                         <div>
                             <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Phone Number</label>
-                            {isEditing ? <input name="phone_number" value={patient.phone_number} onChange={handleChange} className="w-full p-2 border dark:border-gray-700 rounded focus:ring-2 focus:ring-blue-500 outline-none text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-800 transition" /> : <div className="p-2 bg-gray-50 dark:bg-gray-800/50 rounded text-gray-900 dark:text-gray-100">{patient.phone_number || 'N/A'}</div>}
+                            {isEditing ? (
+                                <div className="flex">
+                                    <div className="flex items-center gap-1.5 px-3 border border-r-0 border-gray-300 dark:border-gray-700 rounded-l-md bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-sm font-medium transition-colors">
+                                        <span>🇮🇳</span>
+                                        <span>+91</span>
+                                    </div>
+                                    <input 
+                                        name="phone_number" 
+                                        value={patient.phone_number?.replace('+91', '') || ''} 
+                                        onChange={handleChange} 
+                                        className="flex-1 p-2 border border-gray-300 dark:border-gray-700 rounded-r-md focus:ring-2 focus:ring-blue-500 outline-none text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-800 transition" 
+                                        type="tel"
+                                    />
+                                </div>
+                            ) : (
+                                <div className="p-2 bg-gray-50 dark:bg-gray-800/50 rounded text-gray-900 dark:text-gray-100">{patient.phone_number || 'N/A'}</div>
+                            )}
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div>
