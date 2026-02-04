@@ -69,7 +69,7 @@ export async function GET(request: Request) {
                         const parts = purpose.split(/,| and /).map(s => s.trim()).filter(Boolean);
                         
                         if (matches && matches.length === parts.length) {
-                            // Map amounts to their respective parts
+                            // High chance these numbers correspond to the parts
                             parts.forEach((part, idx) => {
                                 const partAmt = parseInt(matches[idx]);
                                 const cat = normalizeCategory(part.replace(/[0-9₹,]/g, ''));
@@ -95,7 +95,7 @@ export async function GET(request: Request) {
 
     expenses.forEach(e => { totalExpenses += Number(e.amount) || 0; });
 
-    // Format and round values for cleaner display
+    // Round values for cleaner display
     const pieData = Object.entries(categoryMap)
         .map(([name, value]) => ({ name, value: Math.round(value) }))
         .filter(item => item.value > 0)
