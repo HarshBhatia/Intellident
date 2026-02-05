@@ -8,6 +8,7 @@ import { useToast } from '@/components/ToastProvider';
 import Skeleton from '@/components/Skeleton';
 import Navbar from '@/components/Navbar';
 import { generatePrescriptionPDF } from '@/lib/pdf-generator';
+import { compressImage } from '@/lib/image-utils';
 
 interface XRay {
     id: string;
@@ -222,18 +223,30 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
     setPatient({ ...patient, tooth_number: value });
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
-      const reader = new FileReader();
-      reader.onloadend = () => {
-          const newX: XRay = { id: Math.random().toString(36).substr(2, 9), image: reader.result as string, description: '', date: new Date().toISOString().split('T')[0] };
+      
+      try {
+          // Compress image to max 1200px width at 70% quality
+          const compressedBase64 = await compressImage(file, 1200, 0.7);
+          
+          const newX: XRay = { 
+              id: Math.random().toString(36).substr(2, 9), 
+              image: compressedBase64, 
+              description: '', 
+              date: new Date().toISOString().split('T')[0] 
+          };
           const newList = [...xrayList, newX];
           setXrayList(newList);
           if (patient) setPatient({ ...patient, xrays: JSON.stringify(newList) });
-      };
-      reader.readAsDataURL(file);
-      e.target.value = '';
+          showToast('Image optimized and added', 'success');
+      } catch (err) {
+          console.error('Compression error:', err);
+          showToast('Failed to process image', 'error');
+      } finally {
+          e.target.value = '';
+      }
   };
 
   const updateXray = (index: number, field: keyof XRay, value: string) => {
