@@ -1,32 +1,18 @@
 {
-  "name": "intellident2",
-  "version": "0.1.0",
+  "name": "intellident-monorepo",
   "private": true,
+  "packageManager": "npm@10.2.4",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint",
-    "prepare": "husky"
+    "build": "turbo build",
+    "dev": "turbo dev",
+    "lint": "turbo lint",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\""
   },
-  "dependencies": {
-    "@netlify/neon": "^0.1.2",
-    "jspdf": "^4.1.0",
-    "jspdf-autotable": "^5.0.7",
-    "next": "16.1.6",
-    "react": "19.2.3",
-    "react-dom": "19.2.3",
-    "recharts": "^3.7.0"
-  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.1.6",
-    "husky": "^9.1.7",
-    "tailwindcss": "^4",
-    "typescript": "^5"
+    "turbo": "latest"
   }
 }

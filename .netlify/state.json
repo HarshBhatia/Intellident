@@ -1,0 +1,21 @@
+{
+	"siteId": "89f6809f-a862-409b-a326-e6b8e974a20f",
+	"geolocation": {
+		"data": {
+			"city": "Bhopal",
+			"country": {
+				"code": "IN",
+				"name": "India"
+			},
+			"subdivision": {
+				"code": "MP",
+				"name": "Madhya Pradesh"
+			},
+			"timezone": "Asia/Kolkata",
+			"latitude": 23.2505,
+			"longitude": 77.4065,
+			"postalCode": "464993"
+		},
+		"timestamp": 1770285552612
+	}
+}
