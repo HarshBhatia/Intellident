@@ -1,5 +1,5 @@
 [build]
-  command = "cd apps/dashboard && npm run build"
+  command = "npm run build"
   publish = "apps/dashboard/.next"
 
 [[plugins]]
