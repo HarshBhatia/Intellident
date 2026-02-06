@@ -169,10 +169,10 @@ export default function PatientTable({ patients }: PatientTableProps) {
         bValue = Number(bValue) || 0;
       }
       
-      // Handle string comparisons
-      if (typeof aValue === 'string') {
-          aValue = aValue.toLowerCase();
-          bValue = bValue.toLowerCase();
+      // Handle string comparisons with natural sort order for IDs
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+          const compareResult = aValue.localeCompare(bValue, undefined, { numeric: true, sensitivity: 'base' });
+          return sortConfig.direction === 'asc' ? compareResult : -compareResult;
       }
 
       if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
