@@ -1,8 +1,23 @@
 import { NextResponse } from 'next/server';
-import { getDb } from '@intellident/api';
+import { getDb, PaymentRecord } from '@intellident/api';
 import { auth, currentUser } from '@clerk/nextjs/server';
 
-export async function GET() {
+const normalizeCategory = (raw: string) => {
+    const s = raw.toLowerCase().trim();
+    if (s.includes('rct') || s.includes('root canal')) return 'RCT';
+    if (s.includes('crown') || s.includes('cap') || s.includes('bridge') || s.includes('pfm') || s.includes('zirconia')) return 'Crown & Bridge';
+    if (s.includes('extraction') || s.includes('removal')) return 'Extraction';
+    if (s.includes('implant')) return 'Implant';
+    if (s.includes('scaling') || s.includes('cleaning') || s.includes('polishing')) return 'Scaling';
+    if (s.includes('filling') || s.includes('restoration') || s.includes('gic') || s.includes('composite')) return 'Restoration';
+    if (s.includes('denture') || s.includes('cd') || s.includes('rpd')) return 'Denture';
+    if (s.includes('xray') || s.includes('x-ray') || s.includes('radiograph')) return 'X-Ray';
+    if (s.includes('consultation') || s.includes('checkup') || s.includes('opd')) return 'Consultation';
+    if (s.includes('ortho') || s.includes('brace') || s.includes('wire')) return 'Orthodontics';
+    return 'Other'; // Fallback
+};
+
+export async function GET(request: Request) {
   try {
     const { userId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -10,10 +25,13 @@ export async function GET() {
     const user = await currentUser();
     const userEmail = user?.emailAddresses[0]?.emailAddress;
 
-    const sql = getDb();
-    const patients = await sql`SELECT date, amount FROM patients WHERE user_email = ${userEmail}`;
-    const expenses = await sql`SELECT date, amount FROM expenses WHERE user_email = ${userEmail}`;
+    const { searchParams } = new URL(request.url);
+    const startDate = new Date(searchParams.get('startDate') || new Date(new Date().getFullYear(), 0, 1));
+    const endDate = new Date(searchParams.get('endDate') || new Date());
 
+    const sql = getDb();
+    const patients = await sql`SELECT date, amount, payments FROM patients WHERE user_email = ${userEmail}`;
+    const expenses = await sql`SELECT date, amount FROM expenses WHERE user_email = ${userEmail}`;
 
     const categoryMap: Record<string, number> = {};
     const monthlyMap: Record<string, number> = {}; 
@@ -23,75 +41,83 @@ export async function GET() {
     // 1. Process Revenue (Payments)
     patients.forEach(row => {
         try {
-            const payments: Payment[] = JSON.parse(row.payments);
+            const payments: PaymentRecord[] = row.payments ? JSON.parse(row.payments) : [];
             if (Array.isArray(payments)) {
                 payments.forEach(p => {
                     const pDate = new Date(p.date);
                     const amt = Number(p.amount) || 0;
                     
                     // Monthly trend (All history)
-                    const monthKey = pDate.toISOString().slice(0, 7); 
-                    monthlyMap[monthKey] = (monthlyMap[monthKey] || 0) + amt;
+                    if (!isNaN(pDate.getTime())) {
+                        const monthKey = pDate.toISOString().slice(0, 7); 
+                        monthlyMap[monthKey] = (monthlyMap[monthKey] || 0) + amt;
 
-                    // Filtered range for categories
-                    if (pDate >= startDate && pDate <= endDate) {
-                        filteredRevenue += amt;
-                        const purpose = p.purpose || 'Other';
-                        
-                        // Smart parsing: Split combined treatments by comma or "and"
-                        const parts = purpose.split(/,| and /).map(s => s.trim()).filter(Boolean);
-                        
-                        // Try to find numbers that are likely specific amounts (not tooth numbers or sitting numbers)
-                        const allNumbersInPurpose = purpose.match(/(\d+)/g)?.map(Number) || [];
-                        const specificAmounts = allNumbersInPurpose.filter(n => n > 10 && n < 100000); // Filter out common tooth/sitting numbers
+                        // Filtered range for categories
+                        if (pDate >= startDate && pDate <= endDate) {
+                            filteredRevenue += amt;
+                            const purpose = p.purpose || 'Other';
+                            
+                            // Smart parsing: Split combined treatments
+                            const parts = purpose.split(/,| and /).map(s => s.trim()).filter(Boolean);
+                            
+                            // Try to find numbers that are likely specific amounts
+                            const allNumbersInPurpose = purpose.match(/(\d+)/g)?.map(Number) || [];
+                            const specificAmounts = allNumbersInPurpose.filter(n => n > 10 && n < 100000); 
 
-                        if (specificAmounts.length === parts.length) {
-                            // If number of detected specific amounts matches number of parts, attribute them specifically
-                            parts.forEach((part, idx) => {
-                                const cat = normalizeCategory(part);
-                                categoryMap[cat] = (categoryMap[cat] || 0) + specificAmounts[idx];
-                            });
-                        } else {
-                            // Fallback: Split total payment equally among parts, then normalize
-                            const splitAmt = amt / (parts.length || 1);
-                            if (parts.length === 0) {
-                                categoryMap['Other'] = (categoryMap['Other'] || 0) + amt;
-                            } else {
-                                parts.forEach(part => {
+                            if (specificAmounts.length === parts.length) {
+                                parts.forEach((part, idx) => {
                                     const cat = normalizeCategory(part);
-                                    categoryMap[cat] = (categoryMap[cat] || 0) + splitAmt;
+                                    categoryMap[cat] = (categoryMap[cat] || 0) + specificAmounts[idx];
                                 });
+                            } else {
+                                // Fallback: Split total payment equally
+                                const splitAmt = amt / (parts.length || 1);
+                                if (parts.length === 0) {
+                                    categoryMap['Other'] = (categoryMap['Other'] || 0) + amt;
+                                } else {
+                                    parts.forEach(part => {
+                                        const cat = normalizeCategory(part);
+                                        categoryMap[cat] = (categoryMap[cat] || 0) + splitAmt;
+                                    });
+                                }
                             }
                         }
                     }
                 });
             }
-        } catch (e) { /* Ignore parsing errors for robustnes */ }
+        } catch (e) { /* Ignore parsing errors */ }
     });
 
     // 2. Process Expenses
-    expenses.forEach(e => { totalExpenses += Number(e.amount) || 0; });
+    expenses.forEach(e => { 
+        // Only count expenses within the filtered range if needed, or total?
+        // Usually expenses are also time-filtered.
+        const eDate = new Date(e.date);
+        if (eDate >= startDate && eDate <= endDate) {
+            totalExpenses += Number(e.amount) || 0; 
+        }
+    });
 
     // 3. Final Formatting with Rounding
     const pieData = Object.entries(categoryMap)
-        .map(([name, value]) => ({ name, value: Math.round(value) })) // ENSURE ROUNDING
-        .filter(item => item.value > 0) // Filter out categories with 0 amounts
+        .map(([name, value]) => ({ name, value: Math.round(value) }))
+        .filter(item => item.value > 0)
         .sort((a, b) => b.value - a.value);
 
     const monthlyTrend = Object.entries(monthlyMap)
         .sort(([a],[b])=>a.localeCompare(b))
         .map(([k,v]) => {
-            const date = new Date(k + '-02'); // Using '02' as day to avoid timezone issues with '01'
+            const date = new Date(k + '-02'); 
             return {
                 month: date.toLocaleString('default', { month: 'short', year: '2-digit' }),
-                revenue: Math.round(v) // ENSURE ROUNDING
+                revenue: Math.round(v)
             };
         });
 
     return NextResponse.json({
-        totalRevenue: Math.round(filteredRevenue), // ENSURE ROUNDING
-        totalExpenses: Math.round(totalExpenses), // ENSURE ROUNDING
-        profit: Math.round(filteredRevenue - totalExpenses), // ENSURE ROUNDING
+        totalRevenue: Math.round(filteredRevenue),
+        totalExpenses: Math.round(totalExpenses),
+        profit: Math.round(filteredRevenue - totalExpenses),
         pieData,
         monthlyTrend
     });

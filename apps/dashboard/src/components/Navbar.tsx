@@ -77,7 +77,7 @@ export default function Navbar({ activePage }: { activePage?: string }) {
               <span className="hidden md:inline">Settings</span>
             </button>
             <div className="pl-2 border-l border-gray-200 dark:border-gray-800 ml-2 flex items-center">
-              <UserButton afterSignOutUrl="/sign-in" />
+              {mounted && <UserButton afterSignOutUrl="/sign-in" />}
             </div>
           </div>
         </div>
