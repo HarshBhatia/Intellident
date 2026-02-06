@@ -34,7 +34,7 @@ export default function DashboardClient() {
     try {
       const res = await fetch('/api/patients');
       if (res.status === 401) {
-        router.push('/login');
+        router.push('/sign-in');
         return;
       }
       if (res.ok) {

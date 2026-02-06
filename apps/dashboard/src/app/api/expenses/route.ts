@@ -1,21 +1,17 @@
 import { NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
+import { getDb } from '@intellident/api';
+import { auth, currentUser } from '@clerk/nextjs/server';
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
-    const { searchParams } = new URL(request.url);
-    const start = searchParams.get('start');
-    const end = searchParams.get('end');
+    const { userId } = await auth();
+    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    
+    const user = await currentUser();
+    const userEmail = user?.emailAddresses[0]?.emailAddress;
 
     const sql = getDb();
-    let rows;
-    
-    if (start && end) {
-        rows = await sql`SELECT * FROM expenses WHERE date >= ${start} AND date <= ${end} ORDER BY date DESC`;
-    } else {
-        rows = await sql`SELECT * FROM expenses ORDER BY date DESC LIMIT 100`;
-    }
-    
+    const rows = await sql`SELECT * FROM expenses WHERE user_email = ${userEmail} ORDER BY date DESC`;
     return NextResponse.json(rows);
   } catch (error) {
     return NextResponse.json({ error: 'Failed' }, { status: 500 });
@@ -24,11 +20,18 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const { date, amount, category, description } = await request.json();
+    const { userId } = await auth();
+    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    
+    const user = await currentUser();
+    const userEmail = user?.emailAddresses[0]?.emailAddress;
+
+    const body = await request.json();
     const sql = getDb();
+    const { date, amount, category, description } = body;
     const result = await sql`
-      INSERT INTO expenses (date, amount, category, description) 
-      VALUES (${date}, ${amount}, ${category}, ${description}) 
+      INSERT INTO expenses (date, amount, category, description, user_email)
+      VALUES (${date}, ${amount}, ${category}, ${description}, ${userEmail})
       RETURNING *
     `;
     return NextResponse.json(result[0]);

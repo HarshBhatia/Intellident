@@ -16,7 +16,6 @@ export default function AddPatientForm({ onSuccess, onCancel }: AddPatientFormPr
   const [loading, setLoading] = useState(false);
   const [showMore, setShowMore] = useState(false);
   const [formData, setFormData] = useState<Partial<Patient>>({
-    patient_id: `PID-${Math.floor(Math.random() * 10000)}`, 
     date: new Date().toISOString().split('T')[0],
     name: '',
     gender: 'Male',

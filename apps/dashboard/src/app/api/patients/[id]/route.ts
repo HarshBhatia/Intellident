@@ -1,82 +1,83 @@
 import { NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
-import { Patient } from '@/types';
+import { getDb } from '@intellident/api';
+import { auth, currentUser } from '@clerk/nextjs/server';
 
-// Helper to get ID from params
-async function getId(params: { id: string }) {
-    return params.id;
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  try {
+    const { userId } = await auth();
+    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    
+    const user = await currentUser();
+    const userEmail = user?.emailAddresses[0]?.emailAddress;
+
+    const sql = getDb();
+    const rows = await sql`SELECT * FROM patients WHERE patient_id = ${id} AND user_email = ${userEmail}`;
+    if (rows.length === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    return NextResponse.json(rows[0]);
+  } catch (error) {
+    return NextResponse.json({ error: 'Failed' }, { status: 500 });
+  }
 }
 
-export async function GET(
-    request: Request,
-    { params }: { params: Promise<{ id: string }> }
-) {
-    try {
-        const id = (await params).id;
-        const sql = getDb();
-        
-        const rows = await sql`SELECT * FROM patients WHERE patient_id = ${id}`;
-        
-        if (rows.length === 0) {
-            return NextResponse.json({ error: 'Patient not found' }, { status: 404 });
-        }
-        
-        return NextResponse.json(rows[0]);
-    } catch (error) {
-        console.error('Fetch error:', error);
-        return NextResponse.json({ error: 'Failed to fetch patient' }, { status: 500 });
-    }
+export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  try {
+    const { userId } = await auth();
+    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    
+    const user = await currentUser();
+    const userEmail = user?.emailAddresses[0]?.emailAddress;
+
+    const body = await request.json();
+    const sql = getDb();
+    
+    // Explicitly update all columns
+    const { name, age, amount, date, doctor, gender, mode_of_payment, paid_for, phone_number, medicine_prescribed, notes, patient_type, share, tooth_number, treatment_done, xrays, payments } = body;
+
+    const result = await sql`
+      UPDATE patients SET
+        name = ${name},
+        age = ${age},
+        amount = ${amount},
+        date = ${date},
+        doctor = ${doctor},
+        gender = ${gender},
+        mode_of_payment = ${mode_of_payment},
+        paid_for = ${paid_for},
+        phone_number = ${phone_number},
+        medicine_prescribed = ${medicine_prescribed},
+        notes = ${notes},
+        patient_type = ${patient_type},
+        share = ${share},
+        tooth_number = ${tooth_number},
+        treatment_done = ${treatment_done},
+        xrays = ${xrays},
+        payments = ${payments}
+      WHERE patient_id = ${id} AND user_email = ${userEmail}
+      RETURNING *
+    `;
+    
+    return NextResponse.json(result[0]);
+  } catch (error) {
+    console.error(error);
+    return NextResponse.json({ error: 'Failed' }, { status: 500 });
+  }
 }
 
-export async function PUT(
-    request: Request,
-    { params }: { params: Promise<{ id: string }> }
-) {
-    try {
-        const id = (await params).id;
-        const body: Patient = await request.json();
-        const sql = getDb();
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  try {
+    const { userId } = await auth();
+    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    
+    const user = await currentUser();
+    const userEmail = user?.emailAddresses[0]?.emailAddress;
 
-        await sql`
-            UPDATE patients SET
-                name = ${body.name},
-                age = ${body.age},
-                amount = ${body.amount},
-                date = ${body.date},
-                doctor = ${body.doctor},
-                gender = ${body.gender},
-                mode_of_payment = ${body.mode_of_payment},
-                paid_for = ${body.paid_for},
-                phone_number = ${body.phone_number},
-                medicine_prescribed = ${body.medicine_prescribed},
-                notes = ${body.notes},
-                patient_type = ${body.patient_type},
-                share = ${body.share},
-                tooth_number = ${body.tooth_number},
-                treatment_done = ${body.treatment_done},
-                xrays = ${body.xrays},
-                payments = ${body.payments}
-            WHERE patient_id = ${id}
-        `;
-
-        return NextResponse.json({ success: true });
-    } catch (error) {
-        console.error('Update error:', error);
-        return NextResponse.json({ error: 'Failed to update patient' }, { status: 500 });
-    }
-}
-
-export async function DELETE(
-    request: Request,
-    { params }: { params: Promise<{ id: string }> }
-) {
-    try {
-        const id = (await params).id;
-        const sql = getDb();
-        await sql`DELETE FROM patients WHERE patient_id = ${id}`;
-        return NextResponse.json({ success: true });
-    } catch (error) {
-        console.error('Delete error:', error);
-        return NextResponse.json({ error: 'Failed to delete patient' }, { status: 500 });
-    }
+    const sql = getDb();
+    await sql`DELETE FROM patients WHERE patient_id = ${id} AND user_email = ${userEmail}`;
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    return NextResponse.json({ error: 'Failed' }, { status: 500 });
+  }
 }

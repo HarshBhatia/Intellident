@@ -1,55 +1,19 @@
 import { NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
+import { getDb } from '@intellident/api';
+import { auth, currentUser } from '@clerk/nextjs/server';
 
-interface Payment {
-    id: string;
-    date: string;
-    amount: number;
-    purpose: string;
-    mode: string;
-}
-
-/**
- * Normalizes clinical treatment names and removes any pricing or trash data.
- */
-function normalizeCategory(name: string): string {
-    // Remove numbers, currency symbols, and extra whitespace, then lowercase
-    let clean = name.replace(/[0-9₹,]/g, '').toLowerCase().trim();
-    
-    // Specific standardizations
-    if (clean.includes('rct') || clean.includes('root canal')) return 'Root Canal (RCT)';
-    if (clean.includes('xray') || clean.includes('x ray') || clean.includes('x-ray')) return 'X-Ray';
-    if (clean.includes('scaling') || clean.includes('polishing') || clean.includes('cleaning')) return 'Scaling & Polishing';
-    if (clean.includes('extraction') || clean.includes('remove tooth')) return 'Extraction';
-    if (clean.includes('crown') || clean.includes('cap') || clean.includes('ceramic') || clean.includes('zirconia') || clean.includes('prosthesis')) return 'Crown / Prosthetics';
-    if (clean.includes('consultation') || clean.includes('consultaion') || clean.includes('constulation') || clean.includes('examination')) return 'Consultation';
-    if (clean.includes('filling') || clean.includes('composite') || clean.includes('restoration')) return 'Filling';
-    if (clean.includes('denture')) return 'Denture';
-    if (clean.includes('implant')) return 'Implant';
-    if (clean.includes('ortho') || clean.includes('braces')) return 'Orthodontics';
-    if (clean.includes('medicine')) return 'Medicines';
-    
-    // Default: Title Case the remainder. Use "General" if it ends up empty.
-    return clean.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') || 'General';
-}
-
-export async function GET(request: Request) {
+export async function GET() {
   try {
-    const { searchParams } = new URL(request.url);
-    const start = searchParams.get('start');
-    const end = searchParams.get('end');
-
-    if (!start || !end) return NextResponse.json({ error: 'Dates required' }, { status: 400 });
-
-    const startDate = new Date(start);
-    const endDate = new Date(end);
-    endDate.setHours(23, 59, 59, 999);
+    const { userId } = await auth();
+    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    
+    const user = await currentUser();
+    const userEmail = user?.emailAddresses[0]?.emailAddress;
 
     const sql = getDb();
-    const [patients, expenses] = await Promise.all([
-        sql`SELECT payments FROM patients WHERE payments IS NOT NULL`,
-        sql`SELECT * FROM expenses WHERE date >= ${start} AND date <= ${end}`
-    ]);
+    const patients = await sql`SELECT date, amount FROM patients WHERE user_email = ${userEmail}`;
+    const expenses = await sql`SELECT date, amount FROM expenses WHERE user_email = ${userEmail}`;
+
 
     const categoryMap: Record<string, number> = {};
     const monthlyMap: Record<string, number> = {}; 

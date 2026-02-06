@@ -1,10 +1,17 @@
 import { NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
+import { getDb } from '@intellident/api';
+import { auth, currentUser } from '@clerk/nextjs/server';
 
 export async function GET() {
   try {
+    const { userId } = await auth();
+    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    
+    const user = await currentUser();
+    const userEmail = user?.emailAddresses[0]?.emailAddress;
+
     const sql = getDb();
-    const rows = await sql`SELECT * FROM clinic_info WHERE id = 1`;
+    const rows = await sql`SELECT * FROM clinic_info WHERE user_email = ${userEmail}`;
     return NextResponse.json(rows[0] || {});
   } catch (error) {
     return NextResponse.json({ error: 'Failed' }, { status: 500 });
@@ -13,15 +20,21 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const { userId } = await auth();
+    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    
+    const user = await currentUser();
+    const userEmail = user?.emailAddresses[0]?.emailAddress;
+
     const body = await request.json();
     const { clinic_name, owner_name, phone, address, email, google_maps_link } = body;
     const sql = getDb();
     
-    // Upsert logic
+    // Upsert logic based on user_email instead of fixed ID 1
     const result = await sql`
-      INSERT INTO clinic_info (id, clinic_name, owner_name, phone, address, email, google_maps_link)
-      VALUES (1, ${clinic_name}, ${owner_name}, ${phone}, ${address}, ${email}, ${google_maps_link})
-      ON CONFLICT (id) DO UPDATE SET
+      INSERT INTO clinic_info (clinic_name, owner_name, phone, address, email, google_maps_link, user_email)
+      VALUES (${clinic_name}, ${owner_name}, ${phone}, ${address}, ${email}, ${google_maps_link}, ${userEmail})
+      ON CONFLICT (user_email) DO UPDATE SET
         clinic_name = EXCLUDED.clinic_name,
         owner_name = EXCLUDED.owner_name,
         phone = EXCLUDED.phone,

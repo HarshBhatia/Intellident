@@ -410,7 +410,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                 </div>
             </div>
 
-            <div className="p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8">
                 <div className="col-span-full md:col-span-1 space-y-5">
                     <h3 className="text-[10px] uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500 font-bold border-b dark:border-gray-800 pb-2">Personal Information</h3>
                     <div className="space-y-4">
@@ -518,21 +518,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                     </div>
                 </div>
 
-                <div className="col-span-full md:col-span-1 space-y-5 border-l md:pl-8 border-gray-100 dark:border-gray-800 font-sans">
-                    <h3 className="text-[10px] uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500 font-bold border-b dark:border-gray-800 pb-2">Financials</h3>
-                    <div className="bg-green-50 dark:bg-green-900/10 rounded p-6 border border-green-100 dark:border-green-900/30 shadow-inner">
-                        <label className="block text-[10px] font-bold text-green-600 dark:text-green-500 uppercase mb-1 tracking-widest text-center font-sans">Total Collection</label>
-                        <div className="text-4xl font-black text-green-700 dark:text-green-400 tracking-tighter text-center">₹{patient.amount.toLocaleString()}</div>
-                        <div className="mt-4 overflow-hidden rounded border border-green-200 dark:border-green-900/50">
-                            <table className="min-w-full text-[10px] bg-white/50 dark:bg-gray-900/50">
-                                <thead className="bg-green-100/50 dark:bg-green-900/20 text-green-800 dark:text-green-300 uppercase tracking-widest font-bold font-sans"><tr><th className="px-3 py-1.5 text-left">Date</th><th className="px-3 py-1.5 text-right font-sans">Amt</th></tr></thead>
-                                <tbody className="divide-y divide-green-100 dark:divide-green-900/30">
-                                    {paymentList.slice(-3).map(p => <tr key={p.id}><td className="px-3 py-1.5 text-green-700 dark:text-green-400">{p.date}</td><td className="px-3 py-1.5 text-right font-bold text-green-800 dark:text-green-300 font-sans">₹{p.amount}</td></tr>)}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
+
 
                 {/* Dental Odontogram */}
                 <div className="col-span-full pt-8 border-t border-gray-100 dark:border-gray-800 font-sans">
@@ -585,6 +571,18 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                     )}
                 </div>
 
+                {/* Notes */}
+                <div className="col-span-full grid grid-cols-1 md:grid-cols-2 gap-8 pt-4 border-t border-gray-100 dark:border-gray-800 font-sans">
+                    <div>
+                        <label className="block text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase mb-2 tracking-widest font-sans">Medicines</label>
+                        {isEditing ? <textarea name="medicine_prescribed" value={patient.medicine_prescribed || ''} onChange={handleChange} className="w-full p-4 border dark:border-gray-700 rounded h-32 focus:ring-2 focus:ring-blue-500 outline-none text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-800 transition text-sm" /> : <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded text-gray-900 dark:text-gray-100 text-sm min-h-[8rem] whitespace-pre-wrap italic text-gray-600 dark:text-gray-400 shadow-inner font-sans">{patient.medicine_prescribed || 'None.'}</div>}
+                    </div>
+                    <div>
+                        <label className="block text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase mb-2 tracking-widest font-sans">Notes</label>
+                        {isEditing ? <textarea name="notes" value={patient.notes || ''} onChange={handleChange} className="w-full p-4 border dark:border-gray-700 rounded h-32 focus:ring-2 focus:ring-blue-500 outline-none text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-800 transition text-sm" /> : <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded text-gray-900 dark:text-gray-100 text-sm min-h-[8rem] whitespace-pre-wrap italic text-gray-600 dark:text-gray-400 shadow-inner font-sans">{patient.notes || 'None.'}</div>}
+                    </div>
+                </div>
+
                 {/* Payment History */}
                 <div className="col-span-full space-y-4 pt-4 border-t border-gray-100 dark:border-gray-800 font-sans">
                     <div className="flex justify-between items-center">
@@ -613,22 +611,17 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                                         {isEditing && <td className="px-6 py-3 text-center font-sans"><button type="button" onClick={() => removePayment(p.id)} className="text-red-300 hover:text-red-600 transition text-lg leading-none font-sans">×</button></td>}
                                     </tr>
                                 ))}
+                                <tr className="bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700">
+                                    <td colSpan={3} className="px-6 py-3 text-right font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest text-[10px] font-sans">Total Collection</td>
+                                    <td className="px-6 py-3 text-right font-black text-green-600 dark:text-green-400 font-mono font-sans text-sm">₹{patient.amount.toLocaleString()}</td>
+                                    {isEditing && <td></td>}
+                                </tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
 
-                {/* Notes */}
-                <div className="col-span-full grid grid-cols-1 md:grid-cols-2 gap-8 pt-4 border-t border-gray-100 dark:border-gray-800 font-sans">
-                    <div>
-                        <label className="block text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase mb-2 tracking-widest font-sans">Medicines</label>
-                        {isEditing ? <textarea name="medicine_prescribed" value={patient.medicine_prescribed || ''} onChange={handleChange} className="w-full p-4 border dark:border-gray-700 rounded h-32 focus:ring-2 focus:ring-blue-500 outline-none text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-800 transition text-sm" /> : <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded text-gray-900 dark:text-gray-100 text-sm min-h-[8rem] whitespace-pre-wrap italic text-gray-600 dark:text-gray-400 shadow-inner font-sans">{patient.medicine_prescribed || 'None.'}</div>}
-                    </div>
-                    <div>
-                        <label className="block text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase mb-2 tracking-widest font-sans">Notes</label>
-                        {isEditing ? <textarea name="notes" value={patient.notes || ''} onChange={handleChange} className="w-full p-4 border dark:border-gray-700 rounded h-32 focus:ring-2 focus:ring-blue-500 outline-none text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-800 transition text-sm" /> : <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded text-gray-900 dark:text-gray-100 text-sm min-h-[8rem] whitespace-pre-wrap italic text-gray-600 dark:text-gray-400 shadow-inner font-sans">{patient.notes || 'None.'}</div>}
-                    </div>
-                </div>
+
 
                                                   
                                               </div>
