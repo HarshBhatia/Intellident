@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getDb, PaymentRecord } from '@intellident/api';
-import { auth, currentUser } from '@clerk/nextjs/server';
+import { auth } from '@clerk/nextjs/server';
+import { cookies } from 'next/headers';
 
 const normalizeCategory = (raw: string) => {
     const s = raw.toLowerCase().trim();
@@ -22,16 +23,17 @@ export async function GET(request: Request) {
     const { userId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     
-    const user = await currentUser();
-    const userEmail = user?.emailAddresses[0]?.emailAddress;
+    const cookieStore = await cookies();
+    const clinicId = cookieStore.get('clinic_id')?.value;
+    if (!clinicId) return NextResponse.json({ error: 'No clinic selected' }, { status: 400 });
 
     const { searchParams } = new URL(request.url);
     const startDate = new Date(searchParams.get('startDate') || new Date(new Date().getFullYear(), 0, 1));
     const endDate = new Date(searchParams.get('endDate') || new Date());
 
     const sql = getDb();
-    const patients = await sql`SELECT date, amount, payments FROM patients WHERE user_email = ${userEmail}`;
-    const expenses = await sql`SELECT date, amount FROM expenses WHERE user_email = ${userEmail}`;
+    const patients = await sql`SELECT date, amount, payments FROM patients WHERE clinic_id = ${clinicId}`;
+    const expenses = await sql`SELECT date, amount FROM expenses WHERE clinic_id = ${clinicId}`;
 
     const categoryMap: Record<string, number> = {};
     const monthlyMap: Record<string, number> = {}; 

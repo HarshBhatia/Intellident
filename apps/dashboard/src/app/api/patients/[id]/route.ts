@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@intellident/api';
-import { auth, currentUser } from '@clerk/nextjs/server';
+import { auth } from '@clerk/nextjs/server';
+import { cookies } from 'next/headers';
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -8,11 +9,12 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const { userId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     
-    const user = await currentUser();
-    const userEmail = user?.emailAddresses[0]?.emailAddress;
+    const cookieStore = await cookies();
+    const clinicId = cookieStore.get('clinic_id')?.value;
+    if (!clinicId) return NextResponse.json({ error: 'No clinic selected' }, { status: 400 });
 
     const sql = getDb();
-    const rows = await sql`SELECT * FROM patients WHERE patient_id = ${id} AND user_email = ${userEmail}`;
+    const rows = await sql`SELECT * FROM patients WHERE patient_id = ${id} AND clinic_id = ${clinicId}`;
     if (rows.length === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     return NextResponse.json(rows[0]);
   } catch (error) {
@@ -26,8 +28,9 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     const { userId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     
-    const user = await currentUser();
-    const userEmail = user?.emailAddresses[0]?.emailAddress;
+    const cookieStore = await cookies();
+    const clinicId = cookieStore.get('clinic_id')?.value;
+    if (!clinicId) return NextResponse.json({ error: 'No clinic selected' }, { status: 400 });
 
     const body = await request.json();
     const sql = getDb();
@@ -54,7 +57,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
         treatment_done = ${treatment_done},
         xrays = ${xrays},
         payments = ${payments}
-      WHERE patient_id = ${id} AND user_email = ${userEmail}
+      WHERE patient_id = ${id} AND clinic_id = ${clinicId}
       RETURNING *
     `;
     
@@ -71,11 +74,12 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     const { userId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     
-    const user = await currentUser();
-    const userEmail = user?.emailAddresses[0]?.emailAddress;
+    const cookieStore = await cookies();
+    const clinicId = cookieStore.get('clinic_id')?.value;
+    if (!clinicId) return NextResponse.json({ error: 'No clinic selected' }, { status: 400 });
 
     const sql = getDb();
-    await sql`DELETE FROM patients WHERE patient_id = ${id} AND user_email = ${userEmail}`;
+    await sql`DELETE FROM patients WHERE patient_id = ${id} AND clinic_id = ${clinicId}`;
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json({ error: 'Failed' }, { status: 500 });

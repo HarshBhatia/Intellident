@@ -1,17 +1,19 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@intellident/api';
-import { auth, currentUser } from '@clerk/nextjs/server';
+import { auth } from '@clerk/nextjs/server';
+import { cookies } from 'next/headers';
 
 export async function GET() {
   try {
     const { userId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     
-    const user = await currentUser();
-    const userEmail = user?.emailAddresses[0]?.emailAddress;
+    const cookieStore = await cookies();
+    const clinicId = cookieStore.get('clinic_id')?.value;
+    if (!clinicId) return NextResponse.json({ error: 'No clinic selected' }, { status: 400 });
 
     const sql = getDb();
-    const rows = await sql`SELECT * FROM expenses WHERE user_email = ${userEmail} ORDER BY date DESC`;
+    const rows = await sql`SELECT * FROM expenses WHERE clinic_id = ${clinicId} ORDER BY date DESC`;
     return NextResponse.json(rows);
   } catch (error) {
     return NextResponse.json({ error: 'Failed' }, { status: 500 });
@@ -23,15 +25,16 @@ export async function POST(request: Request) {
     const { userId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     
-    const user = await currentUser();
-    const userEmail = user?.emailAddresses[0]?.emailAddress;
+    const cookieStore = await cookies();
+    const clinicId = cookieStore.get('clinic_id')?.value;
+    if (!clinicId) return NextResponse.json({ error: 'No clinic selected' }, { status: 400 });
 
     const body = await request.json();
     const sql = getDb();
     const { date, amount, category, description } = body;
     const result = await sql`
-      INSERT INTO expenses (date, amount, category, description, user_email)
-      VALUES (${date}, ${amount}, ${category}, ${description}, ${userEmail})
+      INSERT INTO expenses (date, amount, category, description, clinic_id)
+      VALUES (${date}, ${amount}, ${category}, ${description}, ${clinicId})
       RETURNING *
     `;
     return NextResponse.json(result[0]);
@@ -42,9 +45,16 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
     try {
+        const { userId } = await auth();
+        if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+        const cookieStore = await cookies();
+        const clinicId = cookieStore.get('clinic_id')?.value;
+        if (!clinicId) return NextResponse.json({ error: 'No clinic selected' }, { status: 400 });
+
         const { id } = await request.json();
         const sql = getDb();
-        await sql`DELETE FROM expenses WHERE id = ${id}`;
+        await sql`DELETE FROM expenses WHERE id = ${id} AND clinic_id = ${clinicId}`;
         return NextResponse.json({ success: true });
     } catch (error) { return NextResponse.json({ error: 'Failed' }, { status: 500 }); }
 }

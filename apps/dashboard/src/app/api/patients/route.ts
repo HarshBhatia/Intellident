@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@intellident/api';
 import { auth, currentUser } from '@clerk/nextjs/server';
+import { verifyMembership } from '@/lib/auth';
+
+import { cookies } from 'next/headers';
 
 export async function GET() {
   try {
@@ -9,9 +12,18 @@ export async function GET() {
     
     const user = await currentUser();
     const userEmail = user?.emailAddresses[0]?.emailAddress;
+    
+    const cookieStore = await cookies();
+    const clinicId = cookieStore.get('clinic_id')?.value;
+
+    if (!clinicId) return NextResponse.json({ error: 'No clinic selected' }, { status: 400 });
+    
+    if (!userEmail || !(await verifyMembership(clinicId, userEmail))) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     const sql = getDb();
-    const rows = await sql`SELECT * FROM patients WHERE user_email = ${userEmail} ORDER BY created_at DESC`;
+    const rows = await sql`SELECT * FROM patients WHERE clinic_id = ${clinicId} ORDER BY created_at DESC`;
     return NextResponse.json(rows);
   } catch (error) {
     console.error('Fetch error:', error);
@@ -26,18 +38,24 @@ export async function POST(request: Request) {
     
     const user = await currentUser();
     const userEmail = user?.emailAddresses[0]?.emailAddress;
+    
+    const cookieStore = await cookies();
+    const clinicId = cookieStore.get('clinic_id')?.value;
+    if (!clinicId) return NextResponse.json({ error: 'No clinic selected' }, { status: 400 });
+
+    if (!userEmail || !(await verifyMembership(clinicId, userEmail))) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     const body = await request.json();
     const sql = getDb();
     
-    // Auto-generate next Patient ID in PID-XX format
+    // Auto-generate next Patient ID in PID-XX format for this clinic
     let nextId = 'PID-1';
     try {
-      // Find the highest number in existing PID-XX IDs
-      // We extract the number part from the string 'PID-123' -> 123
       const allIds = await sql`
         SELECT patient_id FROM patients 
-        WHERE user_email = ${userEmail} 
+        WHERE clinic_id = ${clinicId} 
         AND patient_id LIKE 'PID-%'
       `;
       
@@ -52,9 +70,7 @@ export async function POST(request: Request) {
       
       nextId = `PID-${maxNum + 1}`;
     } catch (e) {
-      console.log('ID Generation fallback due to:', e);
-      // Fallback
-      const countResult = await sql`SELECT COUNT(*) FROM patients WHERE user_email = ${userEmail}`;
+      const countResult = await sql`SELECT COUNT(*) FROM patients WHERE clinic_id = ${clinicId}`;
       nextId = `PID-${parseInt(countResult[0].count) + 1}`;
     }
 
@@ -64,11 +80,11 @@ export async function POST(request: Request) {
       INSERT INTO patients (
         patient_id, name, age, amount, date, doctor, gender, 
         mode_of_payment, paid_for, phone_number, medicine_prescribed, 
-        notes, patient_type, share, tooth_number, treatment_done, xrays, payments, user_email
+        notes, patient_type, share, tooth_number, treatment_done, xrays, payments, clinic_id
       ) VALUES (
         ${nextId}, ${name}, ${age}, ${amount}, ${date}, ${doctor}, ${gender}, 
         ${mode_of_payment}, ${paid_for}, ${phone_number}, ${medicine_prescribed}, 
-        ${notes}, ${patient_type}, ${share}, ${tooth_number}, ${treatment_done}, ${xrays}, ${payments}, ${userEmail}
+        ${notes}, ${patient_type}, ${share}, ${tooth_number}, ${treatment_done}, ${xrays}, ${payments}, ${clinicId}
       )
       RETURNING *
     `;

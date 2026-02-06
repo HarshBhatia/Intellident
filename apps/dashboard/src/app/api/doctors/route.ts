@@ -1,17 +1,19 @@
 import { NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
-import { auth, currentUser } from '@clerk/nextjs/server';
+import { getDb } from '@intellident/api';
+import { auth } from '@clerk/nextjs/server';
+import { cookies } from 'next/headers';
 
 export async function GET() {
   try {
     const { userId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     
-    const user = await currentUser();
-    const userEmail = user?.emailAddresses[0]?.emailAddress;
+    const cookieStore = await cookies();
+    const clinicId = cookieStore.get('clinic_id')?.value;
+    if (!clinicId) return NextResponse.json({ error: 'No clinic selected' }, { status: 400 });
 
     const sql = getDb();
-    const rows = await sql`SELECT * FROM doctors WHERE user_email = ${userEmail}`;
+    const rows = await sql`SELECT * FROM doctors WHERE clinic_id = ${clinicId}`;
     return NextResponse.json(rows);
   } catch (error) {
     console.error('Fetch doctors error:', error);
@@ -24,22 +26,23 @@ export async function POST(request: Request) {
     const { userId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     
-    const user = await currentUser();
-    const userEmail = user?.emailAddresses[0]?.emailAddress;
+    const cookieStore = await cookies();
+    const clinicId = cookieStore.get('clinic_id')?.value;
+    if (!clinicId) return NextResponse.json({ error: 'No clinic selected' }, { status: 400 });
 
     const { name } = await request.json();
     if (!name) return NextResponse.json({ error: 'Name is required' }, { status: 400 });
 
     const sql = getDb();
     const result = await sql`
-      INSERT INTO doctors (name, user_email)
-      VALUES (${name}, ${userEmail})
-      ON CONFLICT (name, user_email) DO NOTHING
+      INSERT INTO doctors (name, clinic_id)
+      VALUES (${name}, ${clinicId})
+      ON CONFLICT (name, clinic_id) DO NOTHING
       RETURNING *
     `;
     
     if (result.length === 0) {
-        const existing = await sql`SELECT * FROM doctors WHERE name = ${name} AND user_email = ${userEmail}`;
+        const existing = await sql`SELECT * FROM doctors WHERE name = ${name} AND clinic_id = ${clinicId}`;
         return NextResponse.json(existing[0]);
     }
 
@@ -55,12 +58,13 @@ export async function DELETE(request: Request) {
     const { userId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     
-    const user = await currentUser();
-    const userEmail = user?.emailAddresses[0]?.emailAddress;
+    const cookieStore = await cookies();
+    const clinicId = cookieStore.get('clinic_id')?.value;
+    if (!clinicId) return NextResponse.json({ error: 'No clinic selected' }, { status: 400 });
 
     const { id } = await request.json();
     const sql = getDb();
-    await sql`DELETE FROM doctors WHERE id = ${id} AND user_email = ${userEmail}`;
+    await sql`DELETE FROM doctors WHERE id = ${id} AND clinic_id = ${clinicId}`;
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Delete doctor error:', error);

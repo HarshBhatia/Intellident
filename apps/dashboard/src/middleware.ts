@@ -5,6 +5,16 @@ const isPublicRoute = createRouteMatcher(['/sign-in(.*)', '/sign-up(.*)']);
 export default clerkMiddleware(async (auth, request) => {
   if (!isPublicRoute(request)) {
     await auth.protect();
+
+    // Check for clinic selection
+    const clinicId = request.cookies.get('clinic_id')?.value;
+    const isSelectPage = request.nextUrl.pathname === '/select-clinic';
+    const isApi = request.nextUrl.pathname.startsWith('/api');
+
+    if (!clinicId && !isSelectPage && !isApi) {
+      const selectUrl = new URL('/select-clinic', request.url);
+      return Response.redirect(selectUrl);
+    }
   }
 });
 

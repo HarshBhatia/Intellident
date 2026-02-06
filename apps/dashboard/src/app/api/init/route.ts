@@ -86,8 +86,101 @@ export async function GET() {
       } catch (err) {}
     } catch (e) { console.error('Error updating clinic_info:', e); }
 
-    // 5. Migration complete
-    return NextResponse.json({ message: 'Database initialized successfully' });
+    // ---------------------------------------------------------
+    // PHASE 1: Create Core Organization Tables
+    // ---------------------------------------------------------
+    try {
+      await sql`
+        CREATE TABLE IF NOT EXISTS clinics (
+          id SERIAL PRIMARY KEY,
+          name TEXT NOT NULL,
+          owner_email TEXT NOT NULL,
+          address TEXT,
+          phone TEXT,
+          google_maps_link TEXT,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `;
+      
+      await sql`
+        CREATE TABLE IF NOT EXISTS clinic_members (
+          id SERIAL PRIMARY KEY,
+          clinic_id INTEGER REFERENCES clinics(id) ON DELETE CASCADE,
+          user_email TEXT NOT NULL,
+          role TEXT NOT NULL DEFAULT 'DOCTOR', -- OWNER, DOCTOR, RECEPTIONIST
+          status TEXT NOT NULL DEFAULT 'ACTIVE',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(clinic_id, user_email)
+        );
+      `;
+    } catch (e) { console.error('Error creating org tables:', e); }
+
+    // ---------------------------------------------------------
+    // PHASE 2: Add clinic_id to all data tables
+    // ---------------------------------------------------------
+    const dataTables = ['patients', 'treatments', 'doctors', 'expense_categories', 'expenses'];
+    for (const table of dataTables) {
+      try {
+        await sql.unsafe(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS clinic_id INTEGER`);
+      } catch (e) { console.log(`Note: clinic_id already on ${table}`); }
+    }
+
+    // ---------------------------------------------------------
+    // PHASE 3: Migrate Existing Users to Clinics
+    // ---------------------------------------------------------
+    // 1. Find all users who have data but no clinic yet
+    try {
+      // Get unique users from patients table who don't have a clinic association yet
+      const usersWithData = await sql`
+        SELECT DISTINCT user_email FROM patients 
+        WHERE user_email IS NOT NULL 
+        AND clinic_id IS NULL
+      `;
+
+      for (const u of usersWithData) {
+        const email = u.user_email;
+        
+        // Check if they already have a clinic owned by them to prevent duplicates
+        const existingClinic = await sql`SELECT id FROM clinics WHERE owner_email = ${email} LIMIT 1`;
+        
+        let clinicId;
+        if (existingClinic.length > 0) {
+          clinicId = existingClinic[0].id;
+        } else {
+          // Create a new Default Clinic for this user
+          // Try to fetch clinic_info name if available, else Default
+          const info = await sql`SELECT clinic_name FROM clinic_info WHERE user_email = ${email} LIMIT 1`;
+          const clinicName = info[0]?.clinic_name || 'My Clinic';
+          
+          const newClinic = await sql`
+            INSERT INTO clinics (name, owner_email) VALUES (${clinicName}, ${email}) RETURNING id
+          `;
+          clinicId = newClinic[0].id;
+
+          // Add them as OWNER
+          await sql`
+            INSERT INTO clinic_members (clinic_id, user_email, role) 
+            VALUES (${clinicId}, ${email}, 'OWNER')
+          `;
+        }
+
+        // Migrate their data to this clinic
+        for (const table of dataTables) {
+          await sql.unsafe(`
+            UPDATE ${table} 
+            SET clinic_id = ${clinicId} 
+            WHERE user_email = '${email}' 
+            AND clinic_id IS NULL
+          `);
+        }
+        console.log(`Migrated data for ${email} to Clinic ID ${clinicId}`);
+      }
+    } catch (e) {
+      console.error('Migration Phase 3 Error:', e);
+    }
+
+    return NextResponse.json({ message: 'Database initialized & migrated to Multi-Tenancy successfully' });
+
   } catch (error) {
     console.error('Init error:', error);
     return NextResponse.json({ error: 'Failed to initialize database' }, { status: 500 });
