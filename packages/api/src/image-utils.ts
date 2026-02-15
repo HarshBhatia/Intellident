@@ -43,3 +43,11 @@ export async function compressImage(file: File, maxWidth = 1200, quality = 0.7):
     reader.onerror = (err) => reject(err);
   });
 }
+
+/**
+ * Simulates an image upload by compressing and returning base64.
+ * In a production app, this would upload to S3/Cloudinary.
+ */
+export async function uploadImage(file: File): Promise<string> {
+  return compressImage(file);
+}

@@ -3,16 +3,21 @@ import { getDb } from '@/lib/db';
 import PatientDetailClient from './PatientDetailClient';
 import { Suspense } from 'react';
 import Skeleton from '@/components/Skeleton';
+import { cookies } from 'next/headers';
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
+  const clinicId = (await cookies()).get('clinic_id')?.value;
+  
+  if (!clinicId) return { title: 'Patient Details' };
+
   try {
     const sql = getDb();
-    const rows = await sql`SELECT name FROM patients WHERE patient_id = ${id}`;
+    const rows = await sql`SELECT name FROM patients WHERE patient_id = ${id} AND clinic_id = ${clinicId}`;
     
     if (rows && rows.length > 0) {
       return {
-        title: rows[0].name,
+        title: `${rows[0].name} | IntelliDent`,
       };
     }
   } catch (error) {

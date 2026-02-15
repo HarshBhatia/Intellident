@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@intellident/api';
 import { auth } from '@clerk/nextjs/server';
-import { cookies } from 'next/headers';
+import { getClinicId } from '@/lib/auth';
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -9,15 +9,26 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const { userId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     
-    const cookieStore = await cookies();
-    const clinicId = cookieStore.get('clinic_id')?.value;
+    const clinicId = await getClinicId();
     if (!clinicId) return NextResponse.json({ error: 'No clinic selected' }, { status: 400 });
 
     const sql = getDb();
     const rows = await sql`SELECT * FROM patients WHERE patient_id = ${id} AND clinic_id = ${clinicId}`;
     if (rows.length === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-    return NextResponse.json(rows[0]);
-  } catch (error) {
+    
+    const patient = rows[0];
+    
+    // Fetch visits history
+    const visits = await sql`
+      SELECT * FROM visits 
+      WHERE patient_id = ${patient.id} 
+      AND clinic_id = ${clinicId}
+      ORDER BY date DESC, created_at DESC
+    `;
+    
+    return NextResponse.json({ ...patient, visits });
+  } catch (error: any) {
+    console.error('Error in GET /api/patients/[id]:', error);
     return NextResponse.json({ error: 'Failed' }, { status: 500 });
   }
 }
@@ -28,8 +39,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     const { userId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     
-    const cookieStore = await cookies();
-    const clinicId = cookieStore.get('clinic_id')?.value;
+    const clinicId = await getClinicId();
     if (!clinicId) return NextResponse.json({ error: 'No clinic selected' }, { status: 400 });
 
     const body = await request.json();
@@ -63,7 +73,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     
     return NextResponse.json(result[0]);
   } catch (error) {
-    console.error(error);
+    console.error('Error in PUT /api/patients/[id]:', error);
     return NextResponse.json({ error: 'Failed' }, { status: 500 });
   }
 }
@@ -74,14 +84,14 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     const { userId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     
-    const cookieStore = await cookies();
-    const clinicId = cookieStore.get('clinic_id')?.value;
+    const clinicId = await getClinicId();
     if (!clinicId) return NextResponse.json({ error: 'No clinic selected' }, { status: 400 });
 
     const sql = getDb();
     await sql`DELETE FROM patients WHERE patient_id = ${id} AND clinic_id = ${clinicId}`;
     return NextResponse.json({ success: true });
   } catch (error) {
+    console.error('Error in DELETE /api/patients/[id]:', error);
     return NextResponse.json({ error: 'Failed' }, { status: 500 });
   }
 }

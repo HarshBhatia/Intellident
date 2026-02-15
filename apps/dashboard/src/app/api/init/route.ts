@@ -9,7 +9,7 @@ export async function GET() {
       await sql`
         CREATE TABLE IF NOT EXISTS patients (
           id SERIAL PRIMARY KEY,
-          patient_id TEXT UNIQUE NOT NULL,
+          patient_id TEXT NOT NULL,
           name TEXT NOT NULL,
           age INTEGER,
           amount NUMERIC,
@@ -28,9 +28,17 @@ export async function GET() {
           xrays TEXT,
           payments TEXT,
           user_email TEXT,
+          clinic_id INTEGER,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
       `;
+      // Fix constraints for multi-tenancy
+      try {
+        await sql`ALTER TABLE patients DROP CONSTRAINT IF EXISTS patients_patient_id_key`;
+        await sql`ALTER TABLE patients DROP CONSTRAINT IF EXISTS patients_patient_id_clinic_id_key`;
+        await sql`ALTER TABLE patients ADD CONSTRAINT patients_patient_id_clinic_id_key UNIQUE (patient_id, clinic_id)`;
+      } catch (err) { console.error('Error updating patient constraints:', err); }
+      
       await sql`ALTER TABLE patients ADD COLUMN IF NOT EXISTS user_email TEXT`;
     } catch (e) { console.error('Error updating patients:', e); }
 
@@ -38,13 +46,17 @@ export async function GET() {
     const tables = ['treatments', 'doctors', 'expense_categories'];
     for (const table of tables) {
       try {
-        await sql.unsafe(`CREATE TABLE IF NOT EXISTS ${table} (id SERIAL PRIMARY KEY, name TEXT NOT NULL, user_email TEXT)`);
+        await sql.unsafe(`CREATE TABLE IF NOT EXISTS ${table} (id SERIAL PRIMARY KEY, name TEXT NOT NULL)`);
+        await sql.unsafe(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS clinic_id INTEGER`);
         await sql.unsafe(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS user_email TEXT`);
-        // Add composite unique constraint if missing
+        
+        // Add composite unique constraint for multi-tenancy
         try {
           await sql.unsafe(`ALTER TABLE ${table} DROP CONSTRAINT IF EXISTS ${table}_name_key`);
-          await sql.unsafe(`ALTER TABLE ${table} ADD CONSTRAINT ${table}_name_user_email_key UNIQUE (name, user_email)`);
-        } catch (err) {}
+          await sql.unsafe(`ALTER TABLE ${table} DROP CONSTRAINT IF EXISTS ${table}_name_user_email_key`);
+          await sql.unsafe(`ALTER TABLE ${table} DROP CONSTRAINT IF EXISTS ${table}_name_clinic_id_key`);
+          await sql.unsafe(`ALTER TABLE ${table} ADD CONSTRAINT ${table}_name_clinic_id_key UNIQUE (name, clinic_id)`);
+        } catch (err) { console.log(`Note: constraint update for ${table} had a non-critical error`); }
       } catch (e) { console.error(`Error updating ${table}:`, e); }
     }
 
@@ -58,9 +70,11 @@ export async function GET() {
           category TEXT NOT NULL,
           description TEXT,
           user_email TEXT,
+          clinic_id INTEGER,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
       `;
+      await sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS clinic_id INTEGER`;
       await sql`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS user_email TEXT`;
     } catch (e) { console.error('Error updating expenses:', e); }
 
@@ -179,7 +193,68 @@ export async function GET() {
       console.error('Migration Phase 3 Error:', e);
     }
 
-    return NextResponse.json({ message: 'Database initialized & migrated to Multi-Tenancy successfully' });
+    // ---------------------------------------------------------
+    // PHASE 4: Refactor to Visits Model
+    // ---------------------------------------------------------
+    try {
+      await sql`
+        CREATE TABLE IF NOT EXISTS visits (
+          id SERIAL PRIMARY KEY,
+          clinic_id INTEGER REFERENCES clinics(id) ON DELETE CASCADE,
+          patient_id INTEGER REFERENCES patients(id) ON DELETE CASCADE,
+          date TEXT NOT NULL,
+          doctor TEXT,
+          visit_type TEXT DEFAULT 'Consultation',
+          symptoms TEXT,
+          diagnosis TEXT,
+          treatment_plan TEXT,
+          treatment_done TEXT,
+          tooth_number TEXT,
+          medicine_prescribed TEXT,
+          notes TEXT,
+          cost NUMERIC DEFAULT 0,
+          paid NUMERIC DEFAULT 0,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `;
+      
+      await sql`ALTER TABLE visits ADD COLUMN IF NOT EXISTS visit_type TEXT DEFAULT 'Consultation'`;
+
+      // Migrate existing clinical data to visits if visits table is empty
+      const existingVisits = await sql`SELECT COUNT(*) FROM visits`;
+      if (existingVisits[0].count == 0) {
+        console.log('Migrating clinical data to visits...');
+        await sql`
+          INSERT INTO visits (
+            clinic_id, patient_id, date, doctor, 
+            treatment_done, tooth_number, medicine_prescribed, 
+            notes, cost
+          )
+          SELECT 
+            clinic_id, id, date, doctor, 
+            treatment_done, tooth_number, medicine_prescribed, 
+            notes, amount
+          FROM patients
+          WHERE clinic_id IS NOT NULL;
+        `;
+        console.log('Migration complete.');
+      }
+    } catch (e) { console.error('Error creating visits table:', e); }
+      
+    // ---------------------------------------------------------
+    // PHASE 5: Performance Optimization (Indexes)
+    // ---------------------------------------------------------
+    try {
+      const tablesToIndex = ['patients', 'visits', 'treatments', 'doctors', 'expense_categories', 'expenses'];
+      for (const table of tablesToIndex) {
+        await sql.unsafe(`CREATE INDEX IF NOT EXISTS idx_${table}_clinic_id ON ${table}(clinic_id)`);
+      }
+      // Index for patient history lookups
+      await sql`CREATE INDEX IF NOT EXISTS idx_visits_patient_id ON visits(patient_id)`;
+      console.log('Performance indexes created.');
+    } catch (e) { console.error('Error creating indexes:', e); }
+
+    return NextResponse.json({ message: 'Database initialized & optimized successfully' });
 
   } catch (error) {
     console.error('Init error:', error);

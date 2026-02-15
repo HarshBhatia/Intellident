@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import { Patient } from '@/types';
+import { Patient, Visit } from '@/types';
 
 interface ClinicInfo {
   clinic_name: string;
@@ -10,7 +10,7 @@ interface ClinicInfo {
   email: string;
 }
 
-export const generatePrescriptionPDF = (patient: Patient, clinic: ClinicInfo) => {
+export const generatePrescriptionPDF = (patient: Patient, clinic: ClinicInfo, visit?: Visit) => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
 
@@ -42,25 +42,56 @@ export const generatePrescriptionPDF = (patient: Patient, clinic: ClinicInfo) =>
   doc.text(`Age/Gender: ${patient.age}Y / ${patient.gender}`, 15, 58);
   doc.text(`Patient ID: ${patient.patient_id}`, 15, 64);
   
-  doc.text(`Date: ${new Date(patient.date).toLocaleDateString()}`, pageWidth - 15, 52, { align: 'right' });
-  doc.text(`Doctor: ${patient.doctor || clinic.owner_name || 'N/A'}`, pageWidth - 15, 58, { align: 'right' });
+  const date = visit?.date || patient.date;
+  const doctor = visit?.doctor || patient.doctor || clinic.owner_name || 'N/A';
+  
+  doc.text(`Date: ${new Date(date).toLocaleDateString()}`, pageWidth - 15, 52, { align: 'right' });
+  doc.text(`Doctor: ${doctor}`, pageWidth - 15, 58, { align: 'right' });
+
+  if (visit?.tooth_number) {
+    doc.text(`Tooth: ${visit.tooth_number}`, pageWidth - 15, 64, { align: 'right' });
+  }
+
+  // Clinical Details
+  if (visit?.symptoms || visit?.diagnosis || visit?.treatment_done) {
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('CLINICAL DETAILS', 15, 75);
+    
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    let currentY = 81;
+    if (visit.symptoms) {
+        doc.text(`Symptoms: ${visit.symptoms}`, 15, currentY);
+        currentY += 6;
+    }
+    if (visit.diagnosis) {
+        doc.text(`Diagnosis: ${visit.diagnosis}`, 15, currentY);
+        currentY += 6;
+    }
+    if (visit.treatment_done) {
+        doc.text(`Treatment: ${visit.treatment_done}`, 15, currentY);
+        currentY += 6;
+    }
+  }
 
   // Rx Symbol
   doc.setFontSize(24);
   doc.setTextColor(37, 99, 235);
   doc.setFont('helvetica', 'bold');
-  doc.text('Rx', 15, 80);
+  doc.text('Rx', 15, 105);
 
   // Medicines Section
   doc.setFontSize(12);
   doc.setTextColor(17, 24, 39);
-  doc.text('PRESCRIPTION', 15, 90);
+  doc.text('PRESCRIPTION', 15, 115);
 
-  const medicines = patient.medicine_prescribed ? patient.medicine_prescribed.split('\n').filter(m => m.trim()) : [];
+  const medicineStr = visit?.medicine_prescribed || patient.medicine_prescribed;
+  const medicines = medicineStr ? medicineStr.split('\n').filter(m => m.trim()) : [];
   
   if (medicines.length > 0) {
     (doc as any).autoTable({
-      startY: 95,
+      startY: 120,
       head: [['#', 'Medicine & Dosage']],
       body: medicines.map((m, i) => [i + 1, m]),
       theme: 'striped',
@@ -71,12 +102,13 @@ export const generatePrescriptionPDF = (patient: Patient, clinic: ClinicInfo) =>
   } else {
     doc.setFontSize(10);
     doc.setTextColor(156, 163, 175);
-    doc.text('No medicines prescribed.', 15, 100);
+    doc.text('No medicines prescribed.', 15, 125);
   }
 
   // Notes Section
-  const finalY = (doc as any).lastAutoTable?.finalY || 110;
-  if (patient.notes) {
+  const finalY = (doc as any).lastAutoTable?.finalY || 135;
+  const notesStr = visit?.notes || patient.notes;
+  if (notesStr) {
     doc.setFontSize(12);
     doc.setTextColor(17, 24, 39);
     doc.setFont('helvetica', 'bold');
@@ -85,7 +117,7 @@ export const generatePrescriptionPDF = (patient: Patient, clinic: ClinicInfo) =>
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(75, 85, 99);
-    const splitNotes = doc.splitTextToSize(patient.notes, pageWidth - 30);
+    const splitNotes = doc.splitTextToSize(notesStr, pageWidth - 30);
     doc.text(splitNotes, 15, finalY + 22);
   }
 
@@ -100,5 +132,6 @@ export const generatePrescriptionPDF = (patient: Patient, clinic: ClinicInfo) =>
   doc.text('Please follow the instructions carefully. Follow-up as advised.', pageWidth / 2, pageHeight - 15, { align: 'center' });
 
   // Save the PDF
-  doc.save(`Prescription_${patient.name.replace(/\s+/g, '_')}_${patient.patient_id}.pdf`);
+  const fileName = `Prescription_${patient.name.replace(/\s+/g, '_')}_${visit?.date || patient.date}.pdf`;
+  doc.save(fileName);
 };

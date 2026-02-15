@@ -12,8 +12,8 @@
     "@intellident/api": "*",
     "next": "15.1.6",
 
-    "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react": "19.1.0",
+    "react-dom": "19.1.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

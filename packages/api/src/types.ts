@@ -1,3 +1,19 @@
+export interface Visit {
+  id: number;
+  date: string;
+  doctor: string;
+  symptoms?: string;
+  diagnosis?: string;
+  treatment_plan?: string;
+  treatment_done?: string;
+  tooth_number?: string;
+  medicine_prescribed?: string;
+  notes?: string;
+  cost: number;
+  paid: number;
+  created_at?: string;
+}
+
 export interface PaymentRecord {
   id: string;
   date: string;
@@ -26,4 +42,5 @@ export interface Patient {
   treatment_done: string;
   xrays?: string; // JSON string of XRay[]
   payments?: string; // JSON string of PaymentRecord[]
+  visits?: Visit[];
 }

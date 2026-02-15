@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@intellident/api';
 import { auth, currentUser } from '@clerk/nextjs/server';
-import { verifyMembership } from '@/lib/auth';
-
-import { cookies } from 'next/headers';
+import { verifyMembership, getClinicId } from '@/lib/auth';
 
 export async function GET() {
   try {
@@ -13,8 +11,7 @@ export async function GET() {
     const user = await currentUser();
     const userEmail = user?.emailAddresses[0]?.emailAddress;
     
-    const cookieStore = await cookies();
-    const clinicId = cookieStore.get('clinic_id')?.value;
+    const clinicId = await getClinicId();
 
     if (!clinicId) return NextResponse.json({ error: 'No clinic selected' }, { status: 400 });
     
@@ -23,7 +20,13 @@ export async function GET() {
     }
 
     const sql = getDb();
-    const rows = await sql`SELECT * FROM patients WHERE clinic_id = ${clinicId} ORDER BY created_at DESC`;
+    // Select needed columns for the list view to avoid fetching large xrays base64 strings
+    const rows = await sql`
+      SELECT id, patient_id, name, age, gender, phone_number, date, doctor, amount, created_at, patient_type, medicine_prescribed, notes, treatment_done, tooth_number, mode_of_payment, paid_for, share
+      FROM patients 
+      WHERE clinic_id = ${clinicId} 
+      ORDER BY created_at DESC
+    `;
     return NextResponse.json(rows);
   } catch (error) {
     console.error('Fetch error:', error);
@@ -39,8 +42,7 @@ export async function POST(request: Request) {
     const user = await currentUser();
     const userEmail = user?.emailAddresses[0]?.emailAddress;
     
-    const cookieStore = await cookies();
-    const clinicId = cookieStore.get('clinic_id')?.value;
+    const clinicId = await getClinicId();
     if (!clinicId) return NextResponse.json({ error: 'No clinic selected' }, { status: 400 });
 
     if (!userEmail || !(await verifyMembership(clinicId, userEmail))) {

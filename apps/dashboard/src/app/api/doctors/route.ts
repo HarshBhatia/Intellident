@@ -1,15 +1,14 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@intellident/api';
 import { auth } from '@clerk/nextjs/server';
-import { cookies } from 'next/headers';
+import { getClinicId } from '@/lib/auth';
 
 export async function GET() {
   try {
     const { userId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     
-    const cookieStore = await cookies();
-    const clinicId = cookieStore.get('clinic_id')?.value;
+    const clinicId = await getClinicId();
     if (!clinicId) return NextResponse.json({ error: 'No clinic selected' }, { status: 400 });
 
     const sql = getDb();
@@ -26,14 +25,14 @@ export async function POST(request: Request) {
     const { userId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     
-    const cookieStore = await cookies();
-    const clinicId = cookieStore.get('clinic_id')?.value;
+    const clinicId = await getClinicId();
     if (!clinicId) return NextResponse.json({ error: 'No clinic selected' }, { status: 400 });
 
     const { name } = await request.json();
     if (!name) return NextResponse.json({ error: 'Name is required' }, { status: 400 });
 
     const sql = getDb();
+    
     const result = await sql`
       INSERT INTO doctors (name, clinic_id)
       VALUES (${name}, ${clinicId})
@@ -47,7 +46,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json(result[0]);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Add doctor error:', error);
     return NextResponse.json({ error: 'Failed to add doctor' }, { status: 500 });
   }
@@ -58,8 +57,7 @@ export async function DELETE(request: Request) {
     const { userId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     
-    const cookieStore = await cookies();
-    const clinicId = cookieStore.get('clinic_id')?.value;
+    const clinicId = await getClinicId();
     if (!clinicId) return NextResponse.json({ error: 'No clinic selected' }, { status: 400 });
 
     const { id } = await request.json();
