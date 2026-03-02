@@ -20,7 +20,7 @@ export default function DashboardClient() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '');
 
-  const fetchClinicInfo = async () => {
+  const fetchClinicInfo = useCallback(async () => {
     try {
       const res = await fetch('/api/clinic-info');
       if (res.ok) {
@@ -30,9 +30,9 @@ export default function DashboardClient() {
     } catch (error) {
       console.error('Error fetching clinic info:', error);
     }
-  };
+  }, []);
 
-  const fetchDoctors = async () => {
+  const fetchDoctors = useCallback(async () => {
     try {
       const res = await fetch('/api/doctors');
       if (res.ok) {
@@ -42,9 +42,9 @@ export default function DashboardClient() {
     } catch (error) {
       console.error('Error fetching doctors:', error);
     }
-  };
+  }, []);
 
-  const fetchPatients = async () => {
+  const fetchPatients = useCallback(async () => {
     try {
       const res = await fetch('/api/patients');
       if (res.status === 401) {
@@ -60,13 +60,17 @@ export default function DashboardClient() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [router]);
 
   useEffect(() => {
-    fetchPatients();
-    fetchClinicInfo();
-    fetchDoctors();
-  }, []);
+    if (user) {
+      fetchPatients();
+      fetchClinicInfo();
+      fetchDoctors();
+    } else {
+      setLoading(false);
+    }
+  }, [user, fetchPatients, fetchClinicInfo, fetchDoctors]);
 
   const filteredPatients = useMemo(() => {
     return (patients || []).filter(p => 

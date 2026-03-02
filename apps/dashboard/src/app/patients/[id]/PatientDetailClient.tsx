@@ -156,14 +156,16 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
   }, []);
 
   useEffect(() => {
-    fetchInitialData();
-  }, [fetchInitialData]);
+    if (user) {
+        fetchInitialData();
+    }
+  }, [user, fetchInitialData]);
 
   useEffect(() => {
-    if (patientId) {
+    if (user && patientId) {
         fetchPatient();
     }
-  }, [patientId, fetchPatient]);
+  }, [user, patientId, fetchPatient]);
 
   // Auto-select doctor if only one exists
   useEffect(() => {

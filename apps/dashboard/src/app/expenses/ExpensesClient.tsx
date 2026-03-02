@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ToastProvider';
 import Skeleton from '@/components/Skeleton';
 import Navbar from '@/components/Navbar';
+import { useAuth } from '@/hooks/useAuth';
 
 interface Expense {
     id: number;
@@ -16,6 +17,7 @@ interface Expense {
 
 export default function ExpensesClient() {
   const router = useRouter();
+  const { user } = useAuth();
   const { showToast } = useToast();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [categories, setCategories] = useState<{id: number, name: string}[]>([]);
@@ -40,7 +42,7 @@ export default function ExpensesClient() {
       description: ''
   });
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       // Fetch expenses based on current date range
@@ -55,9 +57,15 @@ export default function ExpensesClient() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [dateRange, showToast]);
 
-  useEffect(() => { fetchData(); }, [dateRange]);
+  useEffect(() => { 
+    if (user) {
+        fetchData(); 
+    } else {
+        setLoading(false);
+    }
+  }, [user, dateRange, fetchData]);
 
   const filteredExpenses = useMemo(() => {
       return expenses.filter(e => 
