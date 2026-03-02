@@ -15,7 +15,6 @@ export default function AddPatientForm({ onSuccess, onCancel }: AddPatientFormPr
   const { showToast } = useToast();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<Partial<Patient>>({
-    date: new Date().toISOString().split('T')[0],
     name: '',
     gender: 'Male',
     phone_number: '',
@@ -34,15 +33,7 @@ export default function AddPatientForm({ onSuccess, onCancel }: AddPatientFormPr
     const submissionData = {
       ...formData,
       phone_number: formData.phone_number ? `+91${formData.phone_number.replace(/\D/g, '')}` : '',
-      // Initialize other fields to empty values
-      amount: 0,
-      doctor: '',
-      mode_of_payment: 'Cash',
-      patient_type: 'New',
-      medicine_prescribed: '',
-      notes: '',
-      treatment_done: '',
-      tooth_number: ''
+      patient_type: 'New'
     };
 
     try {

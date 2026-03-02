@@ -1,7 +1,18 @@
 import { NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
+import { importPatientsFromCSV } from '@/services/import.service';
+import { getAuthContext, getClinicId } from '@/lib/auth';
 
-const CSV_DATA = `Name,Age,Amount,Date,Doctor,Gender,Mode of Payment,Paid for,Patient ID,Phone Number,medicine prescribed,notes,patient type,share,tooth number,treatment done
+// This is still a GET, but it triggers the import.
+export async function GET() {
+    try {
+        const { userId } = await getAuthContext();
+        if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+        const clinicId = await getClinicId();
+        if (!clinicId) return NextResponse.json({ error: 'No clinic selected' }, { status: 400 });
+
+        // TODO: Replace CSV_DATA with actual file upload logic
+        const CSV_DATA = `Name,Age,Amount,Date,Doctor,Gender,Mode of Payment,Paid for,Patient ID,Phone Number,medicine prescribed,notes,patient type,share,tooth number,treatment done
 priya,45,"₹2,000.00",18/12/2025,Dr Zaheen Eqbal,F,"Cash, UPI",,1,+919244259094,"amoxiclav-625 BDx3, zerodol-SP BDx3",,N,100%,full mouth,scaling
 Ram Kishore,56,₹200.00,18/12/2025,Dr Zaheen Eqbal,M,Cash,,2,,"amoxiclav-625 BDx3, zerodol-SP BDx3",,N,100%,full mouth,oral examination
 Phool Singh,40,,19/12/2025,Dr Zaheen Eqbal,M,,,3,+919669261440,"amoxiclav-625 BDx3, zerodol-SP BDx3",,N,,,treatment explanation
@@ -53,167 +64,12 @@ gungun,10,"₹1,500.00",30/01/2026,Dr Zaheen Eqbal,F,UPI,"consultation 300, xray
 "reena ",60,"₹3,500.00",30/01/2026,Dr Zaheen Eqbal,F,Cash,"extraction 2400, prosthesis removal ",38,,"clavoll-625, elegesic sp",,N,,"32, 33, 41, 42, 43","extraction, prosthesis removal"
 sajay bansal,51,₹500.00,02/02/2026,Dr Zaheen Eqbal,M,Cash,"consultation 300, xray 200",39,,,,N,,,"oral examination, xray"
 "vikram ",20,₹500.00,02/02/2026,Dr Ekta Tiwari,M,Cash,rct 500,22,,,,O,,,BMP
-,,,,,,,,40,,,,,,,
-`;
+,,,,,,,,40,,,,,,,`;
 
-// Robust CSV Parser (State Machine)
-function parseCSV(text: string) {
-    const rows = [];
-    let currentRow = [];
-    let currentCell = '';
-    let insideQuotes = false;
-    
-    for (let i = 0; i < text.length; i++) {
-        const char = text[i];
-        const nextChar = text[i + 1];
-        
-        if (char === '"') {
-            if (insideQuotes && nextChar === '"') {
-                // Escaped quote ("\"") -> literal quote
-                currentCell += '"';
-                i++; // Skip next quote
-            } else {
-                // Toggle quote state
-                insideQuotes = !insideQuotes;
-            }
-        } else if (char === ',' && !insideQuotes) {
-            // End of cell
-            currentRow.push(currentCell.trim());
-            currentCell = '';
-        } else if (char === '\n' && !insideQuotes) {
-            // End of row
-            currentRow.push(currentCell.trim());
-            if (currentRow.length > 1) { // Skip empty lines
-                rows.push(currentRow);
-            }
-            currentRow = [];
-            currentCell = '';
-        } else if (char === '\r' && !insideQuotes) {
-            // Skip CR
-        } else {
-            currentCell += char;
-        }
-    }
-    // Push last row if exists
-    if (currentRow.length > 0 || currentCell) {
-        currentRow.push(currentCell.trim());
-        if (currentRow.length > 1) rows.push(currentRow);
-    }
-    
-    return rows;
-}
-
-function cleanAmount(amt: string) {
-    if (!amt) return 0;
-    const clean = amt.replace(/[₹, ]/g, '');
-    return parseFloat(clean) || 0;
-}
-
-function parseDate(d: string) {
-    if (!d) return new Date().toISOString().split('T')[0];
-    const parts = d.split('/');
-    if (parts.length === 3) {
-        return `${parts[2]}-${parts[1]}-${parts[0]}`;
-    }
-    return d;
-}
-
-export async function GET() {
-    try {
-        const rawRows = parseCSV(CSV_DATA);
-        // Skip header row
-        const rows = rawRows.slice(1);
-        
-        const sql = getDb();
-        const grouped: Record<string, any> = {};
-        
-        for (const row of rows) {
-            if (row.length < 5) continue; 
-            
-            // Map by index
-            const [
-                name, ageStr, amountRaw, date, doctor, gender, mode, paid_for,
-                pid, phone, meds, notes, type, share, tooth, treatment
-            ] = row;
-            
-            const cleanId = pid ? `PID-${pid}` : `PID-UNK-${Math.random()}`;
-            
-            if (!grouped[cleanId]) {
-                grouped[cleanId] = {
-                    patient_id: cleanId,
-                    name: name.replace(/"/g, ''),
-                    age: parseInt(ageStr) || 0,
-                    gender: gender,
-                    phone_number: phone,
-                    doctor: doctor,
-                    patient_type: type,
-                    share: share,
-                    tooth_number: new Set(),
-                    treatment_done: new Set(),
-                    medicine_prescribed: new Set(),
-                    notes: new Set(),
-                    payments: [],
-                    total_amount: 0,
-                    last_date: ''
-                };
-            }
-            
-            const p = grouped[cleanId];
-            
-            // Update latest info
-            if (name) p.name = name.replace(/"/g, '');
-            if (phone) p.phone_number = phone;
-            if (doctor) p.doctor = doctor;
-            
-            const isoDate = parseDate(date);
-            p.last_date = isoDate;
-            
-            if (treatment) p.treatment_done.add(treatment);
-            if (tooth) p.tooth_number.add(tooth);
-            if (meds) p.medicine_prescribed.add(meds);
-            if (notes) p.notes.add(notes);
-            
-            const amt = cleanAmount(amountRaw);
-            if (amt > 0) {
-                p.payments.push({
-                    id: Math.random().toString(36).substr(2, 9),
-                    date: isoDate,
-                    amount: amt,
-                    purpose: paid_for || treatment || 'Visit',
-                    mode: mode || 'Cash'
-                });
-                p.total_amount += amt;
-            }
-        }
-        
-        const insertPromises = Object.values(grouped).map(async (p) => {
-            if (!p.name) return;
-            
-            const treatments = Array.from(p.treatment_done).join(', ');
-            const teeth = Array.from(p.tooth_number).join(', ');
-            const meds = Array.from(p.medicine_prescribed).join(', ');
-            const notes = Array.from(p.notes).join('; ');
-            const paymentsJson = JSON.stringify(p.payments);
-            
-            await sql`
-                INSERT INTO patients (
-                    patient_id, name, age, amount, date, doctor, gender, 
-                    phone_number, medicine_prescribed, notes, 
-                    patient_type, share, tooth_number, treatment_done, payments
-                ) VALUES (
-                    ${p.patient_id}, ${p.name}, ${p.age}, ${p.total_amount}, ${p.last_date}, ${p.doctor}, ${p.gender},
-                    ${p.phone_number}, ${meds}, ${notes},
-                    ${p.patient_type}, ${p.share}, ${teeth}, ${treatments}, ${paymentsJson}
-                )
-                ON CONFLICT (patient_id) DO NOTHING
-            `;
-        });
-        
-        await Promise.all(insertPromises);
-        
-        return NextResponse.json({ message: `Imported ${insertPromises.length} unique patients` });
-    } catch (e: any) {
-        console.error(e);
-        return NextResponse.json({ error: 'Import failed', details: e?.toString() || 'Unknown error' }, { status: 500 });
+        const result = await importPatientsFromCSV(CSV_DATA, clinicId);
+        return NextResponse.json(result);
+    } catch (error: any) {
+        console.error('Import error:', error);
+        return NextResponse.json({ error: 'Failed to import patients', details: error.message }, { status: 500 });
     }
 }

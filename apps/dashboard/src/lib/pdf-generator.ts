@@ -39,13 +39,13 @@ export const generatePrescriptionPDF = (patient: Patient, clinic: ClinicInfo, vi
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
   doc.text(`Name: ${patient.name}`, 15, 52);
-  doc.text(`Age/Gender: ${patient.age}Y / ${patient.gender}`, 15, 58);
+  doc.text(`Age/Gender: ${patient.age || 'N/A'}Y / ${patient.gender || 'N/A'}`, 15, 58);
   doc.text(`Patient ID: ${patient.patient_id}`, 15, 64);
   
-  const date = visit?.date || patient.date;
-  const doctor = visit?.doctor || patient.doctor || clinic.owner_name || 'N/A';
+  const dateStr = visit?.date || new Date().toISOString().split('T')[0];
+  const doctor = visit?.doctor || clinic.owner_name || 'N/A';
   
-  doc.text(`Date: ${new Date(date).toLocaleDateString()}`, pageWidth - 15, 52, { align: 'right' });
+  doc.text(`Date: ${new Date(dateStr).toLocaleDateString()}`, pageWidth - 15, 52, { align: 'right' });
   doc.text(`Doctor: ${doctor}`, pageWidth - 15, 58, { align: 'right' });
 
   if (visit?.tooth_number) {
@@ -86,14 +86,14 @@ export const generatePrescriptionPDF = (patient: Patient, clinic: ClinicInfo, vi
   doc.setTextColor(17, 24, 39);
   doc.text('PRESCRIPTION', 15, 115);
 
-  const medicineStr = visit?.medicine_prescribed || patient.medicine_prescribed;
-  const medicines = medicineStr ? medicineStr.split('\n').filter(m => m.trim()) : [];
+  const medicineStr = visit?.medicine_prescribed;
+  const medicines = medicineStr ? medicineStr.split('\n').filter((m: string) => m.trim()) : [];
   
   if (medicines.length > 0) {
     (doc as any).autoTable({
       startY: 120,
       head: [['#', 'Medicine & Dosage']],
-      body: medicines.map((m, i) => [i + 1, m]),
+      body: medicines.map((m: string, i: number) => [i + 1, m]),
       theme: 'striped',
       headStyles: { fillColor: [37, 99, 235], textColor: [255, 255, 255] },
       styles: { fontSize: 10, cellPadding: 5 },
@@ -107,7 +107,7 @@ export const generatePrescriptionPDF = (patient: Patient, clinic: ClinicInfo, vi
 
   // Notes Section
   const finalY = (doc as any).lastAutoTable?.finalY || 135;
-  const notesStr = visit?.notes || patient.notes;
+  const notesStr = visit?.notes;
   if (notesStr) {
     doc.setFontSize(12);
     doc.setTextColor(17, 24, 39);
@@ -132,6 +132,6 @@ export const generatePrescriptionPDF = (patient: Patient, clinic: ClinicInfo, vi
   doc.text('Please follow the instructions carefully. Follow-up as advised.', pageWidth / 2, pageHeight - 15, { align: 'center' });
 
   // Save the PDF
-  const fileName = `Prescription_${patient.name.replace(/\s+/g, '_')}_${visit?.date || patient.date}.pdf`;
+  const fileName = `Prescription_${patient.name.replace(/\s+/g, '_')}_${dateStr}.pdf`;
   doc.save(fileName);
 };

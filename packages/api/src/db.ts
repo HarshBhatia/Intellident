@@ -1,5 +1,6 @@
 import { neon } from '@netlify/neon';
 import { PGlite } from '@electric-sql/pglite';
+import path from 'path';
 
 let pgliteInstance: any = null;
 
@@ -9,14 +10,15 @@ export function getDb() {
   // Use Neon for Cloud (Dev/Prod)
   if (url) {
     console.log('🐘 Using Neon Database (Remote)');
-    return neon(url);
+    return neon(url.toString());
   }
 
   // Use PGlite for Local Development
   if (process.env.NODE_ENV !== 'production') {
     if (!pgliteInstance) {
       console.log('📦 Initializing Local PGlite Database (.pgdata)');
-      pgliteInstance = new PGlite('./.pgdata');
+      const dbPath = path.resolve(process.cwd(), '.pgdata');
+      pgliteInstance = new PGlite(dbPath);
     }
 
     // Create a shim that matches Neon's tagged template literal API

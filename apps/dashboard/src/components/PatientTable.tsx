@@ -6,9 +6,10 @@ import { useState, useMemo, useEffect } from 'react';
 
 interface PatientTableProps {
   patients: Patient[];
+  onAddClick?: () => void;
 }
 
-type SortKey = 'name' | 'age' | 'amount' | 'date';
+type SortKey = 'name' | 'age' | 'last_visit';
 type SortDirection = 'asc' | 'desc';
 
 interface MessageModalProps {
@@ -20,14 +21,13 @@ interface MessageModalProps {
 }
 
 function MessageModal({ patient, clinicName, googleMapsLink, onClose, initialType }: MessageModalProps) {
-  const [selectedTemplate, setSelectedTemplate] = useState<'reminder' | 'review' | 'payment'>('reminder');
+  const [selectedTemplate, setSelectedTemplate] = useState<'reminder' | 'review'>('reminder');
   const [messageType, setMessageType] = useState<'whatsapp' | 'sms'>(initialType);
   const [customMessage, setCustomMessage] = useState('');
   
   const templates = useMemo(() => ({
     reminder: `Hi ${patient.name}, this is a reminder regarding your visit to ${clinicName || 'our clinic'}.`,
-    review: `Hi ${patient.name}, we hope you had a great experience at ${clinicName || 'our clinic'}. We would love it if you could leave us a review on Google: ${googleMapsLink}`,
-    payment: `Hi ${patient.name}, a payment of ₹${patient.amount.toLocaleString()} is pending for your recent treatment at ${clinicName || 'our clinic'}. You can pay via UPI or cash.`
+    review: `Hi ${patient.name}, we hope you had a great experience at ${clinicName || 'our clinic'}. We would love it if you could leave us a review on Google: ${googleMapsLink}`
   }), [patient, clinicName, googleMapsLink]);
 
   useEffect(() => {
@@ -75,8 +75,8 @@ function MessageModal({ patient, clinicName, googleMapsLink, onClose, initialTyp
 
           <div className="flex flex-col gap-2">
             <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Select Template</label>
-            <div className="grid grid-cols-3 gap-2">
-              {(['reminder', 'review', 'payment'] as const).map(t => (
+            <div className="grid grid-cols-2 gap-2">
+              {(['reminder', 'review'] as const).map(t => (
                 <button 
                   key={t}
                   onClick={() => setSelectedTemplate(t)}
@@ -110,8 +110,8 @@ function MessageModal({ patient, clinicName, googleMapsLink, onClose, initialTyp
 export default function PatientTable({ patients }: PatientTableProps) {
   const router = useRouter();
   const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: SortDirection }>({
-    key: 'date',
-    direction: 'desc'
+    key: 'name',
+    direction: 'asc'
   });
 
   const searchParams = useSearchParams();
@@ -164,9 +164,15 @@ export default function PatientTable({ patients }: PatientTableProps) {
       let bValue: any = b[sortConfig.key];
 
       // Handle numeric conversions
-      if (sortConfig.key === 'amount' || sortConfig.key === 'age') {
+      if (sortConfig.key === 'age') {
         aValue = Number(aValue) || 0;
         bValue = Number(bValue) || 0;
+      }
+
+      // Handle date sorting for last_visit
+      if (sortConfig.key === 'last_visit') {
+        aValue = aValue ? new Date(aValue).getTime() : 0;
+        bValue = bValue ? new Date(bValue).getTime() : 0;
       }
       
       // Handle string comparisons with natural sort order for IDs
@@ -218,16 +224,7 @@ export default function PatientTable({ patients }: PatientTableProps) {
               <Header label="Age" column="age" />
               <th className="px-6 py-3 border-b dark:border-gray-800">Gender</th>
               <th className="px-6 py-3 border-b dark:border-gray-800">Phone</th>
-              <Header label="Date" column="date" />
-              <th className="px-6 py-3 border-b dark:border-gray-800">Doctor</th>
-              <th 
-                className="px-6 py-3 border-b dark:border-gray-800 text-right cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
-                onClick={() => handleSort('amount')}
-              >
-                <div className="flex items-center justify-end">
-                   Amount <SortIcon column="amount" />
-                </div>
-              </th>
+              <Header label="Last Visit" column="last_visit" />
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
@@ -292,19 +289,36 @@ export default function PatientTable({ patients }: PatientTableProps) {
                    })()}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">{patient.phone_number || '-'}</td>
-                <td className="px-6 py-4 whitespace-nowrap">{patient.date}</td>
-                <td className="px-6 py-4 whitespace-nowrap capitalize">{patient.doctor || '-'}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-right font-semibold text-gray-900 dark:text-gray-100 font-mono">
-                  ₹{Math.round(Number(patient.amount)).toLocaleString()}
+                <td className="px-6 py-4 whitespace-nowrap">
+                  {patient.last_visit ? (
+                    <span className="font-medium text-gray-900 dark:text-gray-100">
+                      {new Date(patient.last_visit).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </span>
+                  ) : (
+                    <span className="text-gray-400 italic text-xs">No visits</span>
+                  )}
                 </td>
               </tr>
             ))}
             {paginatedPatients.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-6 py-12 text-center text-gray-400 dark:text-gray-600">
-                  <div className="flex flex-col items-center gap-2">
-                    <svg className="w-8 h-8 text-gray-300 dark:text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
-                    <p>No patients found.</p>
+                <td colSpan={5} className="px-6 py-16 text-center text-gray-400 dark:text-gray-600">
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-full">
+                        <svg className="w-10 h-10 text-gray-300 dark:text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                    </div>
+                    <div>
+                        <p className="font-bold text-gray-900 dark:text-white">No patients found.</p>
+                        <p className="text-sm mt-1">Get started by adding your first patient record.</p>
+                    </div>
+                    {onAddClick && (
+                        <button 
+                            onClick={onAddClick}
+                            className="mt-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-xl font-bold text-sm shadow-md transition active:scale-95"
+                        >
+                            Add Your First Patient
+                        </button>
+                    )}
                   </div>
                 </td>
               </tr>

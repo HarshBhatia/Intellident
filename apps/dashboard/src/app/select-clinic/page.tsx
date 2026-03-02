@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useUser, SignOutButton } from '@clerk/nextjs';
+import { SignOutButton } from '@clerk/nextjs';
 import Skeleton from '@/components/Skeleton';
+import { useAuth } from '@/hooks/useAuth';
 
 interface Clinic {
   id: number;
@@ -13,7 +14,7 @@ interface Clinic {
 
 export default function SelectClinicPage() {
   const router = useRouter();
-  const { user, isLoaded } = useUser();
+  const { user, isLoaded } = useAuth();
   const [clinics, setClinics] = useState<Clinic[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -25,7 +26,9 @@ export default function SelectClinicPage() {
     fetch('/api/clinics')
       .then(res => res.json())
       .then(data => {
-        setClinics(data);
+        if (Array.isArray(data)) {
+            setClinics(data);
+        }
         setLoading(false);
       });
   }, [isLoaded, user]);

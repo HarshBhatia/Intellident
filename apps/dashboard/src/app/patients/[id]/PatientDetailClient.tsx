@@ -128,6 +128,13 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
 
   const handleSaveVisit = async () => {
     if (!patient || !patient.id) return;
+    
+    // Future date validation
+    if (newVisit.date && new Date(newVisit.date) > new Date()) {
+        showToast('Visit date cannot be in the future', 'error');
+        return;
+    }
+
     try {
         const method = editingVisitId ? 'PUT' : 'POST';
         const body = { 
@@ -145,7 +152,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
         
         if (res.ok) {
             const savedVisit = await res.json();
-            showToast(editingVisitId ? 'Visit updated' : 'Visit recorded', 'success');
+            showToast(editingVisitId ? 'Visit updated successfully!' : 'New visit recorded!', 'success');
             setShowVisitForm(false);
             setEditingVisitId(null);
             setActiveVisitId(savedVisit.id);
@@ -164,7 +171,8 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                 notes: ''
             });
         } else {
-            showToast('Failed to save visit', 'error');
+            const errorData = await res.json();
+            showToast(errorData.error || 'Failed to save visit', 'error');
         }
     } catch {
         showToast('Error', 'error');
@@ -172,6 +180,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
   };
 
   const handleEditVisit = (visit: Visit) => {
+    if (!visit.id) return;
     setEditingVisitId(visit.id);
     setNewVisit({
         date: visit.date,
@@ -207,14 +216,17 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
 
   const handleXRayUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !patient || !patientId) return;
+    if (!file || !patient || !patientId || !activeVisitId) return;
+
+    const activeVisit = patient.visits?.find(v => v.id === activeVisitId);
+    if (!activeVisit) return;
 
     try {
       setUploadingXRay(true);
       const url = await uploadImage(file);
       if (!url) throw new Error('Upload failed');
 
-      const existingXRays: XRay[] = patient.xrays ? JSON.parse(patient.xrays) : [];
+      const existingXRays: XRay[] = activeVisit.xrays ? JSON.parse(activeVisit.xrays) : [];
       const newXRay: XRay = {
         url,
         name: file.name,
@@ -223,18 +235,18 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
 
       const updatedXRays = [...existingXRays, newXRay];
       
-      // Update DB
-      const res = await fetch(`/api/patients/${patientId}`, {
+      // Update Visit in DB
+      const res = await fetch('/api/visits', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...patient, xrays: JSON.stringify(updatedXRays) })
+        body: JSON.stringify({ ...activeVisit, xrays: JSON.stringify(updatedXRays) })
       });
 
       if (res.ok) {
         showToast('X-Ray uploaded', 'success');
         fetchPatient();
       } else {
-        showToast('Failed to update patient records', 'error');
+        showToast('Failed to update visit records', 'error');
       }
     } catch (err) {
       console.error(err);
@@ -245,16 +257,19 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
   };
 
   const handleDeleteXRay = async (index: number) => {
-    if (!patient || !patientId || !confirm('Delete this X-Ray?')) return;
+    if (!patient || !patientId || !activeVisitId || !confirm('Delete this X-Ray?')) return;
+
+    const activeVisit = patient.visits?.find(v => v.id === activeVisitId);
+    if (!activeVisit) return;
 
     try {
-      const existingXRays: XRay[] = patient.xrays ? JSON.parse(patient.xrays) : [];
+      const existingXRays: XRay[] = activeVisit.xrays ? JSON.parse(activeVisit.xrays) : [];
       const updatedXRays = existingXRays.filter((_, i) => i !== index);
 
-      const res = await fetch(`/api/patients/${patientId}`, {
+      const res = await fetch('/api/visits', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...patient, xrays: JSON.stringify(updatedXRays) })
+        body: JSON.stringify({ ...activeVisit, xrays: JSON.stringify(updatedXRays) })
       });
 
       if (res.ok) {
@@ -321,9 +336,9 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                     {(() => {
                         const totalPaid = patient.visits?.reduce((sum, v) => sum + Number(v.paid || v.cost || 0), 0) || 0;
                         return (
-                            <div className="flex justify-between items-center bg-green-50 dark:bg-green-900/10 p-3 rounded-lg border border-green-100 dark:border-green-900/30">
-                                <span className="text-gray-500 font-medium">Total Amount Paid</span>
-                                <span className="text-xl font-black text-green-600">₹{totalPaid.toLocaleString()}</span>
+                            <div className="flex justify-between items-center">
+                                <span className="text-gray-500">Total Collected</span>
+                                <span className="font-bold text-gray-900 dark:text-white text-lg font-mono">₹{totalPaid.toLocaleString()}</span>
                             </div>
                         );
                     })()}
@@ -334,7 +349,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest">X-Rays & Records</h2>
                     <label className="cursor-pointer text-blue-600 hover:text-blue-700 transition">
-                        <input type="file" className="hidden" accept="image/*" onChange={handleXRayUpload} disabled={uploadingXRay} />
+                        <input type="file" className="hidden" accept="image/*" onChange={handleXRayUpload} disabled={uploadingXRay || !activeVisitId} />
                         {uploadingXRay ? (
                             <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" /></svg>
                         ) : (
@@ -344,7 +359,8 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                 </div>
                 <div className="grid grid-cols-4 gap-2">
                     {(() => {
-                        const xrays: XRay[] = patient.xrays ? JSON.parse(patient.xrays) : [];
+                        const activeVisit = patient.visits?.find(v => v.id === activeVisitId);
+                        const xrays: XRay[] = activeVisit?.xrays ? JSON.parse(activeVisit.xrays) : [];
                         return xrays.map((x, i) => (
                             <div key={i} className="relative group aspect-square">
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -364,7 +380,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                             </div>
                         ));
                     })()}
-                    {(!patient.xrays || JSON.parse(patient.xrays).length === 0) && (
+                    {(!patient.visits?.find(v => v.id === activeVisitId)?.xrays || JSON.parse(patient.visits?.find(v => v.id === activeVisitId)?.xrays || '[]').length === 0) && (
                         <div className="col-span-4 py-4 text-center text-[10px] text-gray-400 border border-dashed rounded border-gray-200 dark:border-gray-800">
                             No records attached
                         </div>
@@ -391,8 +407,10 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                             key={visit.id}
                             type="button"
                             onClick={() => {
-                                setActiveVisitId(visit.id);
-                                setShowVisitForm(false);
+                                if (visit.id) {
+                                    setActiveVisitId(visit.id);
+                                    setShowVisitForm(false);
+                                }
                             }}
                             className={`px-4 py-2 text-xs font-bold whitespace-nowrap rounded-lg transition-all ${
                                 activeVisitId === visit.id && !showVisitForm
@@ -447,7 +465,13 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                         <div className="grid grid-cols-2 gap-4 mb-4">
                             <div>
                                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Date</label>
-                                <input type="date" value={newVisit.date || ''} onChange={e => setNewVisit({...newVisit, date: e.target.value})} className="w-full p-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm" />
+                                <input 
+                                    type="date" 
+                                    value={newVisit.date || ''} 
+                                    max={new Date().toISOString().split('T')[0]}
+                                    onChange={e => setNewVisit({...newVisit, date: e.target.value})} 
+                                    className="w-full p-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm" 
+                                />
                             </div>
                             <div>
                                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Doctor</label>
@@ -546,15 +570,16 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                                 </button>
                                 <button 
                                     type="button"
-                                    onClick={() => generatePrescriptionPDF(patient, clinicInfo, visit)}
+                                    onClick={() => clinicInfo && generatePrescriptionPDF(patient, clinicInfo, visit)}
                                     className="bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 px-4 py-2 rounded-lg font-bold text-xs uppercase flex items-center gap-2 transition"
+                                    disabled={!clinicInfo}
                                 >
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
                                     Prescription
                                 </button>
                                 <button 
                                     type="button"
-                                    onClick={() => handleDeleteVisit(visit.id)}
+                                    onClick={() => visit.id && handleDeleteVisit(visit.id)}
                                     className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-2 rounded-lg transition"
                                     title="Delete Visit"
                                 >

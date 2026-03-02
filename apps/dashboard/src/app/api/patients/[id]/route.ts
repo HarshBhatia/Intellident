@@ -1,97 +1,76 @@
 import { NextResponse } from 'next/server';
-import { getDb } from '@intellident/api';
-import { auth } from '@clerk/nextjs/server';
-import { getClinicId } from '@/lib/auth';
+import { getClinicId, getAuthContext, verifyMembership } from '@/lib/auth';
+import { getPatientByIdWithVisits, updatePatient, deletePatient } from '@/services/patient.service';
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   try {
-    const { userId } = await auth();
+    const { userId, userEmail } = await getAuthContext();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     
     const clinicId = await getClinicId();
     if (!clinicId) return NextResponse.json({ error: 'No clinic selected' }, { status: 400 });
 
-    const sql = getDb();
-    const rows = await sql`SELECT * FROM patients WHERE patient_id = ${id} AND clinic_id = ${clinicId}`;
-    if (rows.length === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    if (!userEmail || !(await verifyMembership(clinicId, userEmail))) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const patient = await getPatientByIdWithVisits(clinicId, id);
+    if (!patient) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     
-    const patient = rows[0];
-    
-    // Fetch visits history
-    const visits = await sql`
-      SELECT * FROM visits 
-      WHERE patient_id = ${patient.id} 
-      AND clinic_id = ${clinicId}
-      ORDER BY date DESC, created_at DESC
-    `;
-    
-    return NextResponse.json({ ...patient, visits });
+    return NextResponse.json(patient);
   } catch (error: any) {
     console.error('Error in GET /api/patients/[id]:', error);
-    return NextResponse.json({ error: 'Failed' }, { status: 500 });
+    return NextResponse.json({ error: error.message || 'Failed to fetch patient' }, { status: 500 });
   }
 }
 
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   try {
-    const { userId } = await auth();
+    const { userId, userEmail } = await getAuthContext();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     
     const clinicId = await getClinicId();
     if (!clinicId) return NextResponse.json({ error: 'No clinic selected' }, { status: 400 });
 
-    const body = await request.json();
-    const sql = getDb();
-    
-    // Explicitly update all columns
-    const { name, age, amount, date, doctor, gender, mode_of_payment, paid_for, phone_number, medicine_prescribed, notes, patient_type, share, tooth_number, treatment_done, xrays, payments } = body;
+    if (!userEmail || !(await verifyMembership(clinicId, userEmail))) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
-    const result = await sql`
-      UPDATE patients SET
-        name = ${name},
-        age = ${age},
-        amount = ${amount},
-        date = ${date},
-        doctor = ${doctor},
-        gender = ${gender},
-        mode_of_payment = ${mode_of_payment},
-        paid_for = ${paid_for},
-        phone_number = ${phone_number},
-        medicine_prescribed = ${medicine_prescribed},
-        notes = ${notes},
-        patient_type = ${patient_type},
-        share = ${share},
-        tooth_number = ${tooth_number},
-        treatment_done = ${treatment_done},
-        xrays = ${xrays},
-        payments = ${payments}
-      WHERE patient_id = ${id} AND clinic_id = ${clinicId}
-      RETURNING *
-    `;
+    const body = await request.json();
+    const updatedPatient = await updatePatient(clinicId, id, body);
     
-    return NextResponse.json(result[0]);
-  } catch (error) {
+    return NextResponse.json(updatedPatient);
+  } catch (error: any) {
     console.error('Error in PUT /api/patients/[id]:', error);
-    return NextResponse.json({ error: 'Failed' }, { status: 500 });
+    if (error.message === 'Patient not found') {
+      return NextResponse.json({ error: 'Patient not found' }, { status: 404 });
+    }
+    return NextResponse.json({ error: error.message || 'Failed to update patient' }, { status: 500 });
   }
 }
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   try {
-    const { userId } = await auth();
+    const { userId, userEmail } = await getAuthContext();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     
     const clinicId = await getClinicId();
     if (!clinicId) return NextResponse.json({ error: 'No clinic selected' }, { status: 400 });
 
-    const sql = getDb();
-    await sql`DELETE FROM patients WHERE patient_id = ${id} AND clinic_id = ${clinicId}`;
+    if (!userEmail || !(await verifyMembership(clinicId, userEmail))) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    await deletePatient(clinicId, id);
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in DELETE /api/patients/[id]:', error);
-    return NextResponse.json({ error: 'Failed' }, { status: 500 });
+    if (error.message === 'Patient not found') {
+      return NextResponse.json({ error: 'Patient not found' }, { status: 404 });
+    }
+    return NextResponse.json({ error: error.message || 'Failed to delete patient' }, { status: 500 });
   }
 }

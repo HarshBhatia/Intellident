@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useToast } from '@/components/ToastProvider';
 import Navbar from '@/components/Navbar';
 
@@ -283,7 +283,18 @@ import ManageMembers from './ManageMembers';
 
 export default function SettingsClient() {
   const router = useRouter();
-  const [activeSection, setActiveSection] = useState<'profile' | 'members' | 'treatments' | 'doctors' | 'expenses' | 'export'>('profile');
+  const searchParams = useSearchParams();
+  const [activeSection, setActiveSection] = useState<'profile' | 'members' | 'treatments' | 'doctors' | 'expenses' | 'export'>(
+    (searchParams.get('tab') as any) || 'profile'
+  );
+
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (params.get('tab') !== activeSection) {
+        params.set('tab', activeSection);
+        router.replace(`?${params.toString()}`, { scroll: false });
+    }
+  }, [activeSection, router, searchParams]);
 
   const menuItems = [
       { id: 'profile', label: 'Clinic Profile', icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H5a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg> },

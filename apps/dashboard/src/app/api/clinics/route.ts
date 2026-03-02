@@ -1,60 +1,43 @@
 import { NextResponse } from 'next/server';
-import { getDb } from '@intellident/api';
-import { auth, currentUser } from '@clerk/nextjs/server';
+import { getClinics, createClinic } from '@/services/clinic.service'; // Import the new service
+import { getAuthContext } from '@/lib/auth';
 
 export async function GET() {
   try {
-    const { userId } = await auth();
+    const { userId, userEmail } = await getAuthContext();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     
-    const user = await currentUser();
-    const userEmail = user?.emailAddresses[0]?.emailAddress;
+    if (!userEmail) return NextResponse.json({ error: 'User email not found' }, { status: 400 });
 
-    const sql = getDb();
-    const clinics = await sql`
-      SELECT c.id, c.name, cm.role 
-      FROM clinics c
-      JOIN clinic_members cm ON c.id = cm.clinic_id
-      WHERE cm.user_email = ${userEmail}
-      ORDER BY c.created_at DESC
-    `;
+    const clinics = await getClinics(userEmail);
     
     return NextResponse.json(clinics);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Fetch clinics error:', error);
-    return NextResponse.json({ error: 'Failed to fetch clinics' }, { status: 500 });
+    return NextResponse.json({ error: error.message || 'Failed to fetch clinics' }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
   try {
-    const { userId } = await auth();
+    const { userId, userEmail } = await getAuthContext();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     
-    const user = await currentUser();
-    const userEmail = user?.emailAddresses[0]?.emailAddress;
+    if (!userEmail) return NextResponse.json({ error: 'User email not found' }, { status: 400 });
+
     const body = await request.json();
     const { name } = body;
 
-    const sql = getDb();
-    
-    // 1. Create Clinic
-    const newClinic = await sql`
-      INSERT INTO clinics (name, owner_email) 
-      VALUES (${name}, ${userEmail}) 
-      RETURNING id, name
-    `;
-    const clinicId = newClinic[0].id;
+    if (!name) return NextResponse.json({ error: 'Clinic name is required' }, { status: 400 });
 
-    // 2. Add Member as Owner
-    await sql`
-      INSERT INTO clinic_members (clinic_id, user_email, role)
-      VALUES (${clinicId}, ${userEmail}, 'OWNER')
-    `;
+    const newClinic = await createClinic(name, userEmail);
 
-    return NextResponse.json({ id: clinicId, name: newClinic[0].name, role: 'OWNER' });
-  } catch (error) {
-    console.error(error);
+    return NextResponse.json(newClinic);
+  } catch (error: any) {
+    console.error('Create clinic error:', error);
+    if (error.message === 'Clinic name is required' || error.message === 'User email is required') {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     return NextResponse.json({ error: 'Failed to create clinic' }, { status: 500 });
   }
 }

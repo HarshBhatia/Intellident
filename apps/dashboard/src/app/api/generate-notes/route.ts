@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
@@ -21,15 +21,15 @@ export async function POST(request: Request) {
       generationConfig: { 
         responseMimeType: "application/json",
         responseSchema: {
-          type: "object",
+          type: SchemaType.OBJECT,
           properties: {
             symptoms: {
-              type: "array",
-              items: { type: "string" }
+              type: SchemaType.ARRAY,
+              items: { type: SchemaType.STRING }
             },
-            diagnosis: { type: "string" },
-            treatment_plan: { type: "string" },
-            notes: { type: "string" }
+            diagnosis: { type: SchemaType.STRING },
+            treatment_plan: { type: SchemaType.STRING },
+            notes: { type: SchemaType.STRING }
           },
           required: ["symptoms", "diagnosis", "treatment_plan", "notes"]
         }

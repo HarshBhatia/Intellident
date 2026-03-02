@@ -1,158 +1,114 @@
 import { NextResponse } from 'next/server';
-import { getDb } from '@intellident/api';
-import { auth } from '@clerk/nextjs/server';
-import { getClinicId } from '@/lib/auth';
+import { getClinicId, getAuthContext, verifyMembership } from '@/lib/auth';
+import { getVisits, createVisit, deleteVisit, updateVisit } from '@/services/visit.service'; // Import the new service
 
 export async function GET(request: Request) {
   try {
-    const { userId } = await auth();
+    const { userId, userEmail } = await getAuthContext();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     
     const clinicId = await getClinicId();
     if (!clinicId) return NextResponse.json({ error: 'No clinic selected' }, { status: 400 });
 
+    if (!userEmail || !(await verifyMembership(clinicId, userEmail))) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const { searchParams } = new URL(request.url);
     const patientId = searchParams.get('patientId');
 
-    const sql = getDb();
-    
-    let query;
-    if (patientId) {
-      // Fetch visits for a specific patient (Timeline)
-      query = sql`
-        SELECT * FROM visits 
-        WHERE clinic_id = ${clinicId} AND patient_id = ${patientId}
-        ORDER BY date DESC, created_at DESC
-      `;
-    } else {
-      // Fetch recent visits for the dashboard
-      query = sql`
-        SELECT v.*, p.name as patient_name, p.patient_id as patient_readable_id
-        FROM visits v
-        JOIN patients p ON v.patient_id = p.id
-        WHERE v.clinic_id = ${clinicId}
-        ORDER BY v.date DESC, v.created_at DESC
-        LIMIT 50
-      `;
-    }
-
-    const rows = await query;
-    return NextResponse.json(rows);
-  } catch (error) {
+    const visits = await getVisits(clinicId, patientId || undefined);
+    return NextResponse.json(visits);
+  } catch (error: any) {
     console.error('Fetch visits error:', error);
-    return NextResponse.json({ error: 'Failed to fetch visits' }, { status: 500 });
+    return NextResponse.json({ error: error.message || 'Failed to fetch visits' }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
   try {
-    const { userId } = await auth();
+    const { userId, userEmail } = await getAuthContext();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     
     const clinicId = await getClinicId();
     if (!clinicId) return NextResponse.json({ error: 'No clinic selected' }, { status: 400 });
 
-    const body = await request.json();
-    const { 
-      patient_id, date, doctor, visit_type, symptoms, diagnosis, 
-      treatment_plan, treatment_done, tooth_number, 
-      medicine_prescribed, notes, cost, paid 
-    } = body;
-
-    const sql = getDb();
-    
-    // Verify patient belongs to clinic
-    const patientCheck = await sql`SELECT id FROM patients WHERE id = ${patient_id} AND clinic_id = ${clinicId}`;
-    if (patientCheck.length === 0) {
-      return NextResponse.json({ error: 'Patient not found' }, { status: 404 });
+    if (!userEmail || !(await verifyMembership(clinicId, userEmail))) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const result = await sql`
-      INSERT INTO visits (
-        clinic_id, patient_id, date, doctor, visit_type,
-        symptoms, diagnosis, treatment_plan, treatment_done, 
-        tooth_number, medicine_prescribed, notes, cost, paid
-      ) VALUES (
-        ${clinicId}, ${patient_id}, ${date}, ${doctor}, ${visit_type || 'Consultation'},
-        ${symptoms}, ${diagnosis}, ${treatment_plan}, ${treatment_done}, 
-        ${tooth_number}, ${medicine_prescribed}, ${notes}, ${cost || 0}, ${paid || 0}
-      )
-      RETURNING *
-    `;
+    const body = await request.json();
+    const newVisit = await createVisit(clinicId, body);
 
-    return NextResponse.json(result[0]);
-  } catch (error) {
+    return NextResponse.json(newVisit);
+  } catch (error: any) {
     console.error('Create visit error:', error);
-    return NextResponse.json({ error: 'Failed to create visit' }, { status: 500 });
+    if (error.message === 'Patient not found') {
+      return NextResponse.json({ error: 'Patient not found' }, { status: 404 });
+    }
+    if (error.message === 'Patient ID is required' || error.message === 'Visit date is required' || error.message === 'Clinic ID is required' || error.message === 'Visit date cannot be in the future') {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+    return NextResponse.json({ error: error.message || 'Failed to create visit' }, { status: 500 });
   }
 }
 
 export async function DELETE(request: Request) {
   try {
-    const { userId } = await auth();
+    const { userId, userEmail } = await getAuthContext();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     
     const clinicId = await getClinicId();
     if (!clinicId) return NextResponse.json({ error: 'No clinic selected' }, { status: 400 });
 
+    if (!userEmail || !(await verifyMembership(clinicId, userEmail))) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
-    if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+    if (!id) return NextResponse.json({ error: 'Visit ID is required' }, { status: 400 });
 
-    const sql = getDb();
-    await sql`DELETE FROM visits WHERE id = ${id} AND clinic_id = ${clinicId}`;
+    await deleteVisit(clinicId, id);
     
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Delete visit error:', error);
-    return NextResponse.json({ error: 'Failed to delete visit' }, { status: 500 });
+    if (error.message === 'Visit not found') {
+      return NextResponse.json({ error: 'Visit not found' }, { status: 404 });
+    }
+    if (error.message === 'Visit ID is required' || error.message === 'Clinic ID is required') {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+    return NextResponse.json({ error: error.message || 'Failed to delete visit' }, { status: 500 });
   }
 }
 
 export async function PUT(request: Request) {
   try {
-    const { userId } = await auth();
+    const { userId, userEmail } = await getAuthContext();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     
     const clinicId = await getClinicId();
     if (!clinicId) return NextResponse.json({ error: 'No clinic selected' }, { status: 400 });
 
-    const body = await request.json();
-    const { 
-      id, date, doctor, visit_type, symptoms, diagnosis, 
-      treatment_plan, treatment_done, tooth_number, 
-      medicine_prescribed, notes, cost, paid 
-    } = body;
-
-    if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
-
-    const sql = getDb();
-    const result = await sql`
-      UPDATE visits SET
-        date = ${date},
-        doctor = ${doctor},
-        visit_type = ${visit_type},
-        symptoms = ${symptoms},
-        diagnosis = ${diagnosis},
-        treatment_plan = ${treatment_plan},
-        treatment_done = ${treatment_done},
-        tooth_number = ${tooth_number},
-        medicine_prescribed = ${medicine_prescribed},
-        notes = ${notes},
-        cost = ${cost},
-        paid = ${paid}
-      WHERE id = ${id} AND clinic_id = ${clinicId}
-      RETURNING *
-    `;
-
-    if (result.length === 0) {
-      return NextResponse.json({ error: 'Visit not found or unauthorized' }, { status: 404 });
+    if (!userEmail || !(await verifyMembership(clinicId, userEmail))) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    return NextResponse.json(result[0]);
-  } catch (error) {
+    const body = await request.json();
+    const updatedVisit = await updateVisit(clinicId, body);
+
+    return NextResponse.json(updatedVisit);
+  } catch (error: any) {
     console.error('Update visit error:', error);
-    return NextResponse.json({ error: 'Failed to update visit' }, { status: 500 });
+    if (error.message === 'Visit not found') {
+      return NextResponse.json({ error: 'Visit not found' }, { status: 404 });
+    }
+    if (error.message === 'Visit ID is required' || error.message === 'Clinic ID is required' || error.message === 'Visit date cannot be in the future') {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+    return NextResponse.json({ error: error.message || 'Failed to update visit' }, { status: 500 });
   }
 }

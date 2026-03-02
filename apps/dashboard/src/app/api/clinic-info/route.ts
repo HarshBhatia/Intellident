@@ -1,69 +1,56 @@
 import { NextResponse } from 'next/server';
-import { getDb } from '@intellident/api';
-import { auth } from '@clerk/nextjs/server';
 import { cookies } from 'next/headers';
+import { getClinicInfo, updateClinicInfo } from '@/services/clinicInfo.service';
+import { getAuthContext, verifyMembership } from '@/lib/auth';
 
 export async function GET() {
   try {
-    const { userId } = await auth();
+    const { userId, userEmail } = await getAuthContext();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     
     const cookieStore = await cookies();
     const clinicId = cookieStore.get('clinic_id')?.value;
     if (!clinicId) return NextResponse.json({ error: 'No clinic selected' }, { status: 400 });
 
-    const sql = getDb();
-    // Fetch clinic info from clinics table (or clinic_info if we decide to keep it separate, 
-    // but in new schema clinics table has the basic info. If we kept clinic_info for extended details, we should join or fetch from there.
-    // Based on migration, we have a clinics table with name, address, phone. 
-    // Let's assume we want to return the extended info.
-    // Wait, the migration created 'clinics' table with: name, owner_email, address, phone, google_maps_link.
-    // So 'clinics' table IS the new source of truth.
+    if (!userEmail || !(await verifyMembership(clinicId, userEmail))) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const clinicInfo = await getClinicInfo(clinicId);
+    if (!clinicInfo) return NextResponse.json({ error: 'Clinic not found' }, { status: 404 });
     
-    const rows = await sql`SELECT * FROM clinics WHERE id = ${clinicId}`;
-    if (rows.length === 0) return NextResponse.json({});
-    
-    // Map to old format expected by frontend
-    const c = rows[0];
-    return NextResponse.json({
-        clinic_name: c.name,
-        owner_name: '', // We might need to fetch owner name separately or remove this requirement
-        phone: c.phone,
-        address: c.address,
-        email: c.owner_email,
-        google_maps_link: c.google_maps_link
-    });
-  } catch (error) {
-    return NextResponse.json({ error: 'Failed' }, { status: 500 });
+    return NextResponse.json(clinicInfo);
+  } catch (error: any) {
+    console.error('Fetch clinic info error:', error);
+    return NextResponse.json({ error: error.message || 'Failed to fetch clinic info' }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
   try {
-    const { userId } = await auth();
+    const { userId, userEmail } = await getAuthContext();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     
     const cookieStore = await cookies();
     const clinicId = cookieStore.get('clinic_id')?.value;
     if (!clinicId) return NextResponse.json({ error: 'No clinic selected' }, { status: 400 });
 
+    if (!userEmail || !(await verifyMembership(clinicId, userEmail))) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const body = await request.json();
-    const { clinic_name, phone, address, google_maps_link } = body;
-    const sql = getDb();
+    const updatedClinicInfo = await updateClinicInfo(clinicId, body);
     
-    const result = await sql`
-      UPDATE clinics SET
-        name = ${clinic_name},
-        phone = ${phone},
-        address = ${address},
-        google_maps_link = ${google_maps_link}
-      WHERE id = ${clinicId}
-      RETURNING *
-    `;
-    
-    return NextResponse.json(result[0]);
-  } catch (error) {
-    console.error(error);
-    return NextResponse.json({ error: 'Failed' }, { status: 500 });
+    return NextResponse.json(updatedClinicInfo);
+  } catch (error: any) {
+    console.error('Update clinic info error:', error);
+    if (error.message === 'Clinic not found') {
+      return NextResponse.json({ error: 'Clinic not found' }, { status: 404 });
+    }
+    if (error.message === 'Clinic ID is required') {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+    return NextResponse.json({ error: error.message || 'Failed to update clinic info' }, { status: 500 });
   }
 }

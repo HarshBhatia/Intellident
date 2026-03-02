@@ -70,6 +70,11 @@ export default function ExpensesClient() {
     e.preventDefault();
     if (!form.amount || !form.category) return;
 
+    if (form.date && new Date(form.date) > new Date()) {
+        showToast('Expense date cannot be in the future', 'error');
+        return;
+    }
+
     try {
       const res = await fetch('/api/expenses', {
         method: 'POST',
@@ -100,6 +105,7 @@ export default function ExpensesClient() {
   };
 
   const total = filteredExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
+  const isFormValid = form.amount && form.category && form.date;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 font-sans text-gray-900 dark:text-gray-100 transition-colors pb-12">
@@ -114,24 +120,36 @@ export default function ExpensesClient() {
                 <form onSubmit={handleAdd} className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
                     <div>
                         <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1 tracking-widest">Date</label>
-                        <input type="date" value={form.date} onChange={e => setForm({...form, date: e.target.value})} className="w-full p-2 border dark:border-gray-700 rounded-md text-sm outline-none bg-gray-50 dark:bg-gray-800 focus:bg-white dark:focus:bg-gray-700 transition" />
+                        <input 
+                            type="date" 
+                            value={form.date} 
+                            max={new Date().toISOString().split('T')[0]}
+                            onChange={e => setForm({...form, date: e.target.value})} 
+                            className="w-full p-2 border dark:border-gray-700 rounded-md text-sm outline-none bg-gray-50 dark:bg-gray-800 focus:bg-white dark:focus:bg-gray-700 transition" 
+                        />
                     </div>
                     <div>
                         <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1 tracking-widest">Category</label>
-                        <select value={form.category} onChange={e => setForm({...form, category: e.target.value})} className="w-full p-2 border dark:border-gray-700 rounded-md text-sm outline-none bg-gray-50 dark:bg-gray-800 focus:bg-white dark:focus:bg-gray-700 transition h-[38px] cursor-pointer" required>
+                        <select value={form.category} onChange={e => setForm({...form, category: e.target.value})} className="w-full p-2 border dark:border-gray-700 rounded-md text-sm outline-none bg-gray-50 dark:bg-gray-800 focus:bg-white dark:focus:bg-gray-700 transition h-[38px] cursor-pointer">
                             <option value="">Select Category</option>
                             {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                         </select>
                     </div>
                     <div>
                         <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1 tracking-widest">Amount (₹)</label>
-                        <input type="number" placeholder="0" value={form.amount} onChange={e => setForm({...form, amount: e.target.value})} className="w-full p-2 border dark:border-gray-700 rounded-md text-sm outline-none bg-gray-50 dark:bg-gray-800 focus:bg-white dark:focus:bg-gray-700 transition h-[38px]" required />
+                        <input type="number" placeholder="0" value={form.amount} onChange={e => setForm({...form, amount: e.target.value})} className="w-full p-2 border dark:border-gray-700 rounded-md text-sm outline-none bg-gray-50 dark:bg-gray-800 focus:bg-white dark:focus:bg-gray-700 transition h-[38px]" />
                     </div>
                     <div>
                         <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1 tracking-widest">Description</label>
                         <input type="text" placeholder="Details..." value={form.description} onChange={e => setForm({...form, description: e.target.value})} className="w-full p-2 border dark:border-gray-700 rounded-md text-sm outline-none bg-gray-50 dark:bg-gray-800 focus:bg-white dark:focus:bg-gray-700 transition h-[38px]" />
                     </div>
-                    <button type="submit" className="sm:col-span-2 bg-red-600 text-white font-bold py-2.5 rounded shadow hover:bg-red-700 transition uppercase tracking-widest text-[10px]">Add Expense Entry</button>
+                    <button 
+                        type="submit" 
+                        disabled={!isFormValid}
+                        className="sm:col-span-2 bg-red-600 text-white font-bold py-2.5 rounded shadow hover:bg-red-700 transition uppercase tracking-widest text-[10px] disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        Add Expense Entry
+                    </button>
                 </form>
             </div>
 

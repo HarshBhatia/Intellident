@@ -1,0 +1,117 @@
+import { getDb } from '@intellident/api';
+import { BillingItem } from '@intellident/api/src/types';
+
+export interface StatsResult {
+  totalRevenue: number;
+  totalExpenses: number;
+  profit: number;
+  pieData: { name: string; value: number }[];
+  monthlyTrend: { month: string; revenue: number }[];
+}
+
+const normalizeCategory = (raw: string) => {
+    const s = raw.toLowerCase().trim();
+    if (s.includes('rct') || s.includes('root canal')) return 'RCT';
+    if (s.includes('crown') || s.includes('cap') || s.includes('bridge') || s.includes('pfm') || s.includes('zirconia')) return 'Crown & Bridge';
+    if (s.includes('extraction') || s.includes('removal')) return 'Extraction';
+    if (s.includes('implant')) return 'Implant';
+    if (s.includes('scaling') || s.includes('cleaning') || s.includes('polishing')) return 'Scaling';
+    if (s.includes('filling') || s.includes('restoration') || s.includes('gic') || s.includes('composite')) return 'Restoration';
+    if (s.includes('denture') || s.includes('cd') || s.includes('rpd')) return 'Denture';
+    if (s.includes('xray') || s.includes('x-ray') || s.includes('radiograph')) return 'X-Ray';
+    if (s.includes('consultation') || s.includes('checkup') || s.includes('opd')) return 'Consultation';
+    if (s.includes('ortho') || s.includes('brace') || s.includes('wire')) return 'Orthodontics';
+    return 'Other'; // Fallback
+};
+
+export async function getClinicStats(clinicId: string, startDate: Date, endDate: Date): Promise<StatsResult> {
+  if (!clinicId) throw new Error('Clinic ID is required');
+  const sql = getDb();
+  
+  // Fetch visits data for revenue calculation
+  const visits = await sql`
+    SELECT date, paid, billing_items, treatment_done
+    FROM visits 
+    WHERE clinic_id = ${clinicId}
+  `;
+
+  // Fetch expenses data
+  const expenses = await sql`SELECT date, amount FROM expenses WHERE clinic_id = ${clinicId}`;
+
+  const categoryMap: Record<string, number> = {};
+  const monthlyMap: Record<string, number> = {}; 
+  let filteredRevenue = 0;
+  let totalExpenses = 0;
+
+  // 1. Process Revenue from Visits
+  visits.forEach((visit: any) => {
+      const visitDate = new Date(visit.date);
+      const paidAmount = Number(visit.paid) || 0;
+      
+      // Monthly trend (All history)
+      if (!isNaN(visitDate.getTime())) {
+          const monthKey = visitDate.toISOString().slice(0, 7); 
+          monthlyMap[monthKey] = (monthlyMap[monthKey] || 0) + paidAmount;
+
+          // Filtered range for categories
+          if (visitDate >= startDate && visitDate <= endDate) {
+              filteredRevenue += paidAmount;
+              
+              let items: BillingItem[] = [];
+              try {
+                if (visit.billing_items) {
+                  items = JSON.parse(visit.billing_items);
+                }
+              } catch (e) {
+                console.error('Error parsing billing_items in stats:', e);
+              }
+
+              if (items.length > 0) {
+                // If we have billing items, distribute the 'paid' amount proportionally to their costs
+                // but for now let's just use the descriptions to categorize.
+                // If multiple items, we split the paid amount.
+                const splitAmt = paidAmount / items.length;
+                items.forEach((item: any) => {
+                  const cat = normalizeCategory(item.description);
+                  categoryMap[cat] = (categoryMap[cat] || 0) + splitAmt;
+                });
+              } else {
+                const cat = normalizeCategory(visit.treatment_done || 'Other');
+                categoryMap[cat] = (categoryMap[cat] || 0) + paidAmount;
+              }
+          }
+      }
+  });
+
+  // 2. Process Expenses
+  expenses.forEach((e: any) => { 
+      const eDate = new Date(e.date);
+      if (eDate >= startDate && eDate <= endDate) {
+          totalExpenses += Number(e.amount) || 0; 
+      }
+  });
+
+  // 3. Final Formatting with Rounding
+  const pieData = Object.entries(categoryMap)
+      .map(([name, value]) => ({ name, value: Math.round(value) }))
+      .filter(item => item.value > 0)
+      .sort((a, b) => b.value - a.value);
+
+  const monthlyTrend = Object.entries(monthlyMap)
+      .sort(([a],[b])=>a.localeCompare(b))
+      .map(([k,v]) => {
+          const date = new Date(k + '-02'); 
+          return {
+              month: date.toLocaleString('default', { month: 'short', year: '2-digit' }),
+              revenue: Math.round(v)
+          };
+      });
+
+  return {
+      totalRevenue: Math.round(filteredRevenue),
+      totalExpenses: Math.round(totalExpenses),
+      profit: Math.round(filteredRevenue - totalExpenses),
+      pieData,
+      monthlyTrend
+  };
+}

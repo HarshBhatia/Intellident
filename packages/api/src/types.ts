@@ -1,7 +1,15 @@
+export interface BillingItem {
+  description: string;
+  amount: number;
+}
+
 export interface Visit {
-  id: number;
+  id?: number;
+  clinic_id: number;
+  patient_id: number;
   date: string;
-  doctor: string;
+  doctor?: string;
+  visit_type?: string;
   symptoms?: string;
   diagnosis?: string;
   treatment_plan?: string;
@@ -9,38 +17,26 @@ export interface Visit {
   tooth_number?: string;
   medicine_prescribed?: string;
   notes?: string;
-  cost: number;
-  paid: number;
+  cost?: number; // Total cost of the visit (sum of billing items)
+  paid?: number; // Amount paid for this visit
+  xrays?: string; // JSON string of XRay[]
+  share?: string; // e.g., "100%", "50%" for doctor's share
+  mode_of_payment?: string; // e.g., "Cash", "UPI", "Card"
+  billing_items?: BillingItem[]; // New field: JSON string of BillingItem[]
   created_at?: string;
-}
-
-export interface PaymentRecord {
-  id: string;
-  date: string;
-  amount: number;
-  purpose: string; // 'Paid for'
-  mode: string;
 }
 
 export interface Patient {
   id?: number;
-  patient_id: string;
+  patient_id: string; // Unique ID for the patient within a clinic (e.g., PID-001)
   name: string;
-  age: number;
-  amount: number; // Represents Total Paid now
-  date: string;
-  doctor: string;
-  gender: string;
-  mode_of_payment: string; // Deprecated, kept for backward compat or last payment mode
-  paid_for: string; // Deprecated
-  phone_number: string;
-  medicine_prescribed: string;
-  notes: string;
-  patient_type: string;
-  share: string;
-  tooth_number: string;
-  treatment_done: string;
-  xrays?: string; // JSON string of XRay[]
-  payments?: string; // JSON string of PaymentRecord[]
-  visits?: Visit[];
+  age?: number;
+  gender?: string;
+  phone_number?: string;
+  patient_type?: string; // e.g., "New", "Regular", "Emergency"
+  user_email?: string; // Associated Clerk user email if any
+  clinic_id: number;
+  created_at?: string;
+  last_visit?: string;
+  visits?: Visit[]; // Optional: for detailed patient view
 }

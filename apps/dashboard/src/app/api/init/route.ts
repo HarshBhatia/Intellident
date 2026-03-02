@@ -12,21 +12,9 @@ export async function GET() {
           patient_id TEXT NOT NULL,
           name TEXT NOT NULL,
           age INTEGER,
-          amount NUMERIC,
-          date TEXT,
-          doctor TEXT,
           gender TEXT,
-          mode_of_payment TEXT,
-          paid_for TEXT,
           phone_number TEXT,
-          medicine_prescribed TEXT,
-          notes TEXT,
-          patient_type TEXT,
-          share TEXT,
-          tooth_number TEXT,
-          treatment_done TEXT,
-          xrays TEXT,
-          payments TEXT,
+          patient_type TEXT, -- Kept here as a static characteristic
           user_email TEXT,
           clinic_id INTEGER,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -40,6 +28,16 @@ export async function GET() {
       } catch (err) { console.error('Error updating patient constraints:', err); }
       
       await sql`ALTER TABLE patients ADD COLUMN IF NOT EXISTS user_email TEXT`;
+      await sql`ALTER TABLE patients ADD COLUMN IF NOT EXISTS patient_type TEXT`;
+
+      // Drop old clinical columns from patients table if they exist
+      const patientColumnsToDrop = ['amount', 'date', 'doctor', 'mode_of_payment', 'paid_for', 'medicine_prescribed', 'notes', 'share', 'tooth_number', 'treatment_done', 'xrays', 'payments'];
+      for (const column of patientColumnsToDrop) {
+        try {
+          await sql.unsafe(`ALTER TABLE patients DROP COLUMN IF EXISTS ${column}`);
+        } catch (err) { console.log(`Note: Column ${column} not found in patients or could not be dropped.`); }
+      }
+
     } catch (e) { console.error('Error updating patients:', e); }
 
     // 2. Create/Update Other Tables
@@ -214,29 +212,54 @@ export async function GET() {
           notes TEXT,
           cost NUMERIC DEFAULT 0,
           paid NUMERIC DEFAULT 0,
+          xrays TEXT,
+          share TEXT,
+          mode_of_payment TEXT,
+          billing_items TEXT, -- New field
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
       `;
       
       await sql`ALTER TABLE visits ADD COLUMN IF NOT EXISTS visit_type TEXT DEFAULT 'Consultation'`;
+      await sql`ALTER TABLE visits ADD COLUMN IF NOT EXISTS xrays TEXT`;
+      await sql`ALTER TABLE visits ADD COLUMN IF NOT EXISTS share TEXT`;
+      await sql`ALTER TABLE visits ADD COLUMN IF NOT EXISTS mode_of_payment TEXT`;
+      
+      // Drop old paid_for column and add new billing_items column
+      await sql`ALTER TABLE visits DROP COLUMN IF EXISTS paid_for`;
+      await sql`ALTER TABLE visits ADD COLUMN IF NOT EXISTS billing_items TEXT`;
 
-      // Migrate existing clinical data to visits if visits table is empty
+
+      // Migrate existing clinical data from patients to visits if visits table is empty
       const existingVisits = await sql`SELECT COUNT(*) FROM visits`;
       if (existingVisits[0].count == 0) {
-        console.log('Migrating clinical data to visits...');
-        await sql`
-          INSERT INTO visits (
-            clinic_id, patient_id, date, doctor, 
-            treatment_done, tooth_number, medicine_prescribed, 
-            notes, cost
-          )
+        console.log('Migrating clinical data from patients to visits...');
+        // First, select existing patient data that might have been a "visit"
+        const patientsWithVisitData = await sql`
           SELECT 
-            clinic_id, id, date, doctor, 
+            id, clinic_id, date, doctor, 
             treatment_done, tooth_number, medicine_prescribed, 
-            notes, amount
+            notes, amount, xrays, share, mode_of_payment, paid_for
           FROM patients
-          WHERE clinic_id IS NOT NULL;
+          WHERE clinic_id IS NOT NULL 
+            AND (treatment_done IS NOT NULL OR notes IS NOT NULL OR medicine_prescribed IS NOT NULL OR amount IS NOT NULL OR xrays IS NOT NULL OR paid_for IS NOT NULL);
         `;
+
+        for (const p of patientsWithVisitData) {
+          const billingItems = p.paid_for && p.amount ? JSON.stringify([{ description: p.paid_for, amount: Number(p.amount) }]) : '[]';
+          await sql`
+            INSERT INTO visits (
+              clinic_id, patient_id, date, doctor, 
+              treatment_done, tooth_number, medicine_prescribed, 
+              notes, cost, paid, xrays, share, mode_of_payment, billing_items
+            )
+            VALUES (
+              ${p.clinic_id}, ${p.id}, ${p.date}, ${p.doctor}, 
+              ${p.treatment_done}, ${p.tooth_number}, ${p.medicine_prescribed}, 
+              ${p.notes}, ${p.amount}, ${p.amount}, ${p.xrays}, ${p.share}, ${p.mode_of_payment}, ${billingItems}
+            );
+          `;
+        }
         console.log('Migration complete.');
       }
     } catch (e) { console.error('Error creating visits table:', e); }
@@ -255,9 +278,8 @@ export async function GET() {
     } catch (e) { console.error('Error creating indexes:', e); }
 
     return NextResponse.json({ message: 'Database initialized & optimized successfully' });
-
-  } catch (error) {
-    console.error('Init error:', error);
-    return NextResponse.json({ error: 'Failed to initialize database' }, { status: 500 });
+  } catch (error: any) {
+    console.error('Database initialization error:', error);
+    return NextResponse.json({ error: 'Failed to initialize database', details: error.message }, { status: 500 });
   }
 }

@@ -1,15 +1,11 @@
 import { NextResponse } from 'next/server';
-import { getDb } from '@intellident/api';
-import { auth, currentUser } from '@clerk/nextjs/server';
-import { verifyMembership, getClinicId } from '@/lib/auth';
+import { verifyMembership, getClinicId, getAuthContext } from '@/lib/auth';
+import { getPatients, createPatient } from '@/services/patient.service'; // Import the new service
 
 export async function GET() {
   try {
-    const { userId } = await auth();
+    const { userId, userEmail } = await getAuthContext();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    
-    const user = await currentUser();
-    const userEmail = user?.emailAddresses[0]?.emailAddress;
     
     const clinicId = await getClinicId();
 
@@ -19,28 +15,18 @@ export async function GET() {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const sql = getDb();
-    // Select needed columns for the list view to avoid fetching large xrays base64 strings
-    const rows = await sql`
-      SELECT id, patient_id, name, age, gender, phone_number, date, doctor, amount, created_at, patient_type, medicine_prescribed, notes, treatment_done, tooth_number, mode_of_payment, paid_for, share
-      FROM patients 
-      WHERE clinic_id = ${clinicId} 
-      ORDER BY created_at DESC
-    `;
-    return NextResponse.json(rows);
-  } catch (error) {
+    const patients = await getPatients(clinicId);
+    return NextResponse.json(patients);
+  } catch (error: any) {
     console.error('Fetch error:', error);
-    return NextResponse.json({ error: 'Failed to fetch patients' }, { status: 500 });
+    return NextResponse.json({ error: error.message || 'Failed to fetch patients' }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
   try {
-    const { userId } = await auth();
+    const { userId, userEmail } = await getAuthContext();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    
-    const user = await currentUser();
-    const userEmail = user?.emailAddresses[0]?.emailAddress;
     
     const clinicId = await getClinicId();
     if (!clinicId) return NextResponse.json({ error: 'No clinic selected' }, { status: 400 });
@@ -50,49 +36,14 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const sql = getDb();
+    const newPatient = await createPatient(clinicId, body);
     
-    // Auto-generate next Patient ID in PID-XX format for this clinic
-    let nextId = 'PID-1';
-    try {
-      const allIds = await sql`
-        SELECT patient_id FROM patients 
-        WHERE clinic_id = ${clinicId} 
-        AND patient_id LIKE 'PID-%'
-      `;
-      
-      let maxNum = 0;
-      allIds.forEach(row => {
-        const match = row.patient_id.match(/^PID-(\d+)$/);
-        if (match) {
-          const num = parseInt(match[1]);
-          if (num > maxNum) maxNum = num;
-        }
-      });
-      
-      nextId = `PID-${maxNum + 1}`;
-    } catch (e) {
-      const countResult = await sql`SELECT COUNT(*) FROM patients WHERE clinic_id = ${clinicId}`;
-      nextId = `PID-${parseInt(countResult[0].count) + 1}`;
-    }
-
-    const { name, age, amount, date, doctor, gender, mode_of_payment, paid_for, phone_number, medicine_prescribed, notes, patient_type, share, tooth_number, treatment_done, xrays, payments } = body;
-
-    const result = await sql`
-      INSERT INTO patients (
-        patient_id, name, age, amount, date, doctor, gender, 
-        mode_of_payment, paid_for, phone_number, medicine_prescribed, 
-        notes, patient_type, share, tooth_number, treatment_done, xrays, payments, clinic_id
-      ) VALUES (
-        ${nextId}, ${name}, ${age}, ${amount}, ${date}, ${doctor}, ${gender}, 
-        ${mode_of_payment}, ${paid_for}, ${phone_number}, ${medicine_prescribed}, 
-        ${notes}, ${patient_type}, ${share}, ${tooth_number}, ${treatment_done}, ${xrays}, ${payments}, ${clinicId}
-      )
-      RETURNING *
-    `;
-    return NextResponse.json(result[0]);
-  } catch (error) {
+    return NextResponse.json(newPatient);
+  } catch (error: any) {
     console.error('Insert error:', error);
-    return NextResponse.json({ error: 'Failed to create patient' }, { status: 500 });
+    if (error.message === 'Patient name is required' || error.message === 'Clinic ID is required') {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+    return NextResponse.json({ error: error.message || 'Failed to create patient' }, { status: 500 });
   }
 }
