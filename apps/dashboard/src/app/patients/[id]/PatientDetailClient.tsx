@@ -450,8 +450,10 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                         </div>
                         <div className="grid grid-cols-2 gap-4 mb-4">
                             <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Date</label>
+                                <label htmlFor="visit-date" className="block text-xs font-bold text-gray-500 uppercase mb-1">Date</label>
                                 <input 
+                                    id="visit-date"
+                                    name="date"
                                     type="date" 
                                     value={newVisit.date || ''} 
                                     max={new Date().toISOString().split('T')[0]}
@@ -460,8 +462,10 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Doctor</label>
+                                <label htmlFor="visit-doctor" className="block text-xs font-bold text-gray-500 uppercase mb-1">Doctor</label>
                                 <select 
+                                    id="visit-doctor"
+                                    name="doctor"
                                     value={newVisit.doctor || ''} 
                                     onChange={e => setNewVisit({...newVisit, doctor: e.target.value})} 
                                     className="w-full p-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm bg-white dark:text-white"
@@ -475,8 +479,10 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                         </div>
                         <div className="grid grid-cols-2 gap-4 mb-4">
                             <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Visit Type</label>
+                                <label htmlFor="visit-type" className="block text-xs font-bold text-gray-500 uppercase mb-1">Visit Type</label>
                                 <select 
+                                    id="visit-type"
+                                    name="visit_type"
                                     value={newVisit.visit_type || 'Consultation'} 
                                     onChange={e => setNewVisit({...newVisit, visit_type: e.target.value})} 
                                     className="w-full p-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm bg-white dark:text-white"
@@ -488,41 +494,90 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Amount (₹)</label>
-                                <input type="number" value={newVisit.cost} onChange={e => setNewVisit({...newVisit, cost: Number(e.target.value)})} className="w-full p-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm" />
+                                <label htmlFor="visit-cost" className="block text-xs font-bold text-gray-500 uppercase mb-1">Amount (₹)</label>
+                                <input 
+                                    id="visit-cost"
+                                    name="cost"
+                                    type="number" 
+                                    value={newVisit.cost} 
+                                    onChange={e => setNewVisit({...newVisit, cost: Number(e.target.value)})} 
+                                    className="w-full p-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm" 
+                                />
                             </div>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                             <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Diagnosis</label>
-                                <input type="text" placeholder="e.g. Dental Caries" value={newVisit.diagnosis || ''} onChange={e => setNewVisit({...newVisit, diagnosis: e.target.value})} className="w-full p-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm" />
+                                <label htmlFor="visit-diagnosis" className="block text-xs font-bold text-gray-500 uppercase mb-1">Diagnosis</label>
+                                <input 
+                                    id="visit-diagnosis"
+                                    name="diagnosis"
+                                    type="text" 
+                                    placeholder="e.g. Dental Caries" 
+                                    value={newVisit.diagnosis || ''} 
+                                    onChange={e => setNewVisit({...newVisit, diagnosis: e.target.value})} 
+                                    className="w-full p-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm" 
+                                />
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Symptoms</label>
-                                <input type="text" placeholder="e.g. Pain, Swelling" value={newVisit.symptoms || ''} onChange={e => setNewVisit({...newVisit, symptoms: e.target.value})} className="w-full p-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm" />
+                                <label htmlFor="visit-symptoms" className="block text-xs font-bold text-gray-500 uppercase mb-1">Symptoms</label>
+                                <input 
+                                    id="visit-symptoms"
+                                    name="symptoms"
+                                    type="text" 
+                                    placeholder="e.g. Pain, Swelling" 
+                                    value={newVisit.symptoms || ''} 
+                                    onChange={e => setNewVisit({...newVisit, symptoms: e.target.value})} 
+                                    className="w-full p-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm" 
+                                />
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Medicine Prescribed</label>
-                                <textarea placeholder="Medicines and dosage..." value={newVisit.medicine_prescribed || ''} onChange={e => setNewVisit({...newVisit, medicine_prescribed: e.target.value})} className="w-full p-2 border rounded dark:bg-gray-800 dark:border-gray-700 h-20 text-sm" />
+                                <label htmlFor="visit-medicine" className="block text-xs font-bold text-gray-500 uppercase mb-1">Medicine Prescribed</label>
+                                <textarea 
+                                    id="visit-medicine"
+                                    name="medicine_prescribed"
+                                    placeholder="Medicines and dosage..." 
+                                    value={newVisit.medicine_prescribed || ''} 
+                                    onChange={e => setNewVisit({...newVisit, medicine_prescribed: e.target.value})} 
+                                    className="w-full p-2 border rounded dark:bg-gray-800 dark:border-gray-700 h-20 text-sm" 
+                                />
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">{newVisit.visit_type === 'Procedure' ? 'Treatment Done' : 'Notes / Procedure'}</label>
-                                <textarea placeholder="Details..." value={newVisit.treatment_done || ''} onChange={e => setNewVisit({...newVisit, treatment_done: e.target.value})} className="w-full p-2 border rounded dark:bg-gray-800 dark:border-gray-700 h-20 text-sm" />
+                                <label htmlFor="visit-treatment" className="block text-xs font-bold text-gray-500 uppercase mb-1">{newVisit.visit_type === 'Procedure' ? 'Treatment Done' : 'Notes / Procedure'}</label>
+                                <textarea 
+                                    id="visit-treatment"
+                                    name="treatment_done"
+                                    placeholder="Details..." 
+                                    value={newVisit.treatment_done || ''} 
+                                    onChange={e => setNewVisit({...newVisit, treatment_done: e.target.value})} 
+                                    className="w-full p-2 border rounded dark:bg-gray-800 dark:border-gray-700 h-20 text-sm" 
+                                />
                             </div>
                         </div>
 
                         <div className="space-y-4 mb-6">
                             {(newVisit.visit_type === 'Consultation' || newVisit.visit_type === 'Procedure') && (
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Treatment Plan</label>
-                                    <textarea placeholder="Planned procedure..." value={newVisit.treatment_plan || ''} onChange={e => setNewVisit({...newVisit, treatment_plan: e.target.value})} className="w-full p-2 border rounded dark:bg-gray-800 dark:border-gray-700 h-20 text-sm" />
+                                    <label htmlFor="visit-plan" className="block text-xs font-bold text-gray-500 uppercase mb-1">Treatment Plan</label>
+                                    <textarea 
+                                        id="visit-plan"
+                                        name="treatment_plan"
+                                        placeholder="Planned procedure..." 
+                                        value={newVisit.treatment_plan || ''} 
+                                        onChange={e => setNewVisit({...newVisit, treatment_plan: e.target.value})} 
+                                        className="w-full p-2 border rounded dark:bg-gray-800 dark:border-gray-700 h-20 text-sm" 
+                                    />
                                 </div>
                             )}
                         </div>
                         <div className="flex justify-end gap-3">
                             <button type="button" onClick={() => { setShowVisitForm(false); setEditingVisitId(null); }} className="px-4 py-2 text-gray-500 hover:bg-gray-100 rounded">Cancel</button>
-                            <button type="button" onClick={handleSaveVisit} className="px-4 py-2 bg-blue-600 text-white font-bold rounded hover:bg-blue-700">
+                            <button 
+                                id="save-visit-btn"
+                                type="button" 
+                                onClick={handleSaveVisit} 
+                                className="px-4 py-2 bg-blue-600 text-white font-bold rounded hover:bg-blue-700"
+                            >
                                 {editingVisitId ? 'Update Record' : 'Save Visit'}
                             </button>
                         </div>
