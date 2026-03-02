@@ -132,8 +132,10 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
       if (!res.ok) throw new Error('Failed to fetch patient');
       const data = await res.json();
       setPatient(data);
-      if (data.visits && data.visits.length > 0 && !activeVisitId) {
-        setActiveVisitId(data.visits[0].id);
+      
+      // Use functional update to avoid activeVisitId dependency
+      if (data.visits && data.visits.length > 0) {
+        setActiveVisitId(currentId => currentId || data.visits[0].id);
       }
     } catch (err) {
       console.error('Fetch patient error:', err);
