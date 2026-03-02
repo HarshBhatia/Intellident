@@ -9,7 +9,7 @@ interface PatientTableProps {
   onAddClick?: () => void;
 }
 
-type SortKey = 'name' | 'age' | 'last_visit';
+type SortKey = 'patient_id' | 'name' | 'age' | 'last_visit';
 type SortDirection = 'asc' | 'desc';
 
 interface MessageModalProps {
@@ -225,6 +225,7 @@ export default function PatientTable({ patients, onAddClick }: PatientTableProps
           <thead className="bg-gray-50 dark:bg-gray-800/50 text-gray-700 dark:text-gray-300 uppercase tracking-wider text-xs font-semibold">
             <tr>
               <th className="px-6 py-3 border-b dark:border-gray-800">Actions</th>
+              <Header label="ID" column="patient_id" />
               <Header label="Name" column="name" />
               <Header label="Age" column="age" />
               <th className="px-6 py-3 border-b dark:border-gray-800">Gender</th>
@@ -272,9 +273,11 @@ export default function PatientTable({ patients, onAddClick }: PatientTableProps
                     </button>
                   </div>
                 </td>
+                <td className="px-6 py-4 whitespace-nowrap font-mono text-xs font-bold text-gray-500 dark:text-gray-400">
+                  {patient.patient_id}
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900 dark:text-gray-100 capitalize">
                   {patient.name}
-                  <span className="block text-xs text-gray-400 dark:text-gray-500 font-normal">{patient.patient_id}</span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">{patient.age || '-'}</td>
                 <td className="px-6 py-4 whitespace-nowrap">
@@ -307,7 +310,7 @@ export default function PatientTable({ patients, onAddClick }: PatientTableProps
             ))}
             {paginatedPatients.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-6 py-16 text-center text-gray-400 dark:text-gray-600">
+                <td colSpan={7} className="px-6 py-16 text-center text-gray-400 dark:text-gray-600">
                   <div className="flex flex-col items-center gap-4">
                     <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-full">
                         <svg className="w-10 h-10 text-gray-300 dark:text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
