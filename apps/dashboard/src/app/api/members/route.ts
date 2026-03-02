@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { getClinicMembers, addClinicMember, removeClinicMember } from '@/services/clinicMember.service';
-import { getAuthContext, verifyMembership } from '@/lib/auth';
+import { getAuthContext, verifyMembership, getMemberRole } from '@/lib/auth';
 
 export async function GET() {
   try {
@@ -17,9 +17,7 @@ export async function GET() {
     }
 
     const members = await getClinicMembers(clinicId);
-    
-    const currentMember = members.find(m => m.user_email === userEmail);
-    const currentUserRole = currentMember?.role || 'DOCTOR';
+    const currentUserRole = await getMemberRole(clinicId, userEmail);
 
     return NextResponse.json({ members, currentUserRole });
   } catch (error: any) {
@@ -39,6 +37,12 @@ export async function POST(request: Request) {
 
     if (!userEmail || !(await verifyMembership(clinicId, userEmail))) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    // Role Check: Only OWNER can add members
+    const role = await getMemberRole(clinicId, userEmail);
+    if (role !== 'OWNER') {
+        return NextResponse.json({ error: 'Only clinic owners can manage members' }, { status: 403 });
     }
 
     const body = await request.json();
@@ -68,6 +72,12 @@ export async function DELETE(request: Request) {
 
     if (!userEmail || !(await verifyMembership(clinicId, userEmail))) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    // Role Check: Only OWNER can remove members
+    const role = await getMemberRole(clinicId, userEmail);
+    if (role !== 'OWNER') {
+        return NextResponse.json({ error: 'Only clinic owners can manage members' }, { status: 403 });
     }
 
     const { searchParams } = new URL(request.url);

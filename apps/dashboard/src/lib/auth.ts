@@ -58,3 +58,21 @@ export async function verifyMembership(clinicId: number | string, userEmail: str
     return false;
   }
 }
+
+export async function getMemberRole(clinicId: number | string, userEmail: string): Promise<string | null> {
+  if (await isE2E() && userEmail === MOCK_E2E_USER.email) return 'OWNER';
+
+  const sql = getDb();
+  try {
+    const result = await sql`
+      SELECT role FROM clinic_members 
+      WHERE clinic_id = ${clinicId} 
+      AND user_email = ${userEmail}
+      AND status = 'ACTIVE'
+    `;
+    return result.length > 0 ? result[0].role : null;
+  } catch (error) {
+    console.error('Role fetch failed:', error);
+    return null;
+  }
+}

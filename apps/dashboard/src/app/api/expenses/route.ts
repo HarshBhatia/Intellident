@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { getExpenses, createExpense, deleteExpense } from '@/services/expense.service';
-import { getAuthContext, verifyMembership } from '@/lib/auth';
+import { getAuthContext, verifyMembership, getMemberRole } from '@/lib/auth';
 
 export async function GET() {
   try {
@@ -60,6 +60,12 @@ export async function DELETE(request: Request) {
 
         if (!userEmail || !(await verifyMembership(clinicId, userEmail))) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+
+        // Role Check: Only OWNER can delete expenses
+        const role = await getMemberRole(clinicId, userEmail);
+        if (role !== 'OWNER') {
+            return NextResponse.json({ error: 'Only clinic owners can delete expenses' }, { status: 403 });
         }
 
         const { id } = await request.json();
