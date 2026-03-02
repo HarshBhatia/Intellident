@@ -17,6 +17,7 @@ export async function GET() {
           patient_type TEXT, -- Kept here as a static characteristic
           user_email TEXT,
           clinic_id INTEGER,
+          is_active BOOLEAN DEFAULT TRUE,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
       `;
@@ -29,6 +30,7 @@ export async function GET() {
       
       await sql`ALTER TABLE patients ADD COLUMN IF NOT EXISTS user_email TEXT`;
       await sql`ALTER TABLE patients ADD COLUMN IF NOT EXISTS patient_type TEXT`;
+      await sql`ALTER TABLE patients ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE`;
 
       // Drop old clinical columns from patients table if they exist
       const patientColumnsToDrop = ['amount', 'date', 'doctor', 'mode_of_payment', 'paid_for', 'medicine_prescribed', 'notes', 'share', 'tooth_number', 'treatment_done', 'xrays', 'payments'];
