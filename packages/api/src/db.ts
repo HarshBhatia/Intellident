@@ -21,7 +21,7 @@ export function getDb() {
       try {
         globalForPglite.pglite = new PGlite(dbPath.toString());
       } catch (err) {
-        console.error('Failed to initialize PGlite:', err);
+        console.error('FAILED TO INITIALIZE PGLITE:', err);
         throw err;
       }
     }
@@ -30,7 +30,7 @@ export function getDb() {
 
     // Create a shim that matches Neon's tagged template literal API
     const sql = async (strings: TemplateStringsArray, ...values: any[]) => {
-      if (!pgliteInstance) throw new Error("PGlite instance not initialized");
+      await pgliteInstance.waitReady;
       let query = strings[0];
       for (let i = 1; i < strings.length; i++) {
         query += `$${i}` + strings[i];
@@ -46,7 +46,7 @@ export function getDb() {
 
     // Add .unsafe() support for raw strings (used in init script)
     (sql as any).unsafe = async (query: string, params: any[] = []) => {
-      if (!pgliteInstance) throw new Error("PGlite instance not initialized");
+      await pgliteInstance.waitReady;
       try {
         const result = await pgliteInstance.query(query, params);
         return result.rows;
