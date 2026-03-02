@@ -37,11 +37,12 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
   const [doctors, setDoctors] = useState<{ id: number, name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [showVisitForm, setShowVisitForm] = useState(false);
-  const [activeVisitId, setActiveVisitId] = useState<number | null>(null);
   const [editingVisitId, setEditingVisitId] = useState<number | null>(null);
   const [showEditForm, setShowEditForm] = useState(searchParams.get('edit') === 'true');
   const [uploadingXRay, setUploadingXRay] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [selectedXRay, setSelectedXRay] = useState<string | null>(null);
+  const [smartNote, setSmartNote] = useState('');
 
   useEffect(() => {
     params.then(p => setPatientId(p.id));
@@ -79,6 +80,46 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
     cost: 0,
     notes: ''
   });
+
+  const handleAIGenerate = async () => {
+    if (!smartNote.trim()) {
+        showToast('Please enter a note first', 'error');
+        return;
+    }
+
+    try {
+        setIsGenerating(true);
+        const res = await fetch('/api/generate-notes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: smartNote })
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            setNewVisit(prev => ({
+                ...prev,
+                diagnosis: data.diagnosis || prev.diagnosis,
+                symptoms: data.symptoms || prev.symptoms,
+                treatment_done: data.treatment_done || prev.treatment_done,
+                treatment_plan: data.treatment_plan || prev.treatment_plan,
+                medicine_prescribed: data.medicine_prescribed || prev.medicine_prescribed,
+                tooth_number: data.tooth_number || prev.tooth_number,
+                visit_type: data.visit_type || prev.visit_type,
+                cost: data.cost || prev.cost
+            }));
+            showToast('Note parsed successfully!', 'success');
+            setSmartNote(''); // Clear smart note after parsing
+        } else {
+            const err = await res.json();
+            showToast(err.error || 'AI generation failed', 'error');
+        }
+    } catch {
+        showToast('Error connecting to AI service', 'error');
+    } finally {
+        setIsGenerating(false);
+    }
+  };
 
   const fetchPatient = useCallback(async () => {
     if (!patientId) return;
@@ -590,6 +631,39 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                             </h3>
                             <button type="button" onClick={() => { setShowVisitForm(false); setEditingVisitId(null); }} className="text-gray-400 hover:text-gray-600">✕</button>
                         </div>
+
+                        {!editingVisitId && (
+                            <div className="mb-8 p-5 bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-2xl">
+                                <label className="block text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-2">Smart AI Entry (Optional)</label>
+                                <div className="flex flex-col gap-3">
+                                    <textarea 
+                                        placeholder="e.g. Scaling done for tooth 17, 18. Patient had pain. Prescribed Amoxicillin. Cost 1500."
+                                        value={smartNote}
+                                        onChange={(e) => setSmartNote(e.target.value)}
+                                        className="w-full p-4 bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-800 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition min-h-[80px]"
+                                    />
+                                    <button 
+                                        type="button"
+                                        onClick={handleAIGenerate}
+                                        disabled={isGenerating || !smartNote.trim()}
+                                        className="self-end px-6 py-2 bg-blue-600 text-white rounded-lg font-bold text-xs hover:bg-blue-700 transition disabled:opacity-50 flex items-center gap-2"
+                                    >
+                                        {isGenerating ? (
+                                            <>
+                                                <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" /></svg>
+                                                Parsing...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                                                Parse with AI
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
                         <div className="grid grid-cols-2 gap-4 mb-4">
                             <div>
                                 <label htmlFor="visit-date" className="block text-xs font-bold text-gray-500 uppercase mb-1">Date <span className="text-red-500">*</span></label>
