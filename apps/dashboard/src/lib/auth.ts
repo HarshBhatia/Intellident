@@ -45,10 +45,14 @@ export async function verifyMembership(clinicId: number | string, userEmail: str
   if (await isE2E() && userEmail === MOCK_E2E_USER.email) return true;
 
   const sql = getDb();
+  const cId = typeof clinicId === 'string' ? parseInt(clinicId) : clinicId;
+  
+  if (isNaN(cId)) return false;
+
   try {
     const result = await sql`
       SELECT 1 FROM clinic_members 
-      WHERE clinic_id = ${clinicId} 
+      WHERE clinic_id = ${cId} 
       AND user_email = ${userEmail}
       AND status = 'ACTIVE'
     `;
@@ -63,10 +67,14 @@ export async function getMemberRole(clinicId: number | string, userEmail: string
   if (await isE2E() && userEmail === MOCK_E2E_USER.email) return 'OWNER';
 
   const sql = getDb();
+  const cId = typeof clinicId === 'string' ? parseInt(clinicId) : clinicId;
+  
+  if (isNaN(cId)) return null;
+
   try {
     const result = await sql`
       SELECT role FROM clinic_members 
-      WHERE clinic_id = ${clinicId} 
+      WHERE clinic_id = ${cId} 
       AND user_email = ${userEmail}
       AND status = 'ACTIVE'
     `;
