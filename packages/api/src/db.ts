@@ -30,28 +30,40 @@ export function getDb() {
 
     // Create a shim that matches Neon's tagged template literal API
     const sql = async (strings: TemplateStringsArray, ...values: any[]) => {
-      await pgliteInstance.waitReady;
-      let query = strings[0];
-      for (let i = 1; i < strings.length; i++) {
-        query += `$${i}` + strings[i];
-      }
+      const pglite = globalForPglite.pglite;
+      if (!pglite) throw new Error("PGlite not initialized");
+      
       try {
-        const result = await pgliteInstance.query(query, values);
+        await pglite.waitReady;
+        let query = strings[0];
+        for (let i = 1; i < strings.length; i++) {
+          query += `$${i}` + strings[i];
+        }
+        const result = await pglite.query(query, values);
         return result.rows;
-      } catch (err) {
+      } catch (err: any) {
         console.error('PGlite Query Error:', err);
+        if (err?.message?.includes('Aborted') || err?.message?.includes('closed')) {
+          globalForPglite.pglite = undefined;
+        }
         throw err;
       }
     };
 
     // Add .unsafe() support for raw strings (used in init script)
     (sql as any).unsafe = async (query: string, params: any[] = []) => {
-      await pgliteInstance.waitReady;
+      const pglite = globalForPglite.pglite;
+      if (!pglite) throw new Error("PGlite not initialized");
+
       try {
-        const result = await pgliteInstance.query(query, params);
+        await pglite.waitReady;
+        const result = await pglite.query(query, params);
         return result.rows;
-      } catch (err) {
+      } catch (err: any) {
         console.error('PGlite Unsafe Query Error:', err);
+        if (err?.message?.includes('Aborted') || err?.message?.includes('closed')) {
+          globalForPglite.pglite = undefined;
+        }
         throw err;
       }
     };
