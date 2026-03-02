@@ -274,16 +274,17 @@ export async function GET(request: Request) {
 
         for (const p of patientsWithVisitData) {
           const billingItems = p.paid_for && p.amount ? JSON.stringify([{ description: p.paid_for, amount: Number(p.amount) }]) : '[]';
+          const procedureNotes = ((p.treatment_done || '') + ' ' + (p.notes || '')).trim();
           await sql`
             INSERT INTO visits (
               clinic_id, patient_id, date, doctor, 
-              treatment_done, tooth_number, medicine_prescribed, 
-              notes, cost, paid, xrays, share, mode_of_payment, billing_items
+              clinical_findings, procedure_notes, tooth_number, medicine_prescribed, 
+              cost, paid, xrays, billing_items
             )
             VALUES (
               ${p.clinic_id}, ${p.id}, ${p.date}, ${p.doctor}, 
-              ${p.treatment_done}, ${p.tooth_number}, ${p.medicine_prescribed}, 
-              ${p.notes}, ${p.amount}, ${p.amount}, ${p.xrays}, ${p.share}, ${p.mode_of_payment}, ${billingItems}
+              '', ${procedureNotes}, ${p.tooth_number}, ${p.medicine_prescribed}, 
+              ${p.amount}, ${p.amount}, ${p.xrays}, ${billingItems}
             );
           `;
         }

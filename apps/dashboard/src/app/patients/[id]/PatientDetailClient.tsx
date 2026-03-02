@@ -76,8 +76,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
     clinical_findings: '',
     procedure_notes: '',
     tooth_number: '',
-    cost: 0,
-    notes: ''
+    cost: 0
   });
 
   const handleAIGenerate = async () => {
@@ -261,10 +260,8 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                 clinical_findings: '',
                 procedure_notes: '',
                 tooth_number: '',
-                cost: 0,
-                notes: ''
-            });
-        } else {
+                            cost: 0
+                        });        } else {
             const errorData = await res.json();
             showToast(errorData.error || 'Failed to save visit', 'error');
         }
@@ -283,8 +280,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
         clinical_findings: visit.clinical_findings || '',
         procedure_notes: visit.procedure_notes || '',
         tooth_number: visit.tooth_number || '',
-        cost: Number(visit.cost),
-        notes: visit.notes || ''
+        cost: Number(visit.cost)
     });
     setShowVisitForm(true);
   };
@@ -612,10 +608,8 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                             treatment_plan: '',
                             treatment_done: '',
                             tooth_number: '',
-                            cost: 0,
-                            notes: ''
-                        });
-                    }}
+                                        cost: 0
+                                    });                    }}
                     className={`bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-bold text-xs shadow-sm flex items-center gap-2 transition whitespace-nowrap ${showVisitForm && !editingVisitId ? 'ring-2 ring-blue-400 ring-offset-2 dark:ring-offset-gray-950' : ''}`}
                 >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>

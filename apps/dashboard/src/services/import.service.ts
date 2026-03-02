@@ -119,14 +119,12 @@ export async function importPatientsFromCSV(csvData: string, clinicId: string): 
             p.visits.push({
                 date: isoDate,
                 doctor: doctor,
-                treatment_done: treatment,
+                clinical_findings: '',
+                procedure_notes: ((treatment || '') + ' ' + (notes || '')).trim(),
                 tooth_number: tooth,
                 medicine_prescribed: meds,
-                notes: notes,
                 cost: amt, // total cost for this visit from the CSV row
                 paid: amt, // Assuming paid equals cost for import
-                share: share,
-                mode_of_payment: mode,
                 billing_items: billingItems // Use the new billing_items
             });
         }
@@ -158,14 +156,14 @@ export async function importPatientsFromCSV(csvData: string, clinicId: string): 
             await sql`
                 INSERT INTO visits (
                     clinic_id, patient_id, date, doctor, visit_type,
-                    symptoms, diagnosis, treatment_plan, treatment_done, 
-                    tooth_number, medicine_prescribed, notes, cost, paid, 
-                    xrays, share, mode_of_payment, billing_items
+                    clinical_findings, procedure_notes, 
+                    tooth_number, medicine_prescribed, cost, paid, 
+                    billing_items
                 ) VALUES (
                     ${clinicId}, ${patientId}, ${visit.date}, ${visit.doctor}, ${visit.visit_type || 'Consultation'},
-                    ${visit.symptoms}, ${visit.diagnosis}, ${visit.treatment_plan}, ${visit.treatment_done}, 
-                    ${visit.tooth_number}, ${visit.medicine_prescribed}, ${visit.notes}, ${visit.cost || 0}, ${visit.paid || 0},
-                    ${visit.xrays}, ${visit.share}, ${visit.mode_of_payment}, ${serializedBillingItems}
+                    ${visit.clinical_findings}, ${visit.procedure_notes}, 
+                    ${visit.tooth_number}, ${visit.medicine_prescribed}, ${visit.cost || 0}, ${visit.paid || 0},
+                    ${serializedBillingItems}
                 )
             `;
         });
