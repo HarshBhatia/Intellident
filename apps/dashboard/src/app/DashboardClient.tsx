@@ -208,6 +208,16 @@ export default function DashboardClient() {
                 />
              )}
           </div>
+        ) : (
+          <div className="flex justify-center pt-10">
+            <AddPatientForm 
+              onSuccess={() => {
+                setView('list');
+                fetchPatients();
+              }}
+              onCancel={() => setView('list')}
+            />
+          </div>
         )}
       </main>
     </div>
