@@ -21,7 +21,7 @@ export async function POST(request: Request) {
         const buffer = Buffer.from(arrayBuffer);
         const base64Audio = buffer.toString('base64');
 
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
         const prompt = "Analyze this doctor-patient consultation audio and extract clinical information.";
         
         const result = await model.generateContent([
@@ -46,7 +46,7 @@ export async function POST(request: Request) {
 
     // 2. Use Gemini to parse text into structured JSON
     const model = genAI.getGenerativeModel({ 
-      model: "gemini-1.5-flash",
+      model: "gemini-3-flash-preview",
       generationConfig: { 
         responseMimeType: "application/json",
         responseSchema: {
