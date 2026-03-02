@@ -37,6 +37,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
   const [doctors, setDoctors] = useState<{ id: number, name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [showVisitForm, setShowVisitForm] = useState(false);
+  const [activeVisitId, setActiveVisitId] = useState<number | null>(null);
   const [editingVisitId, setEditingVisitId] = useState<number | null>(null);
   const [showEditForm, setShowEditForm] = useState(searchParams.get('edit') === 'true');
   const [uploadingXRay, setUploadingXRay] = useState(false);
