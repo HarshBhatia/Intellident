@@ -44,7 +44,7 @@ test.describe('Dashboard E2E', () => {
     await page.fill('input[name="age"]', '25');
 
     // Submit
-    await page.click('button[type="submit"]');
+    await page.click('button:has-text("Create Patient")');
 
     // Verify redirect to detail page
     await expect(page).toHaveURL(/\/patients\/PID-/);

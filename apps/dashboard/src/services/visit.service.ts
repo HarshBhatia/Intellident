@@ -29,14 +29,14 @@ export async function getVisits(clinicId: string, patientId?: string): Promise<V
   let rows: any[];
   if (patientId) {
     rows = await sql`
-      SELECT id, clinic_id, patient_id, date, doctor, visit_type, symptoms, diagnosis, treatment_plan, treatment_done, tooth_number, medicine_prescribed, notes, cost, paid, xrays, share, mode_of_payment, billing_items, created_at
+      SELECT id, clinic_id, patient_id, date, doctor, visit_type, clinical_findings, procedure_notes, tooth_number, medicine_prescribed, cost, paid, xrays, billing_items, created_at
       FROM visits 
       WHERE clinic_id = ${cId} AND patient_id = ${patientId}
       ORDER BY date DESC, created_at DESC
     `;
   } else {
     rows = await sql`
-      SELECT v.id, v.clinic_id, v.patient_id, v.date, v.doctor, v.visit_type, v.symptoms, v.diagnosis, v.treatment_plan, v.treatment_done, v.tooth_number, v.medicine_prescribed, v.notes, v.cost, v.paid, v.xrays, v.share, v.mode_of_payment, v.billing_items, v.created_at, p.name as patient_name, p.patient_id as patient_readable_id
+      SELECT v.id, v.clinic_id, v.patient_id, v.date, v.doctor, v.visit_type, v.clinical_findings, v.procedure_notes, v.tooth_number, v.medicine_prescribed, v.cost, v.paid, v.xrays, v.billing_items, v.created_at, p.name as patient_name, p.patient_id as patient_readable_id
       FROM visits v
       JOIN patients p ON v.patient_id = p.id
       WHERE v.clinic_id = ${cId}
@@ -70,9 +70,8 @@ export async function createVisit(clinicId: string, visitData: Omit<Visit, 'id' 
   }
 
   const { 
-    patient_id, date, doctor, visit_type, symptoms, diagnosis, 
-    treatment_plan, treatment_done, tooth_number, 
-    medicine_prescribed, notes, paid, xrays, share, mode_of_payment, billing_items
+    patient_id, date, doctor, visit_type, clinical_findings, procedure_notes, tooth_number, 
+    medicine_prescribed, paid, xrays, billing_items
   } = visitData;
 
   const totalCost = calculateTotalCost(billing_items);
@@ -81,14 +80,14 @@ export async function createVisit(clinicId: string, visitData: Omit<Visit, 'id' 
   const result = await sql`
     INSERT INTO visits (
       clinic_id, patient_id, date, doctor, visit_type,
-      symptoms, diagnosis, treatment_plan, treatment_done, 
-      tooth_number, medicine_prescribed, notes, cost, paid, 
-      xrays, share, mode_of_payment, billing_items
+      clinical_findings, procedure_notes, 
+      tooth_number, medicine_prescribed, cost, paid, 
+      xrays, billing_items
     ) VALUES (
       ${cId}, ${patient_id}, ${date}, ${doctor}, ${visit_type || 'Consultation'},
-      ${symptoms}, ${diagnosis}, ${treatment_plan}, ${treatment_done}, 
-      ${tooth_number}, ${medicine_prescribed}, ${notes}, ${totalCost}, ${paid || 0},
-      ${xrays}, ${share}, ${mode_of_payment}, ${serializedBillingItems}
+      ${clinical_findings}, ${procedure_notes}, 
+      ${tooth_number}, ${medicine_prescribed}, ${totalCost}, ${paid || 0},
+      ${xrays}, ${serializedBillingItems}
     )
     RETURNING *
   `;
@@ -124,9 +123,8 @@ export async function updateVisit(clinicId: string, visitData: Visit): Promise<V
   const cId = parseInt(clinicId);
 
   const { 
-    id, date, doctor, visit_type, symptoms, diagnosis, 
-    treatment_plan, treatment_done, tooth_number, 
-    medicine_prescribed, notes, paid, xrays, share, mode_of_payment, billing_items
+    id, date, doctor, visit_type, clinical_findings, procedure_notes, tooth_number, 
+    medicine_prescribed, paid, xrays, billing_items
   } = visitData;
 
   const totalCost = calculateTotalCost(billing_items);
@@ -137,18 +135,13 @@ export async function updateVisit(clinicId: string, visitData: Visit): Promise<V
       date = ${date},
       doctor = ${doctor},
       visit_type = ${visit_type},
-      symptoms = ${symptoms},
-      diagnosis = ${diagnosis},
-      treatment_plan = ${treatment_plan},
-      treatment_done = ${treatment_done},
+      clinical_findings = ${clinical_findings},
+      procedure_notes = ${procedure_notes},
       tooth_number = ${tooth_number},
       medicine_prescribed = ${medicine_prescribed},
-      notes = ${notes},
       cost = ${totalCost},
       paid = ${paid},
       xrays = ${xrays},
-      share = ${share},
-      mode_of_payment = ${mode_of_payment},
       billing_items = ${serializedBillingItems}
     WHERE id = ${id} AND clinic_id = ${cId}
     RETURNING *

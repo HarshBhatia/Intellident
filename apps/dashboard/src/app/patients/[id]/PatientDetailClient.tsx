@@ -73,10 +73,8 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
     date: new Date().toISOString().split('T')[0],
     doctor: '',
     visit_type: 'Consultation',
-    symptoms: '',
-    diagnosis: '',
-    treatment_plan: '',
-    treatment_done: '',
+    clinical_findings: '',
+    procedure_notes: '',
     tooth_number: '',
     cost: 0,
     notes: ''
@@ -100,10 +98,8 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
             const data = await res.json();
             setNewVisit(prev => ({
                 ...prev,
-                diagnosis: data.diagnosis || prev.diagnosis,
-                symptoms: data.symptoms || prev.symptoms,
-                treatment_done: data.treatment_done || prev.treatment_done,
-                treatment_plan: data.treatment_plan || prev.treatment_plan,
+                clinical_findings: data.clinical_findings || prev.clinical_findings,
+                procedure_notes: data.procedure_notes || prev.procedure_notes,
                 medicine_prescribed: data.medicine_prescribed || prev.medicine_prescribed,
                 tooth_number: data.tooth_number || prev.tooth_number,
                 visit_type: data.visit_type || prev.visit_type,
@@ -169,6 +165,13 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
         fetchPatient();
     }
   }, [patientId, fetchPatient]);
+
+  // Auto-select doctor if only one exists
+  useEffect(() => {
+    if (doctors.length === 1) {
+        setNewVisit(prev => ({ ...prev, doctor: doctors[0].name }));
+    }
+  }, [doctors]);
 
   useEffect(() => {
     if (patient?.visits && patient.visits.length > 0) {
@@ -255,10 +258,8 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                 date: new Date().toISOString().split('T')[0],
                 doctor: patient.visits?.[0]?.doctor || '',
                 visit_type: 'Consultation',
-                symptoms: '',
-                diagnosis: '',
-                treatment_plan: '',
-                treatment_done: '',
+                clinical_findings: '',
+                procedure_notes: '',
                 tooth_number: '',
                 cost: 0,
                 notes: ''
@@ -279,10 +280,8 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
         date: visit.date,
         doctor: visit.doctor,
         visit_type: visit.visit_type || 'Consultation',
-        symptoms: visit.symptoms || '',
-        diagnosis: visit.diagnosis || '',
-        treatment_plan: visit.treatment_plan || '',
-        treatment_done: visit.treatment_done || '',
+        clinical_findings: visit.clinical_findings || '',
+        procedure_notes: visit.procedure_notes || '',
         tooth_number: visit.tooth_number || '',
         cost: Number(visit.cost),
         notes: visit.notes || ''
@@ -643,7 +642,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                                         placeholder="e.g. Scaling done for tooth 17, 18. Patient had pain. Prescribed Amoxicillin. Cost 1500."
                                         value={smartNote}
                                         onChange={(e) => setSmartNote(e.target.value)}
-                                        className="w-full p-4 bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-800 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition min-h-[80px]"
+                                        className="w-full p-4 bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-800 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition min-h-[80px] placeholder-gray-400 dark:placeholder-gray-400"
                                     />
                                     <button 
                                         type="button"
@@ -669,7 +668,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
 
                         <div className="grid grid-cols-2 gap-4 mb-4">
                             <div>
-                                <label htmlFor="visit-date" className="block text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1.5">Date <span className="text-red-500">*</span></label>
+                                <label htmlFor="visit-date" className="block text-[10px] font-black text-gray-400 dark:text-gray-400 uppercase tracking-widest mb-1.5">Date <span className="text-red-500">*</span></label>
                                 <input 
                                     id="visit-date"
                                     name="date"
@@ -681,7 +680,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                                 />
                             </div>
                             <div>
-                                <label htmlFor="visit-doctor" className="block text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1.5">Doctor <span className="text-red-500">*</span></label>
+                                <label htmlFor="visit-doctor" className="block text-[10px] font-black text-gray-400 dark:text-gray-400 uppercase tracking-widest mb-1.5">Doctor <span className="text-red-500">*</span></label>
                                 <select 
                                     id="visit-doctor"
                                     name="doctor"
@@ -698,7 +697,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                         </div>
                         <div className="grid grid-cols-2 gap-4 mb-4">
                             <div>
-                                <label htmlFor="visit-type" className="block text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1.5">Visit Type <span className="text-red-500">*</span></label>
+                                <label htmlFor="visit-type" className="block text-[10px] font-black text-gray-400 dark:text-gray-400 uppercase tracking-widest mb-1.5">Visit Type <span className="text-red-500">*</span></label>
                                 <select 
                                     id="visit-type"
                                     name="visit_type"
@@ -713,7 +712,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                                 </select>
                             </div>
                             <div>
-                                <label htmlFor="visit-cost" className="block text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1.5">Amount (₹) <span className="text-red-500">*</span></label>
+                                <label htmlFor="visit-cost" className="block text-[10px] font-black text-gray-400 dark:text-gray-400 uppercase tracking-widest mb-1.5">Amount (₹) <span className="text-red-500">*</span></label>
                                 <input 
                                     id="visit-cost"
                                     name="cost"
@@ -727,67 +726,50 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                             <div>
-                                <label htmlFor="visit-diagnosis" className="block text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1.5">Diagnosis</label>
-                                <input 
-                                    id="visit-diagnosis"
-                                    name="diagnosis"
-                                    type="text" 
-                                    placeholder="e.g. Dental Caries" 
-                                    value={newVisit.diagnosis || ''} 
-                                    onChange={e => setNewVisit({...newVisit, diagnosis: e.target.value})} 
-                                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 outline-none transition-all text-sm font-medium text-gray-900 dark:text-gray-100" 
+                                <label htmlFor="visit-findings" className="block text-[10px] font-black text-gray-400 dark:text-gray-400 uppercase tracking-widest mb-1.5">Clinical Findings <span className="text-red-500">*</span></label>
+                                <textarea 
+                                    id="visit-findings"
+                                    name="clinical_findings"
+                                    placeholder="e.g. Dental Caries, Pain, Swelling..." 
+                                    value={newVisit.clinical_findings || ''} 
+                                    onChange={e => setNewVisit({...newVisit, clinical_findings: e.target.value})} 
+                                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 outline-none transition-all text-sm font-medium text-gray-900 dark:text-gray-100 h-24 placeholder-gray-400 dark:placeholder-gray-400" 
                                 />
                             </div>
                             <div>
-                                <label htmlFor="visit-symptoms" className="block text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1.5">Symptoms</label>
-                                <input 
-                                    id="visit-symptoms"
-                                    name="symptoms"
-                                    type="text" 
-                                    placeholder="e.g. Pain, Swelling" 
-                                    value={newVisit.symptoms || ''} 
-                                    onChange={e => setNewVisit({...newVisit, symptoms: e.target.value})} 
-                                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 outline-none transition-all text-sm font-medium text-gray-900 dark:text-gray-100" 
+                                <label htmlFor="visit-procedure" className="block text-[10px] font-black text-gray-400 dark:text-gray-400 uppercase tracking-widest mb-1.5">Procedure & Notes</label>
+                                <textarea 
+                                    id="visit-procedure"
+                                    name="procedure_notes"
+                                    placeholder="Details of treatment done..." 
+                                    value={newVisit.procedure_notes || ''} 
+                                    onChange={e => setNewVisit({...newVisit, procedure_notes: e.target.value})} 
+                                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 outline-none transition-all text-sm font-medium text-gray-900 dark:text-gray-100 h-24 placeholder-gray-400 dark:placeholder-gray-400" 
                                 />
                             </div>
                             <div>
-                                <label htmlFor="visit-medicine" className="block text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1.5">Medicine Prescribed</label>
+                                <label htmlFor="visit-medicine" className="block text-[10px] font-black text-gray-400 dark:text-gray-400 uppercase tracking-widest mb-1.5">Medicine Prescribed</label>
                                 <textarea 
                                     id="visit-medicine"
                                     name="medicine_prescribed"
                                     placeholder="Medicines and dosage..." 
                                     value={newVisit.medicine_prescribed || ''} 
                                     onChange={e => setNewVisit({...newVisit, medicine_prescribed: e.target.value})} 
-                                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 outline-none transition-all text-sm font-medium text-gray-900 dark:text-gray-100 h-20" 
+                                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 outline-none transition-all text-sm font-medium text-gray-900 dark:text-gray-100 h-20 placeholder-gray-400 dark:placeholder-gray-400" 
                                 />
                             </div>
-                            <div>
-                                <label htmlFor="visit-treatment" className="block text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1.5">{newVisit.visit_type === 'Procedure' ? 'Treatment Done' : 'Notes / Procedure'}</label>
-                                <textarea 
-                                    id="visit-treatment"
-                                    name="treatment_done"
-                                    placeholder="Details..." 
-                                    value={newVisit.treatment_done || ''} 
-                                    onChange={e => setNewVisit({...newVisit, treatment_done: e.target.value})} 
-                                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 outline-none transition-all text-sm font-medium text-gray-900 dark:text-gray-100 h-20" 
+                            <div className="flex flex-col justify-end pb-4">
+                                <label htmlFor="visit-teeth" className="block text-[10px] font-black text-gray-400 dark:text-gray-400 uppercase tracking-widest mb-1.5">Teeth Involved</label>
+                                <input 
+                                    id="visit-teeth"
+                                    name="tooth_number"
+                                    type="text" 
+                                    placeholder="e.g. 17, 18" 
+                                    value={newVisit.tooth_number || ''} 
+                                    onChange={e => setNewVisit({...newVisit, tooth_number: e.target.value})} 
+                                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 outline-none transition-all text-sm font-medium text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400" 
                                 />
                             </div>
-                        </div>
-
-                        <div className="space-y-4 mb-6">
-                            {(newVisit.visit_type === 'Consultation' || newVisit.visit_type === 'Procedure') && (
-                                <div>
-                                    <label htmlFor="visit-plan" className="block text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1.5">Treatment Plan</label>
-                                    <textarea 
-                                        id="visit-plan"
-                                        name="treatment_plan"
-                                        placeholder="Planned procedure..." 
-                                        value={newVisit.treatment_plan || ''} 
-                                        onChange={e => setNewVisit({...newVisit, treatment_plan: e.target.value})} 
-                                        className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 outline-none transition-all text-sm font-medium text-gray-900 dark:text-gray-100 h-20" 
-                                    />
-                                </div>
-                            )}
                         </div>
                         <div className="flex justify-end gap-3">
                             <button type="button" onClick={() => { setShowVisitForm(false); setEditingVisitId(null); }} className="px-4 py-2 text-gray-500 hover:bg-gray-100 rounded">Cancel</button>
@@ -849,35 +831,24 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                         </div>
                         
                         <div className="p-6 space-y-8">
-                            {/* 2x2 Block for core clinical information */}
+                            {/* Consolidated clinical information */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-gray-50/50 dark:bg-gray-800/20 p-6 rounded-2xl border dark:border-gray-800">
                                 <div>
-                                    <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Diagnosis</h4>
-                                    <p className="text-sm font-bold text-gray-900 dark:text-white">{visit.diagnosis || '-'}</p>
+                                    <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Clinical Findings</h4>
+                                    <p className="text-sm font-bold text-gray-900 dark:text-white whitespace-pre-wrap">{visit.clinical_findings || '-'}</p>
                                 </div>
                                 <div>
-                                    <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Symptoms</h4>
-                                    <p className="text-sm text-gray-700 dark:text-gray-300">{visit.symptoms || '-'}</p>
+                                    <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Procedure & Notes</h4>
+                                    <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{visit.procedure_notes || '-'}</p>
                                 </div>
-                                <div>
+                                <div className="md:col-span-2">
                                     <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Medicine Prescribed</h4>
                                     <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{visit.medicine_prescribed || '-'}</p>
-                                </div>
-                                <div>
-                                    <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Procedure / Notes</h4>
-                                    <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{visit.treatment_done || '-'}</p>
                                 </div>
                             </div>
 
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                                 <div className="lg:col-span-2 space-y-6">
-                                    {visit.treatment_plan && (
-                                        <div>
-                                            <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Treatment Plan</h4>
-                                            <p className="text-sm text-gray-600 dark:text-gray-400 italic bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border dark:border-gray-800">{visit.treatment_plan}</p>
-                                        </div>
-                                    )}
-                                    
                                     {visit.tooth_number && (
                                         <div>
                                             <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Teeth Involved</h4>

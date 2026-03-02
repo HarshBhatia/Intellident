@@ -16,9 +16,9 @@ export function getDb() {
   // Use PGlite for Local Development
   if (process.env.NODE_ENV !== 'production') {
     if (!pgliteInstance) {
-      console.log('📦 Initializing Local PGlite Database (.pgdata)');
       const dbPath = path.resolve(process.cwd(), '.pgdata');
-      pgliteInstance = new PGlite(dbPath);
+      console.log('📦 Initializing Local PGlite Database at:', dbPath);
+      pgliteInstance = new PGlite(dbPath.toString());
     }
 
     // Create a shim that matches Neon's tagged template literal API

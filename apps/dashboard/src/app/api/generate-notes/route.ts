@@ -3,6 +3,7 @@ import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
 
 export async function POST(request: Request) {
   const apiKey = process.env.GEMINI_API_KEY;
+
   if (!apiKey) {
     return NextResponse.json({ error: 'GEMINI_API_KEY is not configured on the server' }, { status: 500 });
   }
@@ -57,10 +58,14 @@ export async function POST(request: Request) {
         responseSchema: {
           type: SchemaType.OBJECT,
           properties: {
-            diagnosis: { type: SchemaType.STRING },
-            symptoms: { type: SchemaType.STRING },
-            treatment_done: { type: SchemaType.STRING },
-            treatment_plan: { type: SchemaType.STRING },
+            clinical_findings: { 
+                type: SchemaType.STRING,
+                description: "Clinical findings, diagnosis, and symptoms observed"
+            },
+            procedure_notes: { 
+                type: SchemaType.STRING, 
+                description: "Details of the procedure performed or general notes"
+            },
             medicine_prescribed: { type: SchemaType.STRING },
             tooth_number: { type: SchemaType.STRING },
             visit_type: { 
@@ -69,13 +74,13 @@ export async function POST(request: Request) {
             },
             cost: { type: SchemaType.NUMBER }
           },
-          required: ["diagnosis", "visit_type"]
+          required: ["clinical_findings", "visit_type"]
         }
       }
     });
 
     const extractionPrompt = `Extract dental clinical data from this text: "${textToAnalyze}". 
-    Categorize into: diagnosis, symptoms, treatment_done, treatment_plan, medicine_prescribed, tooth_number, visit_type, and cost.
+    Categorize into: clinical_findings, procedure_notes, medicine_prescribed, tooth_number, visit_type, and cost.
     If multiple teeth are mentioned, list them separated by commas (e.g. 17, 18).
     If no cost is mentioned, default to 0.`;
 

@@ -27,6 +27,7 @@ export async function GET(request: Request) {
           user_email TEXT,
           clinic_id INTEGER,
           is_active BOOLEAN DEFAULT TRUE,
+          xrays TEXT, -- Added back to patient level
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
       `;
@@ -40,14 +41,29 @@ export async function GET(request: Request) {
       await sql`ALTER TABLE patients ADD COLUMN IF NOT EXISTS user_email TEXT`;
       await sql`ALTER TABLE patients ADD COLUMN IF NOT EXISTS patient_type TEXT`;
       await sql`ALTER TABLE patients ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE`;
+      await sql`ALTER TABLE patients ADD COLUMN IF NOT EXISTS xrays TEXT`;
 
       // Drop old clinical columns from patients table if they exist
-      const patientColumnsToDrop = ['amount', 'date', 'doctor', 'mode_of_payment', 'paid_for', 'medicine_prescribed', 'notes', 'share', 'tooth_number', 'treatment_done', 'xrays', 'payments'];
+      const patientColumnsToDrop = ['amount', 'date', 'doctor', 'mode_of_payment', 'paid_for', 'medicine_prescribed', 'notes', 'share', 'tooth_number', 'treatment_done', 'payments'];
       for (const column of patientColumnsToDrop) {
         try {
           await sql.unsafe(`ALTER TABLE patients DROP COLUMN IF EXISTS ${column}`);
         } catch (err) { console.log(`Note: Column ${column} not found in patients or could not be dropped.`); }
       }
+
+      // Migration: Pull X-rays from visits to patients if patient.xrays is empty
+      await sql`
+        UPDATE patients p
+        SET xrays = (
+            SELECT json_agg(x)::text 
+            FROM (
+                SELECT json_array_elements(v.xrays::json) as x 
+                FROM visits v 
+                WHERE v.patient_id = p.id AND v.xrays IS NOT NULL
+            ) sub
+        )
+        WHERE p.xrays IS NULL OR p.xrays = '[]';
+      `;
 
     } catch (e) { console.error('Error updating patients:', e); }
 
@@ -214,31 +230,31 @@ export async function GET(request: Request) {
           date TEXT NOT NULL,
           doctor TEXT,
           visit_type TEXT DEFAULT 'Consultation',
-          symptoms TEXT,
-          diagnosis TEXT,
-          treatment_plan TEXT,
-          treatment_done TEXT,
+          clinical_findings TEXT, -- Merged symptoms + diagnosis
+          procedure_notes TEXT,    -- Merged treatment_done + notes
           tooth_number TEXT,
           medicine_prescribed TEXT,
-          notes TEXT,
           cost NUMERIC DEFAULT 0,
           paid NUMERIC DEFAULT 0,
           xrays TEXT,
-          share TEXT,
-          mode_of_payment TEXT,
-          billing_items TEXT, -- New field
+          billing_items TEXT,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
       `;
       
+      await sql`ALTER TABLE visits ADD COLUMN IF NOT EXISTS clinical_findings TEXT`;
+      await sql`ALTER TABLE visits ADD COLUMN IF NOT EXISTS procedure_notes TEXT`;
       await sql`ALTER TABLE visits ADD COLUMN IF NOT EXISTS visit_type TEXT DEFAULT 'Consultation'`;
       await sql`ALTER TABLE visits ADD COLUMN IF NOT EXISTS xrays TEXT`;
-      await sql`ALTER TABLE visits ADD COLUMN IF NOT EXISTS share TEXT`;
-      await sql`ALTER TABLE visits ADD COLUMN IF NOT EXISTS mode_of_payment TEXT`;
-      
-      // Drop old paid_for column and add new billing_items column
-      await sql`ALTER TABLE visits DROP COLUMN IF EXISTS paid_for`;
       await sql`ALTER TABLE visits ADD COLUMN IF NOT EXISTS billing_items TEXT`;
+
+      // Migration: Move old data to new columns if new columns are empty
+      await sql`
+        UPDATE visits 
+        SET clinical_findings = COALESCE(diagnosis, '') || ' ' || COALESCE(symptoms, ''),
+            procedure_notes = COALESCE(treatment_done, '') || ' ' || COALESCE(notes, '')
+        WHERE clinical_findings IS NULL OR clinical_findings = ''
+      `;
 
 
       // Migrate existing clinical data from patients to visits if visits table is empty

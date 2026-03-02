@@ -72,7 +72,7 @@ export default function AddPatientForm({ onSuccess, onCancel }: AddPatientFormPr
             name="name" 
             value={formData.name} 
             onChange={handleChange} 
-            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 bg-gray-50 dark:bg-gray-800 focus:bg-white dark:focus:bg-gray-700"
+            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 bg-gray-50 dark:bg-gray-800 focus:bg-white dark:focus:bg-gray-700"
             placeholder="e.g. John Doe"
             required 
           />
@@ -89,7 +89,7 @@ export default function AddPatientForm({ onSuccess, onCancel }: AddPatientFormPr
               name="phone_number" 
               value={formData.phone_number} 
               onChange={handleChange} 
-              className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-r-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 bg-gray-50 dark:bg-gray-800 focus:bg-white dark:focus:bg-gray-700"
+              className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-r-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 bg-gray-50 dark:bg-gray-800 focus:bg-white dark:focus:bg-gray-700"
               placeholder="12345 67890"
               type="tel"
             />

@@ -131,7 +131,7 @@ export default function DashboardClient() {
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                     </div>
                     <div>
-                        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Today's Visits</p>
+                        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Today&apos;s Visits</p>
                         <p className="text-2xl font-black text-gray-900 dark:text-white leading-tight">
                             {patients.filter(p => p.last_visit === new Date().toISOString().split('T')[0]).length}
                         </p>
@@ -169,7 +169,7 @@ export default function DashboardClient() {
                             placeholder="Search..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-8 pr-3 py-2 border border-gray-300 dark:border-gray-700 rounded shadow-sm focus:ring-2 focus:ring-blue-500 outline-none text-sm w-full sm:w-64 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-900 transition-all sm:focus:w-80"
+                            className="pl-8 pr-3 py-2 border border-gray-300 dark:border-gray-700 rounded shadow-sm focus:ring-2 focus:ring-blue-500 outline-none text-sm w-full sm:w-64 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-900 transition-all sm:focus:w-80 placeholder-gray-400 dark:placeholder-gray-400"
                         />
                         <svg className="w-4 h-4 text-gray-400 absolute left-2.5 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                     </div>

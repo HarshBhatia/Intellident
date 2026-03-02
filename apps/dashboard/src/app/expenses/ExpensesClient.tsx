@@ -137,11 +137,11 @@ export default function ExpensesClient() {
                     </div>
                     <div>
                         <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1 tracking-widest">Amount (₹)</label>
-                        <input type="number" placeholder="0" value={form.amount} onChange={e => setForm({...form, amount: e.target.value})} className="w-full p-2 border dark:border-gray-700 rounded-md text-sm outline-none bg-gray-50 dark:bg-gray-800 focus:bg-white dark:focus:bg-gray-700 transition h-[38px]" />
+                        <input type="number" placeholder="0" value={form.amount} onChange={e => setForm({...form, amount: e.target.value})} className="w-full p-2 border dark:border-gray-700 rounded-md text-sm outline-none bg-gray-50 dark:bg-gray-800 focus:bg-white dark:focus:bg-gray-700 transition h-[38px] placeholder-gray-400 dark:placeholder-gray-400" />
                     </div>
                     <div>
                         <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1 tracking-widest">Description</label>
-                        <input type="text" placeholder="Details..." value={form.description} onChange={e => setForm({...form, description: e.target.value})} className="w-full p-2 border dark:border-gray-700 rounded-md text-sm outline-none bg-gray-50 dark:bg-gray-800 focus:bg-white dark:focus:bg-gray-700 transition h-[38px]" />
+                        <input type="text" placeholder="Details..." value={form.description} onChange={e => setForm({...form, description: e.target.value})} className="w-full p-2 border dark:border-gray-700 rounded-md text-sm outline-none bg-gray-50 dark:bg-gray-800 focus:bg-white dark:focus:bg-gray-700 transition h-[38px] placeholder-gray-400 dark:placeholder-gray-400" />
                     </div>
                     <button 
                         type="submit" 
@@ -169,7 +169,7 @@ export default function ExpensesClient() {
                     placeholder="Search category or details..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2 border border-gray-300 dark:border-gray-700 rounded shadow-sm focus:ring-2 focus:ring-red-500 outline-none text-sm text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 transition-all"
+                    className="w-full pl-9 pr-4 py-2 border border-gray-300 dark:border-gray-700 rounded shadow-sm focus:ring-2 focus:ring-red-500 outline-none text-sm text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 transition-all placeholder-gray-400 dark:placeholder-gray-400"
                 />
                 <svg className="w-4 h-4 text-gray-400 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
             </div>

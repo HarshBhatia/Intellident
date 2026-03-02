@@ -48,21 +48,18 @@ test.describe('Visits and Billing E2E', () => {
         await newVisitBtn.click();
     }
 
-    // 5. Fill visit details
-    const doctorSelect = page.locator('select').first();
-    await expect(doctorSelect).toBeVisible();
-    await page.waitForTimeout(1000);
-    await doctorSelect.selectOption({ label: 'E2E Doctor' });
-    
-    await page.fill('textarea[placeholder="Details..."]', 'Routine Checkup');
-    const costInput = page.locator('input[type="number"]');
-    await costInput.fill('500');
+    // 5. Fill visit details using specific IDs
+    await page.selectOption('#visit-doctor', { label: 'E2E Doctor' });
+    await page.fill('#visit-findings', 'E2E Findings: Healthy');
+    await page.fill('#visit-procedure', 'E2E Procedure: Checkup');
+    await page.fill('#visit-cost', '1200');
 
     // 6. Submit
-    await page.click('button:has-text("Save Visit")');
+    await page.click('#save-visit-btn');
 
     // 7. Verify visit appears
-    await expect(page.locator('text=Routine Checkup')).toBeVisible();
-    await expect(page.locator('text=₹500')).toBeVisible();
+    await expect(page.locator('text=E2E Findings: Healthy')).toBeVisible();
+    // Check for the amount specifically in the bottom section to avoid matching the header overview
+    await expect(page.locator('span.text-green-600:has-text("₹1,200")')).toBeVisible();
   });
 });

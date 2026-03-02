@@ -10,18 +10,13 @@ export interface Visit {
   date: string;
   doctor?: string;
   visit_type?: string;
-  symptoms?: string;
-  diagnosis?: string;
-  treatment_plan?: string;
-  treatment_done?: string;
+  clinical_findings?: string;
+  procedure_notes?: string;
   tooth_number?: string;
   medicine_prescribed?: string;
-  notes?: string;
   cost?: number; // Total cost of the visit (sum of billing items)
   paid?: number; // Amount paid for this visit
   xrays?: string; // JSON string of XRay[]
-  share?: string; // e.g., "100%", "50%" for doctor's share
-  mode_of_payment?: string; // e.g., "Cash", "UPI", "Card"
   billing_items?: BillingItem[]; // New field: JSON string of BillingItem[]
   created_at?: string;
 }
