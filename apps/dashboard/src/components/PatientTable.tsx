@@ -107,7 +107,7 @@ function MessageModal({ patient, clinicName, googleMapsLink, onClose, initialTyp
   );
 }
 
-export default function PatientTable({ patients }: PatientTableProps) {
+export default function PatientTable({ patients, onAddClick }: PatientTableProps) {
   const router = useRouter();
   const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: SortDirection }>({
     key: 'name',

@@ -29,6 +29,7 @@ export function useAuth() {
       isSignedIn: true,
       user: {
         id: mockUser?.id,
+        firstName: mockUser?.email?.split('@')[0],
         primaryEmailAddress: { emailAddress: mockUser?.email }
       }
     };
