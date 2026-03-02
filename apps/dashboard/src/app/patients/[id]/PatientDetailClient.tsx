@@ -290,6 +290,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
         clinical_findings: visit.clinical_findings || '',
         procedure_notes: visit.procedure_notes || '',
         tooth_number: visit.tooth_number || '',
+        medicine_prescribed: visit.medicine_prescribed || '',
         cost: Number(visit.cost),
         xrays: visit.xrays || '[]'
     });
