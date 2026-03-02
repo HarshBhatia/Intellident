@@ -379,8 +379,10 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
     }));
   };
 
-  const handleXRayUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+      const activeVisit = useMemo(() => patient.visits?.find(v => v.id === activeVisitId), [patient.visits, activeVisitId]);
+      const xrays: XRay[] = useMemo(() => activeVisit?.xrays ? JSON.parse(activeVisit.xrays) : [], [activeVisit]);
+  
+      const handleXRayUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {    const file = e.target.files?.[0];
     if (!file || !patient || !patientId || !activeVisitId) return;
 
     const activeVisit = patient.visits?.find(v => v.id === activeVisitId);
@@ -628,29 +630,25 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                     </label>
                 </div>
                 <div className="grid grid-cols-4 gap-2">
-                    {(() => {
-                        const activeVisit = patient.visits?.find(v => v.id === activeVisitId);
-                        const xrays: XRay[] = activeVisit?.xrays ? JSON.parse(activeVisit.xrays) : [];
-                        return xrays.map((x, i) => (
-                            <div key={i} className="relative group aspect-square">
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img 
-                                    src={x.url} 
-                                    alt={x.name} 
-                                    className="w-full h-full object-cover rounded border border-gray-200 dark:border-gray-700 cursor-pointer"
-                                    onClick={() => setSelectedXRay(x.url)}
-                                />
-                                <button 
-                                    type="button"
-                                    onClick={(e) => { e.stopPropagation(); handleDeleteXRay(i); }}
-                                    className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition shadow-sm"
-                                >
-                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                                </button>
-                            </div>
-                        ));
-                    })()}
-                    {(!patient.visits?.find(v => v.id === activeVisitId)?.xrays || JSON.parse(patient.visits?.find(v => v.id === activeVisitId)?.xrays || '[]').length === 0) && (
+                    {xrays.map((x, i) => (
+                        <div key={i} className="relative group aspect-square">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img 
+                                src={x.url} 
+                                alt={x.name} 
+                                className="w-full h-full object-cover rounded border border-gray-200 dark:border-gray-700 cursor-pointer"
+                                onClick={() => setSelectedXRay(x.url)}
+                            />
+                            <button 
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); handleDeleteXRay(i); }}
+                                className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition shadow-sm"
+                            >
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                    ))}
+                    {xrays.length === 0 && (
                         <div className="col-span-4 py-4 text-center text-[10px] text-gray-400 border border-dashed rounded border-gray-200 dark:border-gray-800">
                             No records attached
                         </div>
@@ -884,38 +882,40 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                                                             </div>
                                                         </div>
                         
-                                                        <div className="mb-6 p-4 border border-dashed border-gray-200 dark:border-gray-800 rounded-xl">
-                                                            <div className="flex justify-between items-center mb-3">
-                                                                <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Attached Records ({JSON.parse(newVisit.xrays || '[]').length})</h4>
-                                                                <label className="cursor-pointer bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition flex items-center gap-2">
-                                                                    <input type="file" className="hidden" accept="image/*" onChange={handleFormXRayUpload} disabled={uploadingXRay} />
-                                                                    {uploadingXRay ? (
-                                                                        <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" /></svg>
-                                                                    ) : (
-                                                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
-                                                                    )}
-                                                                    Attach X-Ray
-                                                                </label>
-                                                            </div>
-                                                            <div className="flex flex-wrap gap-3">
-                                                                {JSON.parse(newVisit.xrays || '[]').map((x: XRay, i: number) => (
-                                                                    <div key={i} className="relative group w-16 h-16">
-                                                                        <img src={x.url} alt="Attached" className="w-full h-full object-cover rounded-lg border border-gray-200 dark:border-gray-700" />
-                                                                        <button 
-                                                                            type="button"
-                                                                            onClick={() => handleDeleteFormXRay(i)}
-                                                                            className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 shadow-sm"
-                                                                        >
-                                                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                                                                        </button>
-                                                                    </div>
-                                                                ))}
-                                                                {JSON.parse(newVisit.xrays || '[]').length === 0 && (
-                                                                    <p className="text-[10px] text-gray-400 italic">No images attached yet.</p>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    </div>
+                                                                                <div className="mb-6 p-4 border border-dashed border-gray-200 dark:border-gray-800 rounded-xl">
+                                                                                    <div className="flex justify-between items-center mb-3">
+                                                                                        <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Attached Records ({JSON.parse(newVisit.xrays || '[]').length})</h4>
+                                                                                        <label className="cursor-pointer bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition flex items-center gap-2">
+                                                                                            <input type="file" className="hidden" accept="image/*" onChange={handleFormXRayUpload} disabled={uploadingXRay} />
+                                                                                            {uploadingXRay ? (
+                                                                                                <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" /></svg>
+                                                                                            ) : (
+                                                                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
+                                                                                            )}
+                                                                                            Attach X-Ray
+                                                                                        </label>
+                                                                                    </div>
+                                                                                    <div className="flex flex-wrap gap-3">
+                                                                                        {(() => {
+                                                                                            const formXRays: XRay[] = newVisit.xrays ? JSON.parse(newVisit.xrays) : [];
+                                                                                            return formXRays.map((x, i) => (
+                                                                                                <div key={i} className="relative group w-16 h-16">
+                                                                                                    <img src={x.url} alt="Attached" className="w-full h-full object-cover rounded-lg border border-gray-200 dark:border-gray-700" />
+                                                                                                    <button 
+                                                                                                        type="button"
+                                                                                                        onClick={() => handleDeleteFormXRay(i)}
+                                                                                                        className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 shadow-sm"
+                                                                                                    >
+                                                                                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                                                                                                    </button>
+                                                                                                </div>
+                                                                                            ));
+                                                                                        })()}
+                                                                                        {(!newVisit.xrays || JSON.parse(newVisit.xrays).length === 0) && (
+                                                                                            <p className="text-[10px] text-gray-400 italic">No images attached yet.</p>
+                                                                                        )}
+                                                                                    </div>
+                                                                                </div>                                                    </div>
                                                 )}
                         
                                                 <div className="flex justify-end gap-3">                            <button type="button" onClick={() => { setShowVisitForm(false); setEditingVisitId(null); }} className="px-4 py-2 text-gray-500 hover:bg-gray-100 rounded">Cancel</button>
