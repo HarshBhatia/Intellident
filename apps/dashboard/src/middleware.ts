@@ -19,9 +19,10 @@ export default clerkMiddleware(async (auth, request) => {
   const clinicId = request.cookies.get('clinic_id')?.value || request.headers.get('x-clinic-id');
   const isSelectPage = request.nextUrl.pathname === '/select-clinic';
   const isApi = request.nextUrl.pathname.startsWith('/api');
+  const isPublic = isPublicRoute(request);
 
-  // Skip redirect if we are in E2E mode and specifically testing clinic creation
-  if (!clinicId && !isSelectPage && !isApi && !isE2E) {
+  // Skip redirect if we are in public routes, or already on select page, or it's an API call, or we have a clinicId
+  if (!clinicId && !isSelectPage && !isApi && !isE2E && !isPublic) {
     const selectUrl = new URL('/select-clinic', request.url);
     return NextResponse.redirect(selectUrl);
   }
