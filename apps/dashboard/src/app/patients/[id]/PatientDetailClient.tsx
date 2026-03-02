@@ -9,6 +9,7 @@ import Navbar from '@/components/Navbar';
 import Link from 'next/link';
 import { generatePrescriptionPDF } from '@/lib/pdf-generator';
 import { uploadImage } from '@/lib/image-utils';
+import { useAuth } from '@/hooks/useAuth';
 
 interface XRay {
   url: string;
@@ -26,6 +27,7 @@ interface ClinicInfo {
 }
 
 export default function PatientDetailClient({ params }: { params: Promise<{ id: string }> }) {
+  const { user } = useAuth();
   const { showToast } = useToast();
   const searchParams = useSearchParams();
   const isDebug = searchParams.get('debug') === 'true';
