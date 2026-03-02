@@ -528,25 +528,25 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                         <button 
                             type="button"
                             onClick={handleDeletePatient}
-                            className="px-6 py-3 text-red-600 dark:text-red-400 font-bold hover:bg-red-50 dark:hover:bg-red-900/20 transition rounded-xl flex items-center justify-center gap-2 border border-red-100 dark:border-red-900/30"
+                            className="px-4 py-2 text-red-600 dark:text-red-400 font-bold hover:bg-red-50 dark:hover:bg-red-900/20 transition rounded-xl flex items-center justify-center gap-2 border border-red-100 dark:border-red-900/30 text-xs"
                         >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                             Delete Patient
                         </button>
-                        <div className="flex-1 flex gap-3">
+                        <div className="flex-1 flex justify-end gap-3">
                             <button 
                                 onClick={() => {
                                     setShowEditForm(false);
                                     const newUrl = window.location.pathname;
                                     window.history.replaceState({}, '', newUrl);
                                 }}
-                                className="flex-1 px-6 py-3 text-gray-600 dark:text-gray-400 font-bold hover:bg-gray-100 dark:hover:bg-gray-800 transition rounded-xl"
+                                className="px-6 py-2 text-gray-600 dark:text-gray-400 font-bold hover:bg-gray-100 dark:hover:bg-gray-800 transition rounded-xl text-xs"
                             >
                                 Cancel
                             </button>
                             <button 
                                 onClick={handleUpdatePatient}
-                                className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition shadow-lg shadow-blue-500/20 active:scale-95"
+                                className="px-6 py-2 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition shadow-lg shadow-blue-500/20 active:scale-95 text-xs"
                             >
                                 Save Changes
                             </button>
