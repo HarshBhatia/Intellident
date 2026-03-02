@@ -1,7 +1,16 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@intellident/api';
 
-export async function GET() {
+export async function GET(request: Request) {
+  // Security Check
+  const { searchParams } = new URL(request.url);
+  const secret = searchParams.get('secret') || request.headers.get('x-init-secret');
+  const expectedSecret = process.env.E2E_TEST_SECRET || 'e2e-secret-key';
+
+  if (secret !== expectedSecret) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const sql = getDb();
   try {
     // 1. Create/Update Patients
