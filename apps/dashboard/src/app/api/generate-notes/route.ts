@@ -1,9 +1,14 @@
 import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-
 export async function POST(request: Request) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    return NextResponse.json({ error: 'GEMINI_API_KEY is not configured on the server' }, { status: 500 });
+  }
+
+  const genAI = new GoogleGenerativeAI(apiKey);
+  
   try {
     const contentType = request.headers.get('content-type') || '';
     let textToAnalyze = "";
