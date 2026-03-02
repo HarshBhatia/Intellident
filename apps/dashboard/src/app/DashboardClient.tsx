@@ -215,6 +215,7 @@ export default function DashboardClient() {
                 <PatientTable 
                     patients={filteredPatients} 
                     onAddClick={() => setView('add')}
+                    onDeleteSuccess={fetchPatients}
                 />
              )}
           </div>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, use } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Patient, Visit } from '@/types';
 import { useToast } from '@/components/ToastProvider';
 import Skeleton from '@/components/Skeleton';
@@ -28,6 +28,7 @@ interface ClinicInfo {
 }
 
 export default function PatientDetailClient({ params }: { params: Promise<{ id: string }> }) {
+  const router = useRouter();
   const { user } = useAuth();
   const { showToast } = useToast();
   const searchParams = useSearchParams();
@@ -213,6 +214,21 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
         }
     } catch {
         showToast('Error updating patient', 'error');
+    }
+  };
+
+  const handleDeletePatient = async () => {
+    if (!patientId || !confirm('Are you sure you want to delete this patient? This will archive their records.')) return;
+    try {
+        const res = await fetch(`/api/patients/${patientId}`, { method: 'DELETE' });
+        if (res.ok) {
+            showToast('Patient deleted successfully', 'success');
+            router.push('/');
+        } else {
+            showToast('Failed to delete patient', 'error');
+        }
+    } catch {
+        showToast('Error deleting patient', 'error');
     }
   };
 
@@ -508,23 +524,33 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                             </div>
                         </div>
                     </div>
-                    <div className="p-6 bg-gray-50 dark:bg-gray-800/50 flex gap-3">
+                    <div className="p-6 bg-gray-50 dark:bg-gray-800/50 flex flex-col sm:flex-row gap-3">
                         <button 
-                            onClick={() => {
-                                setShowEditForm(false);
-                                const newUrl = window.location.pathname;
-                                window.history.replaceState({}, '', newUrl);
-                            }}
-                            className="flex-1 px-6 py-3 text-gray-600 dark:text-gray-400 font-bold hover:bg-gray-100 dark:hover:bg-gray-800 transition rounded-xl"
+                            type="button"
+                            onClick={handleDeletePatient}
+                            className="px-6 py-3 text-red-600 dark:text-red-400 font-bold hover:bg-red-50 dark:hover:bg-red-900/20 transition rounded-xl flex items-center justify-center gap-2 border border-red-100 dark:border-red-900/30"
                         >
-                            Cancel
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                            Delete Patient
                         </button>
-                        <button 
-                            onClick={handleUpdatePatient}
-                            className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition shadow-lg shadow-blue-500/20 active:scale-95"
-                        >
-                            Save Changes
-                        </button>
+                        <div className="flex-1 flex gap-3">
+                            <button 
+                                onClick={() => {
+                                    setShowEditForm(false);
+                                    const newUrl = window.location.pathname;
+                                    window.history.replaceState({}, '', newUrl);
+                                }}
+                                className="flex-1 px-6 py-3 text-gray-600 dark:text-gray-400 font-bold hover:bg-gray-100 dark:hover:bg-gray-800 transition rounded-xl"
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                onClick={handleUpdatePatient}
+                                className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition shadow-lg shadow-blue-500/20 active:scale-95"
+                            >
+                                Save Changes
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>

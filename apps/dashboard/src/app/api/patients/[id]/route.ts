@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getClinicId, getAuthContext, verifyMembership } from '@/lib/auth';
-import { getPatientByIdWithVisits, updatePatient, deletePatient } from '@/services/patient.service';
+import { getPatientByIdWithVisits, updatePatient, deletePatient, softDeletePatient } from '@/services/patient.service';
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -71,7 +71,15 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    await deletePatient(clinicId, id);
+    const { searchParams } = new URL(request.url);
+    const isHardDelete = searchParams.get('hard') === 'true';
+
+    if (isHardDelete) {
+      await deletePatient(clinicId, id);
+    } else {
+      await softDeletePatient(clinicId, id);
+    }
+    
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error('Error in DELETE /api/patients/[id]:', error);

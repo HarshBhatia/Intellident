@@ -3,10 +3,12 @@
 import { Patient } from '@/types';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useMemo, useEffect } from 'react';
+import { useToast } from '@/components/ToastProvider';
 
 interface PatientTableProps {
   patients: Patient[];
   onAddClick?: () => void;
+  onDeleteSuccess?: () => void;
 }
 
 type SortKey = 'patient_id' | 'name' | 'age' | 'last_visit';
@@ -107,7 +109,7 @@ function MessageModal({ patient, clinicName, googleMapsLink, onClose, initialTyp
   );
 }
 
-export default function PatientTable({ patients, onAddClick }: PatientTableProps) {
+export default function PatientTable({ patients, onAddClick, onDeleteSuccess }: PatientTableProps) {
   const router = useRouter();
   const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: SortDirection }>({
     key: 'name',
@@ -117,6 +119,22 @@ export default function PatientTable({ patients, onAddClick }: PatientTableProps
   const searchParams = useSearchParams();
   const [clinic, setClinic] = useState<any>(null);
   const [activeModal, setActiveModal] = useState<{ patient: Patient; type: 'whatsapp' | 'sms' } | null>(null);
+  const { showToast } = useToast();
+
+  const handleDelete = async (patientId: string) => {
+    if (!confirm('Are you sure you want to delete this patient? This will archive their records.')) return;
+    try {
+      const res = await fetch(`/api/patients/${patientId}`, { method: 'DELETE' });
+      if (res.ok) {
+        showToast('Patient deleted successfully', 'success');
+        onDeleteSuccess?.();
+      } else {
+        showToast('Failed to delete patient', 'error');
+      }
+    } catch (error) {
+      showToast('Error deleting patient', 'error');
+    }
+  };
 
   // Pagination State - Init from URL
   const [currentPage, setCurrentPage] = useState(Number(searchParams.get('page')) || 1);
@@ -270,6 +288,13 @@ export default function PatientTable({ patients, onAddClick }: PatientTableProps
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
                         <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
                       </svg>
+                    </button>
+                    <button 
+                      onClick={() => handleDelete(patient.patient_id)}
+                      className="p-1.5 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20 rounded-md transition"
+                      title="Delete Patient"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                     </button>
                   </div>
                 </td>

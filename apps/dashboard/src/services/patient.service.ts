@@ -30,7 +30,7 @@ export async function getPatients(clinicId: string): Promise<Patient[]> {
       MAX(v.date) as last_visit
     FROM patients p
     LEFT JOIN visits v ON p.id = v.patient_id
-    WHERE p.clinic_id = ${cId} 
+    WHERE p.clinic_id = ${cId} AND p.is_active = TRUE
     GROUP BY p.id, p.patient_id, p.name, p.age, p.gender, p.phone_number, p.patient_type, p.created_at, p.clinic_id
     ORDER BY p.created_at DESC
   `;
@@ -43,7 +43,7 @@ export async function getPatientByIdWithVisits(clinicId: string, patientId: stri
 
   const sql = getDb();
   const cId = parseInt(clinicId);
-  const patientRows = await sql`SELECT id, patient_id, name, age, gender, phone_number, patient_type, created_at, clinic_id FROM patients WHERE patient_id = ${patientId} AND clinic_id = ${cId}`;
+  const patientRows = await sql`SELECT id, patient_id, name, age, gender, phone_number, patient_type, created_at, clinic_id FROM patients WHERE patient_id = ${patientId} AND clinic_id = ${cId} AND is_active = TRUE`;
   
   if (patientRows.length === 0) return null;
   
@@ -144,6 +144,23 @@ export async function deletePatient(clinicId: string, patientId: string): Promis
   const sql = getDb();
   const cId = parseInt(clinicId);
   const result = await sql`DELETE FROM patients WHERE patient_id = ${patientId} AND clinic_id = ${cId} RETURNING id`;
+  if (result.length === 0) {
+    throw new Error('Patient not found');
+  }
+}
+
+export async function softDeletePatient(clinicId: string, patientId: string): Promise<void> {
+  if (!clinicId) throw new Error('Clinic ID is required');
+  if (!patientId) throw new Error('Patient ID is required');
+
+  const sql = getDb();
+  const cId = parseInt(clinicId);
+  const result = await sql`
+    UPDATE patients 
+    SET is_active = FALSE 
+    WHERE patient_id = ${patientId} AND clinic_id = ${cId} 
+    RETURNING id
+  `;
   if (result.length === 0) {
     throw new Error('Patient not found');
   }
