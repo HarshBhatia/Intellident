@@ -24,13 +24,14 @@ const calculateTotalCost = (billingItems?: BillingItem[]): number => {
 export async function getVisits(clinicId: string, patientId?: string): Promise<Visit[]> {
   if (!clinicId) throw new Error('Clinic ID is required');
   const sql = getDb();
+  const cId = parseInt(clinicId);
   
   let rows: any[];
   if (patientId) {
     rows = await sql`
       SELECT id, clinic_id, patient_id, date, doctor, visit_type, symptoms, diagnosis, treatment_plan, treatment_done, tooth_number, medicine_prescribed, notes, cost, paid, xrays, share, mode_of_payment, billing_items, created_at
       FROM visits 
-      WHERE clinic_id = ${clinicId} AND patient_id = ${patientId}
+      WHERE clinic_id = ${cId} AND patient_id = ${patientId}
       ORDER BY date DESC, created_at DESC
     `;
   } else {
@@ -38,7 +39,7 @@ export async function getVisits(clinicId: string, patientId?: string): Promise<V
       SELECT v.id, v.clinic_id, v.patient_id, v.date, v.doctor, v.visit_type, v.symptoms, v.diagnosis, v.treatment_plan, v.treatment_done, v.tooth_number, v.medicine_prescribed, v.notes, v.cost, v.paid, v.xrays, v.share, v.mode_of_payment, v.billing_items, v.created_at, p.name as patient_name, p.patient_id as patient_readable_id
       FROM visits v
       JOIN patients p ON v.patient_id = p.id
-      WHERE v.clinic_id = ${clinicId}
+      WHERE v.clinic_id = ${cId}
       ORDER BY v.date DESC, v.created_at DESC
       LIMIT 50
     `;
@@ -60,9 +61,10 @@ export async function createVisit(clinicId: string, visitData: Omit<Visit, 'id' 
   }
 
   const sql = getDb();
+  const cId = parseInt(clinicId);
   
   // Verify patient belongs to clinic
-  const patientCheck = await sql`SELECT id FROM patients WHERE id = ${visitData.patient_id} AND clinic_id = ${clinicId}`;
+  const patientCheck = await sql`SELECT id FROM patients WHERE id = ${visitData.patient_id} AND clinic_id = ${cId}`;
   if (patientCheck.length === 0) {
     throw new Error('Patient not found');
   }
@@ -83,7 +85,7 @@ export async function createVisit(clinicId: string, visitData: Omit<Visit, 'id' 
       tooth_number, medicine_prescribed, notes, cost, paid, 
       xrays, share, mode_of_payment, billing_items
     ) VALUES (
-      ${clinicId}, ${patient_id}, ${date}, ${doctor}, ${visit_type || 'Consultation'},
+      ${cId}, ${patient_id}, ${date}, ${doctor}, ${visit_type || 'Consultation'},
       ${symptoms}, ${diagnosis}, ${treatment_plan}, ${treatment_done}, 
       ${tooth_number}, ${medicine_prescribed}, ${notes}, ${totalCost}, ${paid || 0},
       ${xrays}, ${share}, ${mode_of_payment}, ${serializedBillingItems}
@@ -103,7 +105,8 @@ export async function deleteVisit(clinicId: string, id: string): Promise<void> {
   if (!clinicId) throw new Error('Clinic ID is required');
 
   const sql = getDb();
-  const result = await sql`DELETE FROM visits WHERE id = ${id} AND clinic_id = ${clinicId} RETURNING id`;
+  const cId = parseInt(clinicId);
+  const result = await sql`DELETE FROM visits WHERE id = ${id} AND clinic_id = ${cId} RETURNING id`;
   if (result.length === 0) {
     throw new Error('Visit not found');
   }
@@ -118,6 +121,7 @@ export async function updateVisit(clinicId: string, visitData: Visit): Promise<V
   }
 
   const sql = getDb();
+  const cId = parseInt(clinicId);
 
   const { 
     id, date, doctor, visit_type, symptoms, diagnosis, 
@@ -146,7 +150,7 @@ export async function updateVisit(clinicId: string, visitData: Visit): Promise<V
       share = ${share},
       mode_of_payment = ${mode_of_payment},
       billing_items = ${serializedBillingItems}
-    WHERE id = ${id} AND clinic_id = ${clinicId}
+    WHERE id = ${id} AND clinic_id = ${cId}
     RETURNING *
   `;
 

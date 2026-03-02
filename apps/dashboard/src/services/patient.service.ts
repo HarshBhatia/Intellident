@@ -15,6 +15,7 @@ const parseBillingItems = (billingItemsJson?: string | null): BillingItem[] => {
 export async function getPatients(clinicId: string): Promise<Patient[]> {
   if (!clinicId) throw new Error('Clinic ID is required');
   const sql = getDb();
+  const cId = parseInt(clinicId);
   const rows = await sql`
     SELECT 
       p.id, 
@@ -29,7 +30,7 @@ export async function getPatients(clinicId: string): Promise<Patient[]> {
       MAX(v.date) as last_visit
     FROM patients p
     LEFT JOIN visits v ON p.id = v.patient_id
-    WHERE p.clinic_id = ${clinicId} 
+    WHERE p.clinic_id = ${cId} 
     GROUP BY p.id, p.patient_id, p.name, p.age, p.gender, p.phone_number, p.patient_type, p.created_at, p.clinic_id
     ORDER BY p.created_at DESC
   `;
@@ -41,7 +42,8 @@ export async function getPatientByIdWithVisits(clinicId: string, patientId: stri
   if (!patientId) throw new Error('Patient ID is required');
 
   const sql = getDb();
-  const patientRows = await sql`SELECT id, patient_id, name, age, gender, phone_number, patient_type, created_at, clinic_id FROM patients WHERE patient_id = ${patientId} AND clinic_id = ${clinicId}`;
+  const cId = parseInt(clinicId);
+  const patientRows = await sql`SELECT id, patient_id, name, age, gender, phone_number, patient_type, created_at, clinic_id FROM patients WHERE patient_id = ${patientId} AND clinic_id = ${cId}`;
   
   if (patientRows.length === 0) return null;
   
@@ -51,7 +53,7 @@ export async function getPatientByIdWithVisits(clinicId: string, patientId: stri
     SELECT id, clinic_id, patient_id, date, doctor, visit_type, symptoms, diagnosis, treatment_plan, treatment_done, tooth_number, medicine_prescribed, notes, cost, paid, xrays, share, mode_of_payment, billing_items, created_at
     FROM visits 
     WHERE patient_id = ${patient.id} 
-    AND clinic_id = ${clinicId}
+    AND clinic_id = ${cId}
     ORDER BY date DESC, created_at DESC
   `;
   
@@ -70,13 +72,14 @@ export async function createPatient(clinicId: string, patientData: Omit<Patient,
   if (!patientData.name) throw new Error('Patient name is required');
 
   const sql = getDb();
+  const cId = parseInt(clinicId);
 
   // Auto-generate next Patient ID in PID-XX format for this clinic
   let nextId = 'PID-1';
   try {
     const allIds = await sql`
       SELECT patient_id FROM patients 
-      WHERE clinic_id = ${clinicId} 
+      WHERE clinic_id = ${cId} 
       AND patient_id LIKE 'PID-%'
     `;
     
@@ -91,7 +94,7 @@ export async function createPatient(clinicId: string, patientData: Omit<Patient,
     
     nextId = `PID-${maxNum + 1}`;
   } catch (e) {
-    const countResult = await sql`SELECT COUNT(*) FROM patients WHERE clinic_id = ${clinicId}`;
+    const countResult = await sql`SELECT COUNT(*) FROM patients WHERE clinic_id = ${cId}`;
     nextId = `PID-${parseInt(countResult[0].count) + 1}`;
   }
 
@@ -101,7 +104,7 @@ export async function createPatient(clinicId: string, patientData: Omit<Patient,
     INSERT INTO patients (
       patient_id, name, age, gender, phone_number, patient_type, clinic_id
     ) VALUES (
-      ${nextId}, ${name}, ${age}, ${gender}, ${phone_number}, ${patient_type}, ${clinicId}
+      ${nextId}, ${name}, ${age}, ${gender}, ${phone_number}, ${patient_type}, ${cId}
     )
     RETURNING *
   `;
@@ -113,6 +116,7 @@ export async function updatePatient(clinicId: string, patientId: string, patient
   if (!patientId) throw new Error('Patient ID is required');
 
   const sql = getDb();
+  const cId = parseInt(clinicId);
   const { name, age, gender, phone_number, patient_type } = patientData;
 
   const result = await sql`
@@ -122,7 +126,7 @@ export async function updatePatient(clinicId: string, patientId: string, patient
       gender = ${gender},
       phone_number = ${phone_number},
       patient_type = ${patient_type}
-    WHERE patient_id = ${patientId} AND clinic_id = ${clinicId}
+    WHERE patient_id = ${patientId} AND clinic_id = ${cId}
     RETURNING *
   `;
 
@@ -138,7 +142,8 @@ export async function deletePatient(clinicId: string, patientId: string): Promis
   if (!patientId) throw new Error('Patient ID is required');
 
   const sql = getDb();
-  const result = await sql`DELETE FROM patients WHERE patient_id = ${patientId} AND clinic_id = ${clinicId} RETURNING id`;
+  const cId = parseInt(clinicId);
+  const result = await sql`DELETE FROM patients WHERE patient_id = ${patientId} AND clinic_id = ${cId} RETURNING id`;
   if (result.length === 0) {
     throw new Error('Patient not found');
   }
