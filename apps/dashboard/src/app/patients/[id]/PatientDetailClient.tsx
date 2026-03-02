@@ -39,12 +39,32 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
   const [showVisitForm, setShowVisitForm] = useState(false);
   const [activeVisitId, setActiveVisitId] = useState<number | null>(null);
   const [editingVisitId, setEditingVisitId] = useState<number | null>(null);
+  const [showEditForm, setShowEditForm] = useState(searchParams.get('edit') === 'true');
   const [uploadingXRay, setUploadingXRay] = useState(false);
   const [selectedXRay, setSelectedXRay] = useState<string | null>(null);
 
   useEffect(() => {
     params.then(p => setPatientId(p.id));
   }, [params]);
+
+  useEffect(() => {
+    setShowEditForm(searchParams.get('edit') === 'true');
+  }, [searchParams]);
+
+  // Edit Form State
+  const [editPatient, setEditPatient] = useState<Partial<Patient>>({});
+
+  useEffect(() => {
+    if (patient) {
+        setEditPatient({
+            name: patient.name,
+            age: patient.age,
+            gender: patient.gender,
+            phone_number: patient.phone_number,
+            patient_type: patient.patient_type
+        });
+    }
+  }, [patient]);
 
   // Visit Form State
   const [newVisit, setNewVisit] = useState<Partial<Visit>>({
@@ -111,6 +131,31 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
         setNewVisit(prev => ({ ...prev, doctor: prev.doctor || patient.visits![0].doctor }));
     }
   }, [patient]);
+
+  const handleUpdatePatient = async () => {
+    if (!patientId) return;
+    try {
+        const res = await fetch(`/api/patients/${patientId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(editPatient)
+        });
+        if (res.ok) {
+            showToast('Patient updated successfully!', 'success');
+            setShowEditForm(false);
+            // Update local state or re-fetch
+            fetchPatient();
+            // Clear URL param
+            const newUrl = window.location.pathname;
+            window.history.replaceState({}, '', newUrl);
+        } else {
+            const err = await res.json();
+            showToast(err.error || 'Failed to update patient', 'error');
+        }
+    } catch {
+        showToast('Error updating patient', 'error');
+    }
+  };
 
   const handleSaveVisit = async () => {
     if (!patient || !patient.id) return;
@@ -288,6 +333,85 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
       <Navbar activePage="Patient Details" />
       
       <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        {/* Edit Patient Modal */}
+        {showEditForm && (
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[250] flex items-center justify-center p-4">
+                <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
+                    <div className="p-6 border-b dark:border-gray-800 flex justify-between items-center bg-gray-50/50 dark:bg-gray-800/20">
+                        <h3 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight">Edit Patient Profile</h3>
+                        <button onClick={() => {
+                            setShowEditForm(false);
+                            const newUrl = window.location.pathname;
+                            window.history.replaceState({}, '', newUrl);
+                        }} className="text-gray-400 hover:text-gray-600 text-2xl">✕</button>
+                    </div>
+                    <div className="p-8 space-y-6">
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Full Name</label>
+                                <input 
+                                    type="text" 
+                                    value={editPatient.name || ''} 
+                                    onChange={e => setEditPatient({...editPatient, name: e.target.value})}
+                                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition text-sm font-bold"
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Age</label>
+                                    <input 
+                                        type="number" 
+                                        value={editPatient.age || ''} 
+                                        onChange={e => setEditPatient({...editPatient, age: Number(e.target.value)})}
+                                        className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition text-sm font-bold"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Gender</label>
+                                    <select 
+                                        value={editPatient.gender || ''} 
+                                        onChange={e => setEditPatient({...editPatient, gender: e.target.value})}
+                                        className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition text-sm font-bold appearance-none"
+                                    >
+                                        <option value="Male">Male</option>
+                                        <option value="Female">Female</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Phone Number</label>
+                                <input 
+                                    type="text" 
+                                    value={editPatient.phone_number || ''} 
+                                    onChange={e => setEditPatient({...editPatient, phone_number: e.target.value})}
+                                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition text-sm font-bold"
+                                />
+                            </div>
+                        </div>
+                    </div>
+                    <div className="p-6 bg-gray-50 dark:bg-gray-800/50 flex gap-3">
+                        <button 
+                            onClick={() => {
+                                setShowEditForm(false);
+                                const newUrl = window.location.pathname;
+                                window.history.replaceState({}, '', newUrl);
+                            }}
+                            className="flex-1 px-6 py-3 text-gray-600 dark:text-gray-400 font-bold hover:bg-gray-100 dark:hover:bg-gray-800 transition rounded-xl"
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                            onClick={handleUpdatePatient}
+                            className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition shadow-lg shadow-blue-500/20 active:scale-95"
+                        >
+                            Save Changes
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
+
         {/* Breadcrumbs */}
         <div className="mb-4">
             <Link href="/" className="text-blue-600 hover:text-blue-800 text-sm flex items-center gap-1 transition">
