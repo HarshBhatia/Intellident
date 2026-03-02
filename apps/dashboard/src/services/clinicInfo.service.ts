@@ -18,7 +18,7 @@ export async function getClinicInfo(clinicId: string): Promise<ClinicInfo | null
   const c = rows[0];
   return {
       clinic_name: c.name,
-      owner_name: '', // We might need to fetch owner name separately or remove this requirement
+      owner_name: c.owner_email || '', 
       phone: c.phone || '',
       address: c.address || '',
       email: c.owner_email || '',
@@ -49,7 +49,7 @@ export async function updateClinicInfo(clinicId: string, clinicData: Partial<Cli
   const c = result[0];
   return {
       clinic_name: c.name,
-      owner_name: '',
+      owner_name: c.owner_email || '',
       phone: c.phone || '',
       address: c.address || '',
       email: c.owner_email || '',

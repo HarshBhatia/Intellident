@@ -30,7 +30,7 @@ export async function getClinicStats(clinicId: string, startDate: Date, endDate:
   
   // Fetch visits data for revenue calculation
   const visits = await sql`
-    SELECT date, paid, billing_items, treatment_done
+    SELECT date, paid, billing_items, procedure_notes
     FROM visits 
     WHERE clinic_id = ${clinicId}
   `;
@@ -76,7 +76,7 @@ export async function getClinicStats(clinicId: string, startDate: Date, endDate:
                   categoryMap[cat] = (categoryMap[cat] || 0) + splitAmt;
                 });
               } else {
-                const cat = normalizeCategory(visit.treatment_done || 'Other');
+                const cat = normalizeCategory(visit.procedure_notes || 'Other');
                 categoryMap[cat] = (categoryMap[cat] || 0) + paidAmount;
               }
           }
