@@ -220,6 +220,9 @@ export default function DashboardClient() {
           </div>
         )}
       </main>
+      <footer className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 text-center text-xs text-gray-400">
+        v1.0.2 - {new Date().toISOString().split('T')[0]}
+      </footer>
     </div>
   );
 }
