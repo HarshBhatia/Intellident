@@ -3,6 +3,12 @@ export interface BillingItem {
   amount: number;
 }
 
+export interface XRay {
+  url: string;
+  name: string;
+  date: string;
+}
+
 export interface Visit {
   id?: number;
   clinic_id: number;
