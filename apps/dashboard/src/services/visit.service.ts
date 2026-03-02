@@ -71,10 +71,10 @@ export async function createVisit(clinicId: string, visitData: Omit<Visit, 'id' 
 
   const { 
     patient_id, date, doctor, visit_type, clinical_findings, procedure_notes, tooth_number, 
-    medicine_prescribed, paid, xrays, billing_items
+    medicine_prescribed, paid, xrays, billing_items, cost
   } = visitData;
 
-  const totalCost = calculateTotalCost(billing_items);
+  const totalCost = billing_items && billing_items.length > 0 ? calculateTotalCost(billing_items) : (cost || 0);
   const serializedBillingItems = serializeBillingItems(billing_items);
 
   const result = await sql`
@@ -124,10 +124,10 @@ export async function updateVisit(clinicId: string, visitData: Visit): Promise<V
 
   const { 
     id, date, doctor, visit_type, clinical_findings, procedure_notes, tooth_number, 
-    medicine_prescribed, paid, xrays, billing_items
+    medicine_prescribed, paid, xrays, billing_items, cost
   } = visitData;
 
-  const totalCost = calculateTotalCost(billing_items);
+  const totalCost = billing_items && billing_items.length > 0 ? calculateTotalCost(billing_items) : (cost || 0);
   const serializedBillingItems = serializeBillingItems(billing_items);
 
   const result = await sql`
