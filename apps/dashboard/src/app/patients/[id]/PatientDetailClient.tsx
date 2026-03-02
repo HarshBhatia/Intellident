@@ -26,11 +26,11 @@ interface ClinicInfo {
 }
 
 export default function PatientDetailClient({ params }: { params: Promise<{ id: string }> }) {
+  const { id: patientId } = use(params);
   const { showToast } = useToast();
   const searchParams = useSearchParams();
   const isDebug = searchParams.get('debug') === 'true';
   const debugClinicId = searchParams.get('clinicId');
-  const [patientId, setPatientId] = useState<string | null>(null);
   
   const [patient, setPatient] = useState<Patient | null>(null);
   const [clinicInfo, setClinicInfo] = useState<ClinicInfo | null>(null);
@@ -41,15 +41,6 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
   const [editingVisitId, setEditingVisitId] = useState<number | null>(null);
   const [uploadingXRay, setUploadingXRay] = useState(false);
   const [selectedXRay, setSelectedXRay] = useState<string | null>(null);
-  
-  useEffect(() => {
-    params.then(p => {
-      setPatientId(p.id);
-      setPatient(null); // Clear previous patient data
-      setLoading(true); // Reset loading state
-      setActiveVisitId(null);
-    });
-  }, [params]);
 
   // Visit Form State
   const [newVisit, setNewVisit] = useState<Partial<Visit>>({
@@ -65,66 +56,52 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
     notes: ''
   });
 
-  useEffect(() => {
-    if (patient?.visits && patient.visits.length > 0) {
-        setNewVisit(prev => ({ ...prev, doctor: prev.doctor || patient.visits![0].doctor }));
-    }
-  }, [patient]);
-
-  const fetchClinicInfo = useCallback(async () => {
-    try {
-      const res = await fetch('/api/clinic-info');
-      if (res.ok) {
-        const data = await res.json();
-        setClinicInfo(data);
-      }
-    } catch {
-      console.error('Error loading clinic info');
-    }
-  }, []);
-
-  const fetchDoctors = useCallback(async () => {
-    try {
-      const res = await fetch('/api/doctors');
-      if (res.ok) {
-        const data = await res.json();
-        setDoctors(data);
-      }
-    } catch {
-      console.error('Error loading doctors');
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchClinicInfo();
-    fetchDoctors();
-  }, [fetchClinicInfo, fetchDoctors]);
-
   const fetchPatient = useCallback(async () => {
     if (!patientId) return;
     try {
-      // If patient is already set, we don't show the full skeleton loading again
       const url = isDebug && debugClinicId 
         ? `/api/debug/patient-details?id=${patientId}&clinicId=${debugClinicId}`
         : `/api/patients/${patientId}`;
         
       const res = await fetch(url);
-      if (!res.ok) throw new Error('Failed');
+      if (!res.ok) throw new Error('Failed to fetch patient');
       const data = await res.json();
       setPatient(data);
       if (data.visits && data.visits.length > 0 && !activeVisitId) {
         setActiveVisitId(data.visits[0].id);
       }
     } catch (err) {
+      console.error('Fetch patient error:', err);
       showToast('Error loading patient', 'error');
     } finally {
       setLoading(false);
     }
-  }, [patientId, activeVisitId, showToast, isDebug, debugClinicId]);
+  }, [patientId, showToast, isDebug, debugClinicId]); // Removed activeVisitId from dependencies
+
+  const fetchInitialData = useCallback(async () => {
+    try {
+      const [infoRes, docsRes] = await Promise.all([
+        fetch('/api/clinic-info'),
+        fetch('/api/doctors')
+      ]);
+      
+      if (infoRes.ok) setClinicInfo(await infoRes.json());
+      if (docsRes.ok) setDoctors(await docsRes.json());
+    } catch (err) {
+      console.error('Error loading initial data:', err);
+    }
+  }, []);
 
   useEffect(() => {
+    fetchInitialData();
     fetchPatient();
-  }, [fetchPatient]);
+  }, [fetchInitialData, fetchPatient]);
+
+  useEffect(() => {
+    if (patient?.visits && patient.visits.length > 0) {
+        setNewVisit(prev => ({ ...prev, doctor: prev.doctor || patient.visits![0].doctor }));
+    }
+  }, [patient]);
 
   const handleSaveVisit = async () => {
     if (!patient || !patient.id) return;

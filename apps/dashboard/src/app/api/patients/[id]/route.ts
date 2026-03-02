@@ -16,11 +16,18 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     }
 
     const patient = await getPatientByIdWithVisits(clinicId, id);
-    if (!patient) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    if (!patient) {
+        console.log(`Patient not found: ID=${id}, Clinic=${clinicId}`);
+        return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
     
     return NextResponse.json(patient);
   } catch (error: any) {
-    console.error('Error in GET /api/patients/[id]:', error);
+    console.error('CRITICAL Error in GET /api/patients/[id]:', {
+        id,
+        message: error.message,
+        stack: error.stack
+    });
     return NextResponse.json({ error: error.message || 'Failed to fetch patient' }, { status: 500 });
   }
 }
