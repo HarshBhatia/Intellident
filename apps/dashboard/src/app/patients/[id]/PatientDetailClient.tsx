@@ -727,7 +727,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                                     type="date" 
                                     value={newVisit.date || ''} 
                                     max={new Date().toISOString().split('T')[0]}
-                                    onChange={e => setNewVisit({...newVisit, date: e.target.value})} 
+                                    onChange={e => setNewVisit(prev => ({...prev, date: e.target.value}))} 
                                     className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 outline-none transition-all text-sm font-medium text-gray-900 dark:text-gray-100" 
                                 />
                             </div>
@@ -737,7 +737,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                                     id="visit-doctor"
                                     name="doctor"
                                     value={newVisit.doctor || ''} 
-                                    onChange={e => setNewVisit({...newVisit, doctor: e.target.value})} 
+                                    onChange={e => setNewVisit(prev => ({...prev, doctor: e.target.value}))} 
                                     className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 outline-none transition-all text-sm font-medium text-gray-900 dark:text-gray-100 appearance-none"
                                 >
                                     <option value="">Select Doctor</option>
@@ -754,7 +754,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                                     id="visit-type"
                                     name="visit_type"
                                     value={newVisit.visit_type || 'Consultation'} 
-                                    onChange={e => setNewVisit({...newVisit, visit_type: e.target.value})} 
+                                    onChange={e => setNewVisit(prev => ({...prev, visit_type: e.target.value}))} 
                                     className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 outline-none transition-all text-sm font-medium text-gray-900 dark:text-gray-100 appearance-none"
                                 >
                                     <option value="Consultation">Consultation</option>
@@ -769,8 +769,8 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                                     id="visit-cost"
                                     name="cost"
                                     type="number" 
-                                    value={newVisit.cost} 
-                                    onChange={e => setNewVisit({...newVisit, cost: Number(e.target.value)})} 
+                                    value={newVisit.cost ?? ''} 
+                                    onChange={e => setNewVisit(prev => ({...prev, cost: e.target.value === '' ? undefined : Number(e.target.value)}))} 
                                     className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 outline-none transition-all text-sm font-medium text-gray-900 dark:text-gray-100" 
                                 />
                             </div>
@@ -784,7 +784,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                                     name="clinical_findings"
                                     placeholder="e.g. Dental Caries, Pain, Swelling..." 
                                     value={newVisit.clinical_findings || ''} 
-                                    onChange={e => setNewVisit({...newVisit, clinical_findings: e.target.value})} 
+                                    onChange={e => setNewVisit(prev => ({...prev, clinical_findings: e.target.value}))} 
                                     className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 outline-none transition-all text-sm font-medium text-gray-900 dark:text-gray-100 h-24 placeholder-gray-400 dark:placeholder-gray-400" 
                                 />
                             </div>
@@ -795,7 +795,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                                     name="procedure_notes"
                                     placeholder="Details of treatment done..." 
                                     value={newVisit.procedure_notes || ''} 
-                                    onChange={e => setNewVisit({...newVisit, procedure_notes: e.target.value})} 
+                                    onChange={e => setNewVisit(prev => ({...prev, procedure_notes: e.target.value}))} 
                                     className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 outline-none transition-all text-sm font-medium text-gray-900 dark:text-gray-100 h-24 placeholder-gray-400 dark:placeholder-gray-400" 
                                 />
                             </div>
@@ -806,7 +806,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                                     name="medicine_prescribed"
                                     placeholder="Medicines and dosage..." 
                                     value={newVisit.medicine_prescribed || ''} 
-                                    onChange={e => setNewVisit({...newVisit, medicine_prescribed: e.target.value})} 
+                                    onChange={e => setNewVisit(prev => ({...prev, medicine_prescribed: e.target.value}))} 
                                     className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 outline-none transition-all text-sm font-medium text-gray-900 dark:text-gray-100 h-20 placeholder-gray-400 dark:placeholder-gray-400" 
                                 />
                             </div>
@@ -818,7 +818,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                                     type="text" 
                                     placeholder="e.g. 17, 18" 
                                     value={newVisit.tooth_number || ''} 
-                                    onChange={e => setNewVisit({...newVisit, tooth_number: e.target.value})} 
+                                    onChange={e => setNewVisit(prev => ({...prev, tooth_number: e.target.value}))} 
                                     className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 outline-none transition-all text-sm font-medium text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400" 
                                 />
                             </div>
