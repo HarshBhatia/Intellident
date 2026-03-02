@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { generatePrescriptionPDF } from '@/lib/pdf-generator';
 import { uploadImage } from '@/lib/image-utils';
 import { useAuth } from '@/hooks/useAuth';
+import ToothSelector from '@/components/ToothSelector';
 
 interface XRay {
   url: string;
@@ -892,93 +893,103 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
 
                 {/* Visit Content */}
                 {!showVisitForm && patient.visits?.filter(v => v.id === activeVisitId).map((visit) => (
-                    <div key={visit.id} className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden animate-in fade-in duration-300">
-                        <div className="p-6 border-b dark:border-gray-800 flex justify-between items-center bg-gray-50/50 dark:bg-gray-800/20">
-                            <div>
-                                <div className="flex items-center gap-3">
-                                    <h3 className="text-xl font-bold text-gray-900 dark:text-white">{visit.clinical_findings || 'Regular Checkup'}</h3>
-                                    <span className="bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider">
+                    <div key={visit.id} className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden animate-in fade-in duration-300 flex flex-col md:flex-row border-l-4 border-blue-500">
+                        {/* Left Column: Narrative & Details */}
+                        <div className="flex-1 p-6 md:p-8 border-r border-gray-100 dark:border-gray-800">
+                            <div className="flex justify-between items-start mb-8">
+                                <div>
+                                    <div className="flex items-center gap-3 mb-2">
+                                        <span className="text-[11px] font-bold text-gray-900 dark:text-white flex items-center gap-1.5 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded">
+                                            <svg className="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                                            {visit.doctor || 'No doctor'}
+                                        </span>
+                                    </div>
+                                    <h3 className="text-2xl font-black text-gray-900 dark:text-white leading-tight tracking-tight">
                                         {visit.visit_type || 'Consultation'}
-                                    </span>
+                                    </h3>
                                 </div>
-                                <p className="text-sm text-gray-500 flex items-center gap-2 mt-1">
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-                                    {visit.doctor || 'No doctor assigned'}
-                                </p>
+                                <div className="flex gap-1">
+                                    <button 
+                                        type="button"
+                                        onClick={() => handleEditVisit(visit)}
+                                        className="text-gray-400 hover:text-blue-600 p-2 rounded-lg transition-colors"
+                                        title="Edit Visit"
+                                    >
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                    </button>
+                                    <button 
+                                        type="button"
+                                        onClick={() => clinicInfo && generatePrescriptionPDF(patient, clinicInfo, visit)}
+                                        className="text-gray-400 hover:text-blue-600 p-2 rounded-lg transition-colors"
+                                        title="Print Prescription"
+                                        disabled={!clinicInfo}
+                                    >
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                                    </button>
+                                    <button 
+                                        type="button"
+                                        onClick={() => visit.id && handleDeleteVisit(visit.id)}
+                                        className="text-gray-400 hover:text-red-500 p-2 rounded-lg transition-colors"
+                                        title="Delete Record"
+                                    >
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                    </button>
+                                </div>
                             </div>
-                            <div className="flex gap-2">
-                                <button 
-                                    type="button"
-                                    onClick={() => handleEditVisit(visit)}
-                                    className="text-gray-600 hover:text-blue-600 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-900/20 p-2 rounded-lg transition"
-                                    title="Edit Visit"
-                                >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                                </button>
-                                <button 
-                                    type="button"
-                                    onClick={() => clinicInfo && generatePrescriptionPDF(patient, clinicInfo, visit)}
-                                    className="bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 px-4 py-2 rounded-lg font-bold text-xs uppercase flex items-center gap-2 transition"
-                                    disabled={!clinicInfo}
-                                >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
-                                    Prescription
-                                </button>
-                                <button 
-                                    type="button"
-                                    onClick={() => visit.id && handleDeleteVisit(visit.id)}
-                                    className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-2 rounded-lg transition"
-                                    title="Delete Visit"
-                                >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                </button>
+
+                            <div className="space-y-8">
+                                <section>
+                                    <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Clinical Assessment</h4>
+                                    <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
+                                        {visit.clinical_findings || 'General Consultation'}
+                                    </p>
+                                </section>
+
+                                <section>
+                                    <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Procedure Details</h4>
+                                    <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
+                                        {visit.procedure_notes || 'No procedure notes recorded.'}
+                                    </p>
+                                </section>
+
+                                {visit.tooth_number && (
+                                    <section>
+                                        <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Treatment Area</h4>
+                                        <div className="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-2xl border border-gray-100 dark:border-gray-800 overflow-x-auto">
+                                            <ToothSelector 
+                                                value={visit.tooth_number} 
+                                                readOnly={true} 
+                                                className="w-max mx-auto"
+                                            />
+                                        </div>
+                                    </section>
+                                )}
                             </div>
                         </div>
-                        
-                        <div className="p-6 space-y-8">
-                            {/* Consolidated clinical information */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-gray-50/50 dark:bg-gray-800/20 p-6 rounded-2xl border dark:border-gray-800">
-                                <div>
-                                    <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Clinical Findings</h4>
-                                    <p className="text-sm font-bold text-gray-900 dark:text-white whitespace-pre-wrap">{visit.clinical_findings || '-'}</p>
-                                </div>
-                                <div>
-                                    <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Procedure & Notes</h4>
-                                    <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{visit.procedure_notes || '-'}</p>
-                                </div>
-                                <div className="md:col-span-2">
-                                    <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Medicine Prescribed</h4>
-                                    <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{visit.medicine_prescribed || '-'}</p>
-                                </div>
+
+                        {/* Right Column: Prescription & Financials */}
+                        <div className="w-full md:w-80 bg-gray-50/50 dark:bg-gray-800/20 p-6 md:p-8 flex flex-col justify-between">
+                            <div className="space-y-8">
+                                <section>
+                                    <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                        <span className="text-blue-600 dark:text-blue-400">Rx</span> Prescription
+                                    </h4>
+                                    {visit.medicine_prescribed ? (
+                                        <div className="text-sm font-medium text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-900/50 p-4 rounded-xl border border-gray-100 dark:border-gray-800 italic leading-relaxed shadow-sm">
+                                            {visit.medicine_prescribed}
+                                        </div>
+                                    ) : (
+                                        <p className="text-xs text-gray-400 italic">No medicines prescribed.</p>
+                                    )}
+                                </section>
                             </div>
 
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                                <div className="lg:col-span-2 space-y-6">
-                                    {visit.tooth_number && (
-                                        <div>
-                                            <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Teeth Involved</h4>
-                                            <div className="flex flex-wrap gap-2">
-                                                {visit.tooth_number.split(',').map(t => (
-                                                    <span key={t} className="bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-3 py-1 rounded-full font-mono text-xs font-bold border border-blue-200 dark:border-blue-800">
-                                                        {t.trim()}
-                                                    </span>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div className="space-y-6">
-                                    <div>
-                                        <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Visit Finances</h4>
-                                        <div className="bg-blue-50/50 dark:bg-blue-900/10 rounded-xl p-5 space-y-4 border border-blue-100 dark:border-blue-900/30">
-                                            <div className="flex justify-between text-sm">
-                                                <span className="text-gray-500 font-medium">Amount Paid</span>
-                                                <span className="text-xl font-black text-green-600">₹{Number(visit.paid || visit.cost).toLocaleString()}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                            <div className="mt-12 pt-4 border-t border-gray-100 dark:border-gray-800 flex justify-between items-center">
+                                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest flex items-center gap-2">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                                    Paid in full
+                                </span>
+                                <span className="text-sm font-bold text-gray-900 dark:text-white font-mono">₹{Number(visit.paid || visit.cost).toLocaleString()}</span>
                             </div>
                         </div>
                     </div>
