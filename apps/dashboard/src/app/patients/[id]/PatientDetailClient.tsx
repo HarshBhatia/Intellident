@@ -98,15 +98,20 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
 
         if (res.ok) {
             const data = await res.json();
-            setNewVisit(prev => ({
-                ...prev,
-                clinical_findings: data.clinical_findings || prev.clinical_findings,
-                procedure_notes: data.procedure_notes || prev.procedure_notes,
-                medicine_prescribed: data.medicine_prescribed || prev.medicine_prescribed,
-                tooth_number: data.tooth_number || prev.tooth_number,
-                visit_type: data.visit_type || prev.visit_type,
-                cost: data.cost || prev.cost
-            }));
+            console.log('AI Data received:', data);
+            setNewVisit(prev => {
+                const next = {
+                    ...prev,
+                    clinical_findings: data.clinical_findings || prev.clinical_findings,
+                    procedure_notes: data.procedure_notes || prev.procedure_notes,
+                    medicine_prescribed: data.medicine_prescribed || prev.medicine_prescribed,
+                    tooth_number: data.tooth_number || prev.tooth_number,
+                    visit_type: data.visit_type || prev.visit_type,
+                    cost: data.cost || prev.cost
+                };
+                console.log('Next newVisit state:', next);
+                return next;
+            });
             showToast('Note parsed successfully!', 'success');
             setSmartNote(''); // Clear smart note after parsing
         } else {
@@ -240,10 +245,12 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
         const method = editingVisitId ? 'PUT' : 'POST';
         const body = { 
             ...newVisit, 
-            paid: newVisit.cost, 
+            cost: Number(newVisit.cost) || 0,
+            paid: Number(newVisit.cost) || 0, 
             patient_id: patient.id,
             id: editingVisitId 
         };
+        console.log('Saving visit with body:', body);
 
         const res = await fetch('/api/visits', {
             method,
