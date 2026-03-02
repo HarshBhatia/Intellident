@@ -1,4 +1,4 @@
-import { createVisit } from '../src/services/visit.service';
+import { createVisit } from '../../src/services/visit.service';
 import { getDb } from '@intellident/api';
 
 jest.mock('@intellident/api', () => ({

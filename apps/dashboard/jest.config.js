@@ -8,7 +8,7 @@ module.exports = {
     '^@/(.*)$': '<rootDir>/src/$1',
     '^@intellident/api$': '<rootDir>/../../packages/api/src/index.ts',
   },
-  testPathIgnorePatterns: ['/node_modules/', '/.next/'],
+  testPathIgnorePatterns: ['/node_modules/', '/.next/', '/test/e2e/'],
   transform: {
     '^.+\.(ts|tsx)$': 'ts-jest',
   },

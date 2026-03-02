@@ -1,4 +1,4 @@
-import { getPatients, createPatient } from '../src/services/patient.service';
+import { getPatients, createPatient } from '../../src/services/patient.service';
 import { getDb } from '@intellident/api';
 
 jest.mock('@intellident/api', () => ({
