@@ -53,7 +53,7 @@ export const generatePrescriptionPDF = (patient: Patient, clinic: ClinicInfo, vi
   }
 
   // Clinical Details
-  if (visit?.symptoms || visit?.diagnosis || visit?.treatment_done) {
+  if (visit?.clinical_findings || visit?.procedure_notes) {
     doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
     doc.text('CLINICAL DETAILS', 15, 75);
@@ -61,17 +61,15 @@ export const generatePrescriptionPDF = (patient: Patient, clinic: ClinicInfo, vi
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     let currentY = 81;
-    if (visit.symptoms) {
-        doc.text(`Symptoms: ${visit.symptoms}`, 15, currentY);
-        currentY += 6;
+    if (visit.clinical_findings) {
+        const splitFindings = doc.splitTextToSize(`Findings: ${visit.clinical_findings}`, pageWidth - 30);
+        doc.text(splitFindings, 15, currentY);
+        currentY += (splitFindings.length * 5);
     }
-    if (visit.diagnosis) {
-        doc.text(`Diagnosis: ${visit.diagnosis}`, 15, currentY);
-        currentY += 6;
-    }
-    if (visit.treatment_done) {
-        doc.text(`Treatment: ${visit.treatment_done}`, 15, currentY);
-        currentY += 6;
+    if (visit.procedure_notes) {
+        const splitProcedure = doc.splitTextToSize(`Procedure: ${visit.procedure_notes}`, pageWidth - 30);
+        doc.text(splitProcedure, 15, currentY);
+        currentY += (splitProcedure.length * 5);
     }
   }
 
@@ -103,22 +101,6 @@ export const generatePrescriptionPDF = (patient: Patient, clinic: ClinicInfo, vi
     doc.setFontSize(10);
     doc.setTextColor(156, 163, 175);
     doc.text('No medicines prescribed.', 15, 125);
-  }
-
-  // Notes Section
-  const finalY = (doc as any).lastAutoTable?.finalY || 135;
-  const notesStr = visit?.notes;
-  if (notesStr) {
-    doc.setFontSize(12);
-    doc.setTextColor(17, 24, 39);
-    doc.setFont('helvetica', 'bold');
-    doc.text('NOTES / INSTRUCTIONS', 15, finalY + 15);
-    
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(75, 85, 99);
-    const splitNotes = doc.splitTextToSize(notesStr, pageWidth - 30);
-    doc.text(splitNotes, 15, finalY + 22);
   }
 
   // Footer

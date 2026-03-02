@@ -607,13 +607,13 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                             date: new Date().toISOString().split('T')[0],
                             doctor: patient.visits?.[0]?.doctor || '',
                             visit_type: 'Consultation',
-                            symptoms: '',
-                            diagnosis: '',
-                            treatment_plan: '',
-                            treatment_done: '',
+                            clinical_findings: '',
+                            procedure_notes: '',
                             tooth_number: '',
-                                        cost: 0
-                                    });                    }}
+                            medicine_prescribed: '',
+                            cost: 0
+                        });
+                    }}
                     className={`bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-bold text-xs shadow-sm flex items-center gap-2 transition whitespace-nowrap ${showVisitForm && !editingVisitId ? 'ring-2 ring-blue-400 ring-offset-2 dark:ring-offset-gray-950' : ''}`}
                 >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
@@ -789,7 +789,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                         <div className="p-6 border-b dark:border-gray-800 flex justify-between items-center bg-gray-50/50 dark:bg-gray-800/20">
                             <div>
                                 <div className="flex items-center gap-3">
-                                    <h3 className="text-xl font-bold text-gray-900 dark:text-white">{visit.diagnosis || 'Regular Checkup'}</h3>
+                                    <h3 className="text-xl font-bold text-gray-900 dark:text-white">{visit.clinical_findings || 'Regular Checkup'}</h3>
                                     <span className="bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider">
                                         {visit.visit_type || 'Consultation'}
                                     </span>
