@@ -171,8 +171,13 @@ export default function PatientTable({ patients, onAddClick }: PatientTableProps
 
       // Handle date sorting for last_visit
       if (sortConfig.key === 'last_visit') {
-        aValue = aValue ? new Date(aValue).getTime() : 0;
-        bValue = bValue ? new Date(bValue).getTime() : 0;
+        const parseDate = (val: any) => {
+            if (!val) return 0;
+            const d = new Date(val);
+            return isNaN(d.getTime()) ? 0 : d.getTime();
+        };
+        aValue = parseDate(aValue);
+        bValue = parseDate(bValue);
       }
       
       // Handle string comparisons with natural sort order for IDs
@@ -302,7 +307,7 @@ export default function PatientTable({ patients, onAddClick }: PatientTableProps
             ))}
             {paginatedPatients.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-6 py-16 text-center text-gray-400 dark:text-gray-600">
+                <td colSpan={6} className="px-6 py-16 text-center text-gray-400 dark:text-gray-600">
                   <div className="flex flex-col items-center gap-4">
                     <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-full">
                         <svg className="w-10 h-10 text-gray-300 dark:text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>

@@ -69,7 +69,7 @@ export default function DashboardClient() {
   }, []);
 
   const filteredPatients = useMemo(() => {
-    return patients.filter(p => 
+    return (patients || []).filter(p => 
       p.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.phone_number?.includes(searchTerm) ||
       p.patient_id?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -80,15 +80,15 @@ export default function DashboardClient() {
 
   const stats = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
-    const todayRevenue = patients.reduce((sum, p) => {
+    const todayRevenue = (patients || []).reduce((sum, p) => {
         // This is a rough estimate since we only have last_visit and not all visits here
         // In a real app, we'd fetch this from a summary API
         return sum + (p.last_visit === today ? 500 : 0); // Placeholder logic
     }, 0);
 
     return {
-        totalPatients: patients.length,
-        doctorsCount: doctors.length,
+        totalPatients: (patients || []).length,
+        doctorsCount: (doctors || []).length,
         todayRevenue
     };
   }, [patients, doctors]);
