@@ -50,7 +50,7 @@ export async function getPatientByIdWithVisits(clinicId: string, patientId: stri
   const patient = patientRows[0] as Patient;
   
   const visits = await sql`
-    SELECT id, clinic_id, patient_id, date, doctor, visit_type, symptoms, diagnosis, treatment_plan, treatment_done, tooth_number, medicine_prescribed, notes, cost, paid, xrays, share, mode_of_payment, billing_items, created_at
+    SELECT id, clinic_id, patient_id, date, doctor, visit_type, clinical_findings, procedure_notes, tooth_number, medicine_prescribed, cost, paid, xrays, billing_items, created_at
     FROM visits 
     WHERE patient_id = ${patient.id} 
     AND clinic_id = ${cId}
