@@ -26,11 +26,11 @@ interface ClinicInfo {
 }
 
 export default function PatientDetailClient({ params }: { params: Promise<{ id: string }> }) {
-  const { id: patientId } = use(params);
   const { showToast } = useToast();
   const searchParams = useSearchParams();
   const isDebug = searchParams.get('debug') === 'true';
   const debugClinicId = searchParams.get('clinicId');
+  const [patientId, setPatientId] = useState<string | null>(null);
   
   const [patient, setPatient] = useState<Patient | null>(null);
   const [clinicInfo, setClinicInfo] = useState<ClinicInfo | null>(null);
@@ -41,6 +41,10 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
   const [editingVisitId, setEditingVisitId] = useState<number | null>(null);
   const [uploadingXRay, setUploadingXRay] = useState(false);
   const [selectedXRay, setSelectedXRay] = useState<string | null>(null);
+
+  useEffect(() => {
+    params.then(p => setPatientId(p.id));
+  }, [params]);
 
   // Visit Form State
   const [newVisit, setNewVisit] = useState<Partial<Visit>>({
@@ -76,7 +80,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
     } finally {
       setLoading(false);
     }
-  }, [patientId, showToast, isDebug, debugClinicId]); // Removed activeVisitId from dependencies
+  }, [patientId, showToast, isDebug, debugClinicId]); 
 
   const fetchInitialData = useCallback(async () => {
     try {
@@ -94,8 +98,13 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
 
   useEffect(() => {
     fetchInitialData();
-    fetchPatient();
-  }, [fetchInitialData, fetchPatient]);
+  }, [fetchInitialData]);
+
+  useEffect(() => {
+    if (patientId) {
+        fetchPatient();
+    }
+  }, [patientId, fetchPatient]);
 
   useEffect(() => {
     if (patient?.visits && patient.visits.length > 0) {
