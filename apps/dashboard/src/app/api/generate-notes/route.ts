@@ -79,10 +79,17 @@ export async function POST(request: Request) {
       }
     });
 
-    const extractionPrompt = `Extract dental clinical data from this text: "${textToAnalyze}". 
-    Categorize into: clinical_findings, procedure_notes, medicine_prescribed, tooth_number, visit_type, and cost.
-    If multiple teeth are mentioned, list them separated by commas (e.g. 17, 18).
-    If no cost is mentioned, default to 0.`;
+    const extractionPrompt = `Extract detailed dental clinical data from this text: "${textToAnalyze}". 
+    
+    Guidelines:
+    - clinical_findings: Be descriptive. Include specific symptoms, initial observations, and diagnosis (e.g., "Deep distal caries on tooth 17 with associated pulpitis symptoms").
+    - procedure_notes: Detail the steps taken during the treatment (e.g., "Caries excavation, pulp capping with MTA, and composite restoration performed").
+    - medicine_prescribed: List full names and dosages.
+    - tooth_number: List separated by commas.
+    - visit_type: Must be one of: Consultation, Procedure, Follow-up, Other.
+    - cost: Default to 0 if not mentioned.
+    
+    Aim for professional, detailed notes that a doctor would find useful for history tracking, but keep it concise.`;
 
     const result = await model.generateContent(extractionPrompt);
     const response = await result.response;

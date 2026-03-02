@@ -45,6 +45,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
   const [uploadingXRay, setUploadingXRay] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [showManualFields, setShowManualFields] = useState(false);
   const [selectedXRay, setSelectedXRay] = useState<string | null>(null);
   const [smartNote, setSmartNote] = useState('');
 
@@ -112,6 +113,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                 console.log('Next newVisit state:', next);
                 return next;
             });
+            setShowManualFields(true);
             showToast('Note parsed successfully!', 'success');
             setSmartNote(''); // Clear smart note after parsing
         } else {
@@ -290,6 +292,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
   const handleEditVisit = (visit: Visit) => {
     if (!visit.id) return;
     setEditingVisitId(visit.id);
+    setShowManualFields(true);
     setNewVisit({
         date: visit.date,
         doctor: visit.doctor,
@@ -656,6 +659,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                         setShowVisitForm(true);
                         setActiveVisitId(null);
                         setEditingVisitId(null);
+                        setShowManualFields(false);
                         setNewVisit({
                             date: new Date().toISOString().split('T')[0],
                             doctor: patient.visits?.[0]?.doctor || '',
@@ -686,178 +690,192 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                             <button type="button" onClick={() => { setShowVisitForm(false); setEditingVisitId(null); }} className="text-gray-400 hover:text-gray-600">✕</button>
                         </div>
 
-                        {!editingVisitId && (
-                            <div className="mb-8 p-5 bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-2xl">
-                                <label className="block text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-2">Smart AI Entry (Optional)</label>
-                                <div className="flex flex-col gap-3">
-                                    <textarea 
-                                        placeholder="e.g. Scaling done for tooth 17, 18. Patient had pain. Prescribed Amoxicillin. Cost 1500."
-                                        value={smartNote}
-                                        onChange={(e) => setSmartNote(e.target.value)}
-                                        className="w-full p-4 bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-800 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition min-h-[80px] placeholder-gray-400 dark:placeholder-gray-400"
-                                    />
-                                    <button 
-                                        type="button"
-                                        onClick={handleAIGenerate}
-                                        disabled={isGenerating || !smartNote.trim()}
-                                        className="self-end px-6 py-2 bg-blue-600 text-white rounded-lg font-bold text-xs hover:bg-blue-700 transition disabled:opacity-50 flex items-center gap-2"
-                                    >
-                                        {isGenerating ? (
-                                            <>
-                                                <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" /></svg>
-                                                Parsing...
-                                            </>
-                                        ) : (
-                                            <>
-                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                                                Parse with AI
-                                            </>
-                                        )}
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-
-                        <div className="grid grid-cols-2 gap-4 mb-4">
-                            <div>
-                                <label htmlFor="visit-date" className="block text-[10px] font-black text-gray-400 dark:text-gray-400 uppercase tracking-widest mb-1.5">Date <span className="text-red-500">*</span></label>
-                                <input 
-                                    id="visit-date"
-                                    name="date"
-                                    type="date" 
-                                    value={newVisit.date || ''} 
-                                    max={new Date().toISOString().split('T')[0]}
-                                    onChange={e => setNewVisit(prev => ({...prev, date: e.target.value}))} 
-                                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 outline-none transition-all text-sm font-medium text-gray-900 dark:text-gray-100" 
-                                />
-                            </div>
-                            <div>
-                                <label htmlFor="visit-doctor" className="block text-[10px] font-black text-gray-400 dark:text-gray-400 uppercase tracking-widest mb-1.5">Doctor <span className="text-red-500">*</span></label>
-                                <select 
-                                    id="visit-doctor"
-                                    name="doctor"
-                                    value={newVisit.doctor || ''} 
-                                    onChange={e => setNewVisit(prev => ({...prev, doctor: e.target.value}))} 
-                                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 outline-none transition-all text-sm font-medium text-gray-900 dark:text-gray-100 appearance-none"
-                                >
-                                    <option value="">Select Doctor</option>
-                                    {doctors.map(d => (
-                                        <option key={d.id} value={d.name}>{d.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4 mb-4">
-                            <div>
-                                <label htmlFor="visit-type" className="block text-[10px] font-black text-gray-400 dark:text-gray-400 uppercase tracking-widest mb-1.5">Visit Type <span className="text-red-500">*</span></label>
-                                <select 
-                                    id="visit-type"
-                                    name="visit_type"
-                                    value={newVisit.visit_type || 'Consultation'} 
-                                    onChange={e => setNewVisit(prev => ({...prev, visit_type: e.target.value}))} 
-                                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 outline-none transition-all text-sm font-medium text-gray-900 dark:text-gray-100 appearance-none"
-                                >
-                                    <option value="Consultation">Consultation</option>
-                                    <option value="Procedure">Procedure</option>
-                                    <option value="Follow-up">Follow-up</option>
-                                    <option value="Other">Other</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label htmlFor="visit-cost" className="block text-[10px] font-black text-gray-400 dark:text-gray-400 uppercase tracking-widest mb-1.5">Amount (₹) <span className="text-red-500">*</span></label>
-                                <input 
-                                    id="visit-cost"
-                                    name="cost"
-                                    type="number" 
-                                    value={newVisit.cost ?? ''} 
-                                    onChange={e => setNewVisit(prev => ({...prev, cost: e.target.value === '' ? undefined : Number(e.target.value)}))} 
-                                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 outline-none transition-all text-sm font-medium text-gray-900 dark:text-gray-100" 
-                                />
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                            <div>
-                                <label htmlFor="visit-findings" className="block text-[10px] font-black text-gray-400 dark:text-gray-400 uppercase tracking-widest mb-1.5">Clinical Findings <span className="text-red-500">*</span></label>
-                                <textarea 
-                                    id="visit-findings"
-                                    name="clinical_findings"
-                                    placeholder="e.g. Dental Caries, Pain, Swelling..." 
-                                    value={newVisit.clinical_findings || ''} 
-                                    onChange={e => setNewVisit(prev => ({...prev, clinical_findings: e.target.value}))} 
-                                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 outline-none transition-all text-sm font-medium text-gray-900 dark:text-gray-100 h-24 placeholder-gray-400 dark:placeholder-gray-400" 
-                                />
-                            </div>
-                            <div>
-                                <label htmlFor="visit-procedure" className="block text-[10px] font-black text-gray-400 dark:text-gray-400 uppercase tracking-widest mb-1.5">Procedure & Notes</label>
-                                <textarea 
-                                    id="visit-procedure"
-                                    name="procedure_notes"
-                                    placeholder="Details of treatment done..." 
-                                    value={newVisit.procedure_notes || ''} 
-                                    onChange={e => setNewVisit(prev => ({...prev, procedure_notes: e.target.value}))} 
-                                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 outline-none transition-all text-sm font-medium text-gray-900 dark:text-gray-100 h-24 placeholder-gray-400 dark:placeholder-gray-400" 
-                                />
-                            </div>
-                            <div>
-                                <label htmlFor="visit-medicine" className="block text-[10px] font-black text-gray-400 dark:text-gray-400 uppercase tracking-widest mb-1.5">Medicine Prescribed</label>
-                                <textarea 
-                                    id="visit-medicine"
-                                    name="medicine_prescribed"
-                                    placeholder="Medicines and dosage..." 
-                                    value={newVisit.medicine_prescribed || ''} 
-                                    onChange={e => setNewVisit(prev => ({...prev, medicine_prescribed: e.target.value}))} 
-                                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 outline-none transition-all text-sm font-medium text-gray-900 dark:text-gray-100 h-20 placeholder-gray-400 dark:placeholder-gray-400" 
-                                />
-                            </div>
-                            <div className="flex flex-col justify-end pb-4">
-                                <label htmlFor="visit-teeth" className="block text-[10px] font-black text-gray-400 dark:text-gray-400 uppercase tracking-widest mb-1.5">Teeth Involved</label>
-                                <input 
-                                    id="visit-teeth"
-                                    name="tooth_number"
-                                    type="text" 
-                                    placeholder="e.g. 17, 18" 
-                                    value={newVisit.tooth_number || ''} 
-                                    onChange={e => setNewVisit(prev => ({...prev, tooth_number: e.target.value}))} 
-                                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 outline-none transition-all text-sm font-medium text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400" 
-                                />
-                            </div>
-                        </div>
-
-                        <div className="mb-6 p-4 border border-dashed border-gray-200 dark:border-gray-800 rounded-xl">
-                            <div className="flex justify-between items-center mb-3">
-                                <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Attached Records ({JSON.parse(newVisit.xrays || '[]').length})</h4>
-                                <label className="cursor-pointer bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition flex items-center gap-2">
-                                    <input type="file" className="hidden" accept="image/*" onChange={handleFormXRayUpload} disabled={uploadingXRay} />
-                                    {uploadingXRay ? (
-                                        <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" /></svg>
-                                    ) : (
-                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
-                                    )}
-                                    Attach X-Ray
-                                </label>
-                            </div>
-                            <div className="flex flex-wrap gap-3">
-                                {JSON.parse(newVisit.xrays || '[]').map((x: XRay, i: number) => (
-                                    <div key={i} className="relative group w-16 h-16">
-                                        <img src={x.url} alt="Attached" className="w-full h-full object-cover rounded-lg border border-gray-200 dark:border-gray-700" />
-                                        <button 
-                                            type="button"
-                                            onClick={() => handleDeleteFormXRay(i)}
-                                            className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 shadow-sm"
-                                        >
-                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                                        </button>
-                                    </div>
-                                ))}
-                                {JSON.parse(newVisit.xrays || '[]').length === 0 && (
-                                    <p className="text-[10px] text-gray-400 italic">No images attached yet.</p>
-                                )}
-                            </div>
-                        </div>
-
-                        <div className="flex justify-end gap-3">
-                            <button type="button" onClick={() => { setShowVisitForm(false); setEditingVisitId(null); }} className="px-4 py-2 text-gray-500 hover:bg-gray-100 rounded">Cancel</button>
+                                                {!editingVisitId && (
+                                                    <div className="mb-8 p-5 bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-2xl">
+                                                        <label className="block text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-2">Smart AI Entry</label>
+                                                        <div className="flex flex-col gap-3">
+                                                            <textarea 
+                                                                placeholder="e.g. Scaling done for tooth 17, 18. Patient had pain. Prescribed Amoxicillin. Cost 1500."
+                                                                value={smartNote}
+                                                                onChange={(e) => setSmartNote(e.target.value)}
+                                                                className="w-full p-4 bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-800 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition min-h-[80px] placeholder-gray-400 dark:placeholder-gray-400" 
+                                                            />
+                                                            <div className="flex justify-between items-center">
+                                                                {!showManualFields && (
+                                                                    <button 
+                                                                        type="button"
+                                                                        onClick={() => setShowManualFields(true)}
+                                                                        className="text-[10px] font-black text-gray-400 hover:text-blue-600 uppercase tracking-widest transition"
+                                                                    >
+                                                                        + Enter Details Manually
+                                                                    </button>
+                                                                )}
+                                                                <button 
+                                                                    type="button"
+                                                                    onClick={handleAIGenerate}
+                                                                    disabled={isGenerating || !smartNote.trim()}
+                                                                    className="ml-auto px-6 py-2 bg-blue-600 text-white rounded-lg font-bold text-xs hover:bg-blue-700 transition disabled:opacity-50 flex items-center gap-2"
+                                                                >
+                                                                    {isGenerating ? (
+                                                                        <>
+                                                                            <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" /></svg>
+                                                                            Parsing...
+                                                                        </>
+                                                                    ) : (
+                                                                        <>
+                                                                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                                                                            Parse with AI
+                                                                        </>
+                                                                    )}
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+                        
+                                                {showManualFields && (
+                                                    <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                                                        <div className="grid grid-cols-2 gap-4 mb-4">
+                                                            <div>
+                                                                <label htmlFor="visit-date" className="block text-[10px] font-black text-gray-400 dark:text-gray-400 uppercase tracking-widest mb-1.5">Date <span className="text-red-500">*</span></label>
+                                                                <input 
+                                                                    id="visit-date"
+                                                                    name="date"
+                                                                    type="date" 
+                                                                    value={newVisit.date || ''} 
+                                                                    max={new Date().toISOString().split('T')[0]}
+                                                                    onChange={e => setNewVisit(prev => ({...prev, date: e.target.value}))} 
+                                                                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 outline-none transition-all text-sm font-medium text-gray-900 dark:text-gray-100" 
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <label htmlFor="visit-doctor" className="block text-[10px] font-black text-gray-400 dark:text-gray-400 uppercase tracking-widest mb-1.5">Doctor <span className="text-red-500">*</span></label>
+                                                                <select 
+                                                                    id="visit-doctor"
+                                                                    name="doctor"
+                                                                    value={newVisit.doctor || ''} 
+                                                                    onChange={e => setNewVisit(prev => ({...prev, doctor: e.target.value}))} 
+                                                                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 outline-none transition-all text-sm font-medium text-gray-900 dark:text-gray-100 appearance-none"
+                                                                >
+                                                                    <option value="">Select Doctor</option>
+                                                                    {doctors.map(d => (
+                                                                        <option key={d.id} value={d.name}>{d.name}</option>
+                                                                    ))}
+                                                                </select>
+                                                            </div>
+                                                        </div>
+                                                        <div className="grid grid-cols-2 gap-4 mb-4">
+                                                            <div>
+                                                                <label htmlFor="visit-type" className="block text-[10px] font-black text-gray-400 dark:text-gray-400 uppercase tracking-widest mb-1.5">Visit Type <span className="text-red-500">*</span></label>
+                                                                <select 
+                                                                    id="visit-type"
+                                                                    name="visit_type"
+                                                                    value={newVisit.visit_type || 'Consultation'} 
+                                                                    onChange={e => setNewVisit(prev => ({...prev, visit_type: e.target.value}))} 
+                                                                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 outline-none transition-all text-sm font-medium text-gray-900 dark:text-gray-100 appearance-none"
+                                                                >
+                                                                    <option value="Consultation">Consultation</option>
+                                                                    <option value="Procedure">Procedure</option>
+                                                                    <option value="Follow-up">Follow-up</option>
+                                                                    <option value="Other">Other</option>
+                                                                </select>
+                                                            </div>
+                                                            <div>
+                                                                <label htmlFor="visit-cost" className="block text-[10px] font-black text-gray-400 dark:text-gray-400 uppercase tracking-widest mb-1.5">Amount (₹) <span className="text-red-500">*</span></label>
+                                                                <input 
+                                                                    id="visit-cost"
+                                                                    name="cost"
+                                                                    type="number" 
+                                                                    value={newVisit.cost ?? ''} 
+                                                                    onChange={e => setNewVisit(prev => ({...prev, cost: e.target.value === '' ? undefined : Number(e.target.value)}))} 
+                                                                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 outline-none transition-all text-sm font-medium text-gray-900 dark:text-gray-100" 
+                                                                />
+                                                            </div>
+                                                        </div>
+                        
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                                            <div>
+                                                                <label htmlFor="visit-findings" className="block text-[10px] font-black text-gray-400 dark:text-gray-400 uppercase tracking-widest mb-1.5">Clinical Findings <span className="text-red-500">*</span></label>
+                                                                <textarea 
+                                                                    id="visit-findings"
+                                                                    name="clinical_findings"
+                                                                    placeholder="e.g. Dental Caries, Pain, Swelling..." 
+                                                                    value={newVisit.clinical_findings || ''} 
+                                                                    onChange={e => setNewVisit(prev => ({...prev, clinical_findings: e.target.value}))} 
+                                                                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 outline-none transition-all text-sm font-medium text-gray-900 dark:text-gray-100 h-24 placeholder-gray-400 dark:placeholder-gray-400" 
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <label htmlFor="visit-procedure" className="block text-[10px] font-black text-gray-400 dark:text-gray-400 uppercase tracking-widest mb-1.5">Procedure & Notes</label>
+                                                                <textarea 
+                                                                    id="visit-procedure"
+                                                                    name="procedure_notes"
+                                                                    placeholder="Details of treatment done..." 
+                                                                    value={newVisit.procedure_notes || ''} 
+                                                                    onChange={e => setNewVisit(prev => ({...prev, procedure_notes: e.target.value}))} 
+                                                                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 outline-none transition-all text-sm font-medium text-gray-900 dark:text-gray-100 h-24 placeholder-gray-400 dark:placeholder-gray-400" 
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <label htmlFor="visit-medicine" className="block text-[10px] font-black text-gray-400 dark:text-gray-400 uppercase tracking-widest mb-1.5">Medicine Prescribed</label>
+                                                                <textarea 
+                                                                    id="visit-medicine"
+                                                                    name="medicine_prescribed"
+                                                                    placeholder="Medicines and dosage..." 
+                                                                    value={newVisit.medicine_prescribed || ''} 
+                                                                    onChange={e => setNewVisit(prev => ({...prev, medicine_prescribed: e.target.value}))} 
+                                                                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 outline-none transition-all text-sm font-medium text-gray-900 dark:text-gray-100 h-20 placeholder-gray-400 dark:placeholder-gray-400" 
+                                                                />
+                                                            </div>
+                                                            <div className="flex flex-col justify-end pb-4">
+                                                                <label htmlFor="visit-teeth" className="block text-[10px] font-black text-gray-400 dark:text-gray-400 uppercase tracking-widest mb-1.5">Teeth Involved</label>
+                                                                <input 
+                                                                    id="visit-teeth"
+                                                                    name="tooth_number"
+                                                                    type="text" 
+                                                                    placeholder="e.g. 17, 18" 
+                                                                    value={newVisit.tooth_number || ''} 
+                                                                    onChange={e => setNewVisit(prev => ({...prev, tooth_number: e.target.value}))} 
+                                                                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 outline-none transition-all text-sm font-medium text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400" 
+                                                                />
+                                                            </div>
+                                                        </div>
+                        
+                                                        <div className="mb-6 p-4 border border-dashed border-gray-200 dark:border-gray-800 rounded-xl">
+                                                            <div className="flex justify-between items-center mb-3">
+                                                                <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Attached Records ({JSON.parse(newVisit.xrays || '[]').length})</h4>
+                                                                <label className="cursor-pointer bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition flex items-center gap-2">
+                                                                    <input type="file" className="hidden" accept="image/*" onChange={handleFormXRayUpload} disabled={uploadingXRay} />
+                                                                    {uploadingXRay ? (
+                                                                        <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" /></svg>
+                                                                    ) : (
+                                                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
+                                                                    )}
+                                                                    Attach X-Ray
+                                                                </label>
+                                                            </div>
+                                                            <div className="flex flex-wrap gap-3">
+                                                                {JSON.parse(newVisit.xrays || '[]').map((x: XRay, i: number) => (
+                                                                    <div key={i} className="relative group w-16 h-16">
+                                                                        <img src={x.url} alt="Attached" className="w-full h-full object-cover rounded-lg border border-gray-200 dark:border-gray-700" />
+                                                                        <button 
+                                                                            type="button"
+                                                                            onClick={() => handleDeleteFormXRay(i)}
+                                                                            className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 shadow-sm"
+                                                                        >
+                                                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                                                                        </button>
+                                                                    </div>
+                                                                ))}
+                                                                {JSON.parse(newVisit.xrays || '[]').length === 0 && (
+                                                                    <p className="text-[10px] text-gray-400 italic">No images attached yet.</p>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+                        
+                                                <div className="flex justify-end gap-3">                            <button type="button" onClick={() => { setShowVisitForm(false); setEditingVisitId(null); }} className="px-4 py-2 text-gray-500 hover:bg-gray-100 rounded">Cancel</button>
                             <button 
                                 id="save-visit-btn"
                                 type="button" 
