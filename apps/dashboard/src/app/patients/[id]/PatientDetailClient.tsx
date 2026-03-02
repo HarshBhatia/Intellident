@@ -160,6 +160,24 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
   const handleSaveVisit = async () => {
     if (!patient || !patient.id) return;
     
+    // Mandatory fields validation
+    if (!newVisit.date) {
+        showToast('Visit date is required', 'error');
+        return;
+    }
+    if (!newVisit.doctor) {
+        showToast('Please select a doctor', 'error');
+        return;
+    }
+    if (!newVisit.visit_type) {
+        showToast('Visit type is required', 'error');
+        return;
+    }
+    if (newVisit.cost === undefined || newVisit.cost === null || isNaN(newVisit.cost)) {
+        showToast('Amount is required', 'error');
+        return;
+    }
+
     // Future date validation
     if (newVisit.date && new Date(newVisit.date) > new Date()) {
         showToast('Visit date cannot be in the future', 'error');
@@ -574,7 +592,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                         </div>
                         <div className="grid grid-cols-2 gap-4 mb-4">
                             <div>
-                                <label htmlFor="visit-date" className="block text-xs font-bold text-gray-500 uppercase mb-1">Date</label>
+                                <label htmlFor="visit-date" className="block text-xs font-bold text-gray-500 uppercase mb-1">Date <span className="text-red-500">*</span></label>
                                 <input 
                                     id="visit-date"
                                     name="date"
@@ -586,7 +604,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                                 />
                             </div>
                             <div>
-                                <label htmlFor="visit-doctor" className="block text-xs font-bold text-gray-500 uppercase mb-1">Doctor</label>
+                                <label htmlFor="visit-doctor" className="block text-xs font-bold text-gray-500 uppercase mb-1">Doctor <span className="text-red-500">*</span></label>
                                 <select 
                                     id="visit-doctor"
                                     name="doctor"
@@ -603,7 +621,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                         </div>
                         <div className="grid grid-cols-2 gap-4 mb-4">
                             <div>
-                                <label htmlFor="visit-type" className="block text-xs font-bold text-gray-500 uppercase mb-1">Visit Type</label>
+                                <label htmlFor="visit-type" className="block text-xs font-bold text-gray-500 uppercase mb-1">Visit Type <span className="text-red-500">*</span></label>
                                 <select 
                                     id="visit-type"
                                     name="visit_type"
@@ -618,7 +636,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                                 </select>
                             </div>
                             <div>
-                                <label htmlFor="visit-cost" className="block text-xs font-bold text-gray-500 uppercase mb-1">Amount (₹)</label>
+                                <label htmlFor="visit-cost" className="block text-xs font-bold text-gray-500 uppercase mb-1">Amount (₹) <span className="text-red-500">*</span></label>
                                 <input 
                                     id="visit-cost"
                                     name="cost"
