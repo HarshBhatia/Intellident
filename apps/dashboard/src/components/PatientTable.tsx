@@ -146,25 +146,24 @@ export default function PatientTable({ patients, onAddClick, onDeleteSuccess }: 
       .then(data => setClinic(data));
   }, []);
 
-  // Reset to page 1 ONLY when sorting changes
+  // Sync page to URL
   useEffect(() => {
-    setCurrentPage(1);
-  }, [sortConfig]);
-
-  // Sync page to URL - Using replaceState for silent updates
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(searchParams.toString());
     if (currentPage > 1) {
       params.set('page', currentPage.toString());
     } else {
       params.delete('page');
     }
     
-    const newUrl = `${window.location.pathname}?${params.toString()}`;
-    if (window.location.search !== `?${params.toString()}`) {
-      window.history.replaceState({ ...window.history.state, as: newUrl, url: newUrl }, '', newUrl);
+    if (params.get('page') !== searchParams.get('page')) {
+      router.replace(`?${params.toString()}`, { scroll: false });
     }
-  }, [currentPage]);
+  }, [currentPage, router, searchParams]);
+
+  // Reset to page 1 ONLY when sorting changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [sortConfig]);
 
   const handleSort = (key: SortKey) => {
     setSortConfig((current) => ({
@@ -350,6 +349,7 @@ export default function PatientTable({ patients, onAddClick, onDeleteSuccess }: 
           </div>
           <div className="flex gap-2">
             <button
+              type="button"
               onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
               disabled={currentPage === 1}
               className="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-700 text-xs font-bold bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition"
@@ -360,6 +360,7 @@ export default function PatientTable({ patients, onAddClick, onDeleteSuccess }: 
               Page {currentPage} of {totalPages}
             </div>
             <button
+              type="button"
               onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
               disabled={currentPage === totalPages}
               className="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-700 text-xs font-bold bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition"

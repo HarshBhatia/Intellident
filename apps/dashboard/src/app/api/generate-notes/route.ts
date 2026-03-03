@@ -108,7 +108,14 @@ export async function POST(request: Request) {
       }
     });
 
-    const extractionPrompt = `Extract dental data from: "${textToAnalyze}". Guidelines: clinical_findings (detailed symptoms/diagnosis), procedure_notes (steps taken), medicine_prescribed, tooth_number, visit_type (Consultation, Procedure, Follow-up, Other), cost (number).`;
+    const extractionPrompt = `Extract dental data from: "${textToAnalyze}". 
+    Guidelines: 
+    - clinical_findings: detailed symptoms/diagnosis.
+    - procedure_notes: steps taken.
+    - medicine_prescribed: names and dosages.
+    - tooth_number: List separated by commas. Use 1-8 for permanent (Adult) teeth, and A-E for deciduous (Child) teeth.
+    - visit_type: Consultation, Procedure, Follow-up, Other.
+    - cost: number.`;
 
     const result = await model.generateContent(extractionPrompt);
     const response = await result.response;
