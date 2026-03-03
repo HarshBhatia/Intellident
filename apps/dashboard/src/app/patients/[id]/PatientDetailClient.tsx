@@ -51,6 +51,40 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
   const [selectedXRay, setSelectedXRay] = useState<string | null>(null);
   const [smartNote, setSmartNote] = useState('');
 
+  // Navigation Guard for Unsaved Changes
+  const isFormDirty = useMemo(() => {
+    if (!showVisitForm) return false;
+    return !!(
+      smartNote.trim() || 
+      newVisit.clinical_findings?.trim() || 
+      newVisit.procedure_notes?.trim() || 
+      newVisit.medicine_prescribed?.trim() ||
+      (newVisit.cost && newVisit.cost > 0)
+    );
+  }, [showVisitForm, smartNote, newVisit]);
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isFormDirty) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isFormDirty]);
+
+  const handleCloseVisitForm = useCallback(() => {
+    if (isFormDirty) {
+      if (!confirm('You have unsaved changes. Are you sure you want to discard them?')) {
+        return;
+      }
+    }
+    setShowVisitForm(false);
+    setEditingVisitId(null);
+    setSmartNote('');
+  }, [isFormDirty]);
+
   useEffect(() => {
     params.then(p => setPatientId(p.id));
   }, [params]);
@@ -596,7 +630,15 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
 
         {/* Breadcrumbs */}
         <div className="mb-4">
-            <Link href="/" className="text-blue-600 hover:text-blue-800 text-sm flex items-center gap-1 transition">
+            <Link 
+                href="/" 
+                onClick={(e) => {
+                    if (isFormDirty && !confirm('You have unsaved changes. Discard them?')) {
+                        e.preventDefault();
+                    }
+                }}
+                className="text-blue-600 hover:text-blue-800 text-sm flex items-center gap-1 transition"
+            >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
                 Back to Patients
             </Link>
@@ -711,6 +753,9 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                             key={visit.id}
                             type="button"
                             onClick={() => {
+                                if (isFormDirty && !confirm('You have unsaved changes. Discard them?')) {
+                                    return;
+                                }
                                 if (visit.id) {
                                     setActiveVisitId(visit.id);
                                     setShowVisitForm(false);
@@ -733,6 +778,9 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                 <button 
                     type="button"
                     onClick={() => {
+                        if (isFormDirty && !confirm('You have unsaved changes. Discard them?')) {
+                            return;
+                        }
                         setShowVisitForm(true);
                         setActiveVisitId(null);
                         setEditingVisitId(null);
@@ -764,7 +812,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                             <h3 className="text-lg font-bold text-gray-900 dark:text-white">
                                 {editingVisitId ? 'Update Visit Record' : 'Record New Visit'}
                             </h3>
-                            <button type="button" onClick={() => { setShowVisitForm(false); setEditingVisitId(null); }} className="text-gray-400 hover:text-gray-600">✕</button>
+                            <button type="button" onClick={handleCloseVisitForm} className="text-gray-400 hover:text-gray-600">✕</button>
                         </div>
 
                                                 {!editingVisitId && (
@@ -951,13 +999,14 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                                                                                 </div>                                                    </div>
                                                 )}
                         
-                                                <div className="flex justify-end gap-3">                            <button type="button" onClick={() => { setShowVisitForm(false); setEditingVisitId(null); }} className="px-4 py-2 text-gray-500 hover:bg-gray-100 rounded">Cancel</button>
+                                                <div className="flex justify-end gap-3">
+                            <button type="button" onClick={handleCloseVisitForm} className="px-4 py-2 text-gray-500 hover:bg-gray-100 rounded transition font-bold text-xs">Cancel</button>
                             <button 
                                 id="save-visit-btn"
                                 type="button" 
                                 onClick={handleSaveVisit} 
                                 disabled={isSaving || !newVisit.clinical_findings?.trim()}
-                                className="px-4 py-2 bg-blue-600 text-white font-bold rounded hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+                                className="px-4 py-2 bg-blue-600 text-white font-bold rounded hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2 text-xs shadow-lg shadow-blue-500/20 active:scale-95"
                             >
                                 {isSaving && <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" /></svg>}
                                 {editingVisitId ? (isSaving ? 'Updating...' : 'Update Record') : (isSaving ? 'Saving...' : 'Save Visit')}
