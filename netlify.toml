@@ -1,7 +1,6 @@
 [build]
   base = "apps/dashboard"
   command = "npm run build"
-  publish = ".next"
 
 [build.environment]
   NEXT_DISABLE_TURBOPACK = "1"
