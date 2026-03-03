@@ -13,25 +13,36 @@ export function getDb() {
 
   // Use PGlite for Local Development
   if (process.env.NODE_ENV !== 'production') {
-    const globalForPglite = global as unknown as { pglite: PGlite | undefined };
+    const globalForPglite = global as unknown as { pglite: any };
     
-    if (!globalForPglite.pglite) {
+    const initPglite = () => {
       const dbPath = path.resolve(process.cwd(), '.pgdata');
       console.log('📦 Initializing Local PGlite Database at:', dbPath);
       try {
-        globalForPglite.pglite = new PGlite(dbPath.toString());
+        const instance = new PGlite(dbPath.toString());
+        // Attach a simple flag to track if it's dead
+        (instance as any)._isAborted = false;
+        return instance;
       } catch (err) {
         console.error('FAILED TO INITIALIZE PGLITE:', err);
         throw err;
       }
+    };
+
+    if (!globalForPglite.pglite) {
+      globalForPglite.pglite = initPglite();
     }
 
-    const pgliteInstance = globalForPglite.pglite;
+    const getPglite = () => {
+      if (!globalForPglite.pglite || globalForPglite.pglite._isAborted) {
+        globalForPglite.pglite = initPglite();
+      }
+      return globalForPglite.pglite;
+    };
 
     // Create a shim that matches Neon's tagged template literal API
     const sql = async (strings: TemplateStringsArray, ...values: any[]) => {
-      const pglite = globalForPglite.pglite;
-      if (!pglite) throw new Error("PGlite not initialized");
+      const pglite = getPglite();
       
       try {
         await pglite.waitReady;
@@ -43,27 +54,24 @@ export function getDb() {
         return result.rows;
       } catch (err: any) {
         console.error('PGlite Query Error:', err);
-        if (err?.message?.includes('Aborted') || err?.message?.includes('closed')) {
-          globalForPglite.pglite = undefined;
-        }
+        // Mark as aborted so next call re-initializes
+        pglite._isAborted = true;
+        globalForPglite.pglite = undefined;
         throw err;
       }
     };
 
-    // Add .unsafe() support for raw strings (used in init script)
+    // Add .unsafe() support for raw strings
     (sql as any).unsafe = async (query: string, params: any[] = []) => {
-      const pglite = globalForPglite.pglite;
-      if (!pglite) throw new Error("PGlite not initialized");
-
+      const pglite = getPglite();
       try {
         await pglite.waitReady;
         const result = await pglite.query(query, params);
         return result.rows;
       } catch (err: any) {
         console.error('PGlite Unsafe Query Error:', err);
-        if (err?.message?.includes('Aborted') || err?.message?.includes('closed')) {
-          globalForPglite.pglite = undefined;
-        }
+        pglite._isAborted = true;
+        globalForPglite.pglite = undefined;
         throw err;
       }
     };
