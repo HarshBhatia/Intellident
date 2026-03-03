@@ -19,8 +19,22 @@ const isPublicRoute = createRouteMatcher([
 ]);
 
 export default clerkMiddleware(async (auth, request) => {
-  const { userId } = await auth();
   const url = new URL(request.url);
+  
+  // IMMEDIATELY allow all static and internal files
+  if (
+    url.pathname.startsWith('/_next') || 
+    url.pathname.includes('/static/') ||
+    url.pathname.endsWith('.js') ||
+    url.pathname.endsWith('.css') ||
+    url.pathname.endsWith('.ico') ||
+    url.pathname.endsWith('.png') ||
+    url.pathname.endsWith('.svg')
+  ) {
+    return NextResponse.next();
+  }
+
+  const { userId } = await auth();
   
   const e2eSecret = request.headers.get('x-e2e-secret') || request.cookies.get('x-e2e-secret')?.value;
   const isE2E = e2eSecret === 'e2e-secret-key';
