@@ -37,7 +37,7 @@ export async function getPatients(clinicId: string): Promise<Patient[]> {
   return rows as Patient[];
 }
 
-export async function getPatientByIdWithVisits(clinicId: string, patientId: string): Promise<Patient | null> {
+export async function getPatientByIdWithVisits(clinicId: string, patientId: string): Promise<any | null> {
   if (!clinicId) throw new Error('Clinic ID is required');
   if (!patientId) throw new Error('Patient ID is required');
 
@@ -49,20 +49,25 @@ export async function getPatientByIdWithVisits(clinicId: string, patientId: stri
   
   const patient = patientRows[0] as Patient;
   
-  const visits = await sql`
-    SELECT id, clinic_id, patient_id, date, doctor, visit_type, clinical_findings, procedure_notes, tooth_number, medicine_prescribed, cost, paid, xrays, billing_items, created_at
+  const visitsPromise = sql`
+    SELECT id, clinic_id, patient_id, date, doctor, visit_type, clinical_findings, procedure_notes, tooth_number, medicine_prescribed, cost, paid, xrays, billing_items, created_at, dentition_type
     FROM visits 
     WHERE patient_id = ${patient.id} 
     AND clinic_id = ${cId}
     ORDER BY date DESC, created_at DESC
   `;
+
+  const doctorsPromise = sql`SELECT id, name FROM doctors WHERE clinic_id = ${cId}`;
+
+  const [visits, doctors] = await Promise.all([visitsPromise, doctorsPromise]);
   
   return { 
     ...patient, 
     visits: visits.map((row: any) => ({
       ...row,
       billing_items: parseBillingItems(row.billing_items)
-    })) as Visit[] 
+    })) as Visit[],
+    doctors: doctors as { id: number, name: string }[]
   };
 }
 

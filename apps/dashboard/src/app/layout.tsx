@@ -6,6 +6,8 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { dark } from "@clerk/themes";
 import Footer from "@/components/Footer";
 import { validateEnv } from "@/lib/env";
+import { ClinicProvider } from "@/context/ClinicContext";
+import Script from "next/script";
 import "./globals.css";
 
 validateEnv();
@@ -82,17 +84,29 @@ export default function RootLayout({
             }
           }}
         >
-          <ThemeProvider defaultTheme="system">
-            <ToastProvider>
-              <div className="flex flex-col min-h-screen">
-                <main className="flex-1">
-                  {children}
-                </main>
-                <Footer />
-              </div>
-            </ToastProvider>
-          </ThemeProvider>
+          <ClinicProvider>
+            <ThemeProvider defaultTheme="system">
+              <ToastProvider>
+                <div className="flex flex-col min-h-screen">
+                  <main className="flex-1">
+                    {children}
+                  </main>
+                  <Footer />
+                </div>
+              </ToastProvider>
+            </ThemeProvider>
+          </ClinicProvider>
         </ClerkProvider>
+        
+        {/* Optimized Analytics Loading */}
+        <Script 
+          src="https://scripts.simpleanalyticscdn.com/latest.js" 
+          strategy="lazyOnload" 
+        />
+        <Script 
+          src="https://scripts.simpleanalyticscdn.com/auto-events.js" 
+          strategy="lazyOnload" 
+        />
       </body>
     </html>
   );

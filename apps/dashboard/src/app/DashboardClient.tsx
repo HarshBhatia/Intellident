@@ -8,30 +8,19 @@ import AddPatientForm from '@/components/AddPatientForm';
 import Skeleton from '@/components/Skeleton';
 import Navbar from '@/components/Navbar';
 import { useAuth } from '@/hooks/useAuth';
+import { useClinic } from '@/context/ClinicContext';
 
 export default function DashboardClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuth();
+  const { clinic: clinicInfo } = useClinic();
   const [patients, setPatients] = useState<Patient[]>([]);
-  const [clinicInfo, setClinicInfo] = useState<{ clinic_name: string } | null>(null);
   const [doctors, setDoctors] = useState<any[] | null>(null);
   const [view, setView] = useState<'list' | 'add'>('list');
   const [loadingPatients, setLoadingPatients] = useState(true);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '');
-
-  const fetchClinicInfo = useCallback(async () => {
-    try {
-      const res = await fetch('/api/clinic-info/');
-      if (res.ok) {
-        const data = await res.json();
-        setClinicInfo(data);
-      }
-    } catch (error) {
-      console.error('Error fetching clinic info:', error);
-    }
-  }, []);
 
   const fetchDoctors = useCallback(async () => {
     try {
@@ -69,14 +58,13 @@ export default function DashboardClient() {
       if (user?.id) {
         await Promise.allSettled([
           fetchPatients(),
-          fetchClinicInfo(),
           fetchDoctors()
         ]);
         setIsInitialLoad(false);
       }
     };
     init();
-  }, [user?.id, fetchPatients, fetchClinicInfo, fetchDoctors]);
+  }, [user?.id, fetchPatients, fetchDoctors]);
 
   const filteredPatients = useMemo(() => {
     return (patients || []).filter(p => 

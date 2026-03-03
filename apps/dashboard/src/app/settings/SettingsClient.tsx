@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useToast } from '@/components/ToastProvider';
 import Navbar from '@/components/Navbar';
+import { useClinic } from '@/context/ClinicContext';
 
 interface Item {
   id: number;
@@ -194,7 +195,7 @@ const DataExport = () => {
 
 const ClinicProfile = () => {
     const { showToast } = useToast();
-    const [loading, setLoading] = useState(true);
+    const { clinic, loading, refreshClinic } = useClinic();
     const [saving, setSaving] = useState(false);
     const [form, setForm] = useState({
         clinic_name: '',
@@ -206,22 +207,17 @@ const ClinicProfile = () => {
     });
 
     useEffect(() => {
-        fetch('/api/clinic-info')
-            .then(res => res.json())
-            .then(data => {
-                if (data && !data.error) {
-                    setForm({
-                        clinic_name: data.clinic_name || '',
-                        owner_name: data.owner_name || '',
-                        phone: data.phone || '',
-                        address: data.address || '',
-                        email: data.email || '',
-                        google_maps_link: data.google_maps_link || ''
-                    });
-                }
-            })
-            .finally(() => setLoading(false));
-    }, []);
+        if (clinic) {
+            setForm({
+                clinic_name: clinic.clinic_name || '',
+                owner_name: clinic.owner_name || '',
+                phone: clinic.phone || '',
+                address: clinic.address || '',
+                email: clinic.email || '',
+                google_maps_link: clinic.google_maps_link || ''
+            });
+        }
+    }, [clinic]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -232,7 +228,10 @@ const ClinicProfile = () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(form)
             });
-            if (res.ok) showToast('Profile updated', 'success');
+            if (res.ok) {
+                showToast('Profile updated', 'success');
+                await refreshClinic();
+            }
         } catch (e) { showToast('Update failed', 'error'); }
         finally { setSaving(false); }
     };

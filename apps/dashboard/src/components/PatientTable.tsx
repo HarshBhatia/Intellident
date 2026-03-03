@@ -2,8 +2,9 @@
 
 import { Patient } from '@/types';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useToast } from '@/components/ToastProvider';
+import { useClinic } from '@/context/ClinicContext';
 
 interface PatientTableProps {
   patients: Patient[];
@@ -117,19 +118,13 @@ export default function PatientTable({ patients, onAddClick, onDeleteSuccess }: 
     direction: 'desc'
   });
 
-  const [clinic, setClinic] = useState<any>(null);
+  const { clinic } = useClinic();
   const [activeModal, setActiveModal] = useState<{ patient: Patient; type: 'whatsapp' | 'sms' } | null>(null);
   const { showToast } = useToast();
 
   // Pagination State - Init from URL
   const [currentPage, setCurrentPage] = useState(Number(searchParams.get('page')) || 1);
   const itemsPerPage = 10;
-
-  useEffect(() => {
-    fetch('/api/clinic-info/')
-      .then(res => res.json())
-      .then(data => setClinic(data));
-  }, []);
 
   // Sync page to URL - Silent update to prevent full page refresh
   useEffect(() => {

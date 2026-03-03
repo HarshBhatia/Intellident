@@ -11,6 +11,7 @@ import { generatePrescriptionPDF } from '@/lib/pdf-generator';
 import { uploadImage } from '@/lib/image-utils';
 import { useAuth } from '@/hooks/useAuth';
 import ToothSelector from '@/components/ToothSelector';
+import { useClinic } from '@/context/ClinicContext';
 
 interface XRay {
   url: string;
@@ -18,27 +19,18 @@ interface XRay {
   date: string;
 }
 
-interface ClinicInfo {
-  clinic_name: string;
-  owner_name: string;
-  phone: string;
-  address: string;
-  email: string;
-  google_maps_link?: string;
-}
-
 export default function PatientDetailClient({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const { user } = useAuth();
   const { showToast } = useToast();
+  const { clinic: clinicInfo } = useClinic();
   const searchParams = useSearchParams();
   const isDebug = searchParams.get('debug') === 'true';
   const debugClinicId = searchParams.get('clinicId');
   const [patientId, setPatientId] = useState<string | null>(null);
   
-  const [patient, setPatient] = useState<Patient | null>(null);
-  const [clinicInfo, setClinicInfo] = useState<ClinicInfo | null>(null);
-  const [doctors, setDoctors] = useState<{ id: number, name: string }[]>([]);
+  const [patient, setPatient] = useState<(Patient & { doctors: { id: number, name: string }[] }) | null>(null);
+  const doctors = patient?.doctors || [];
   const [loading, setLoading] = useState(true);
   const [showVisitForm, setShowVisitForm] = useState(false);
   const [activeVisitId, setActiveVisitId] = useState<number | null>(null);
@@ -127,7 +119,6 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
 
     try {
         setIsGenerating(true);
-        const res = await fetch('/api/generate-notes/');
         const resData = await fetch('/api/generate-notes/', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -179,23 +170,6 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
       setLoading(false);
     }
   }, [patientId, showToast]); 
-
-  const fetchInitialData = useCallback(async () => {
-    try {
-      const [infoRes, docsRes] = await Promise.all([
-        fetch('/api/clinic-info/'),
-        fetch('/api/doctors/')
-      ]);
-      if (infoRes.ok) setClinicInfo(await infoRes.json());
-      if (docsRes.ok) setDoctors(await docsRes.json());
-    } catch (err) {
-      console.error(err);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (user?.id) fetchInitialData();
-  }, [user?.id, fetchInitialData]);
 
   useEffect(() => {
     if (user?.id && patientId) fetchPatient();
@@ -504,11 +478,11 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                                 </div>
                                 {activeVisit.tooth_number && (
                                     <div className="md:col-span-2">
-                                        <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Treatment Area</h4>
-                                        <div className="p-4 bg-gray-50 dark:bg-gray-950/50 rounded-2xl border border-gray-100 dark:border-gray-800 overflow-x-auto w-max mx-auto md:mx-0">
-                                            <ToothSelector value={activeVisit.tooth_number} dentitionType={activeVisit.dentition_type} readOnly />
-                                        </div>
+                                    <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Treatment Area</h4>
+                                    <div className="p-4 bg-gray-50 dark:bg-gray-950/50 rounded-2xl border border-gray-100 dark:border-gray-800 overflow-x-auto w-max mx-auto md:mx-0 min-h-[300px]">
+                                        <ToothSelector value={activeVisit.tooth_number} dentitionType={activeVisit.dentition_type} readOnly />
                                     </div>
+                                </div>
                                 )}
                             </div>
                         </div>
