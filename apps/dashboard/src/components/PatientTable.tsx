@@ -357,7 +357,7 @@ export default function PatientTable({ patients, onAddClick, onDeleteSuccess }: 
         <MessageModal 
           patient={activeModal.patient}
           initialType={activeModal.type}
-          clinicName={clinic?.clinic_name}
+          clinicName={clinic?.clinic_name || 'Clinic'}
           googleMapsLink={googleMapsLink}
           onClose={() => setActiveModal(null)}
         />
