@@ -1,21 +1,15 @@
 [build]
-  command = "npx turbo build --filter=dashboard"
-  publish = "apps/dashboard/.next"
+  base = "apps/dashboard"
+  command = "npm run build"
+  publish = ".next"
 
 [build.environment]
   NEXT_DISABLE_TURBOPACK = "1"
   NODE_VERSION = "20"
+  NETLIFY_NEXT_SKEW_PROTECTION = "true"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
-
-[[headers]]
-  for = "/*"
-  [headers.values]
-    X-Frame-Options = "DENY"
-    X-XSS-Protection = "1; mode=block"
-    X-Content-Type-Options = "nosniff"
-    Cache-Control = "public, max-age=0, must-revalidate"
 
 [[headers]]
   for = "/_next/static/*"
