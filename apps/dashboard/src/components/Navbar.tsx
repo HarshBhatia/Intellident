@@ -15,12 +15,7 @@ export default function Navbar({ activePage }: { activePage?: string }) {
   }, []);
 
   const toggleTheme = () => {
-    if (theme === 'system') {
-      const isSystemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      setTheme(isSystemDark ? 'light' : 'dark');
-    } else {
-      setTheme(theme === 'dark' ? 'light' : 'dark');
-    }
+    setTheme(theme === 'dark' ? 'light' : 'dark');
   };
 
   const handleSwitchClinic = async () => {
@@ -94,7 +89,7 @@ export default function Navbar({ activePage }: { activePage?: string }) {
               <span className="hidden md:inline">Settings</span>
             </button>
             <div className="pl-2 border-l border-gray-200 dark:border-gray-800 ml-2 flex items-center">
-              {mounted && <UserButton /> }
+              {mounted && <UserButton afterSignOutUrl="/sign-in" />}
             </div>
           </div>
         </div>

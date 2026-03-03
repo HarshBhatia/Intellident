@@ -29,14 +29,14 @@ export async function getVisits(clinicId: string, patientId?: string): Promise<V
   let rows: any[];
   if (patientId) {
     rows = await sql`
-      SELECT id, clinic_id, patient_id, date, doctor, visit_type, clinical_findings, procedure_notes, tooth_number, medicine_prescribed, cost, paid, xrays, billing_items, dentition_type, created_at
+      SELECT id, clinic_id, patient_id, date, doctor, visit_type, clinical_findings, procedure_notes, tooth_number, medicine_prescribed, cost, paid, xrays, billing_items, created_at
       FROM visits 
       WHERE clinic_id = ${cId} AND patient_id = ${patientId}
       ORDER BY date DESC, created_at DESC
     `;
   } else {
     rows = await sql`
-      SELECT v.id, v.clinic_id, v.patient_id, v.date, v.doctor, v.visit_type, v.clinical_findings, v.procedure_notes, v.tooth_number, v.medicine_prescribed, v.cost, v.paid, v.xrays, v.billing_items, v.dentition_type, v.created_at, p.name as patient_name, p.patient_id as patient_readable_id
+      SELECT v.id, v.clinic_id, v.patient_id, v.date, v.doctor, v.visit_type, v.clinical_findings, v.procedure_notes, v.tooth_number, v.medicine_prescribed, v.cost, v.paid, v.xrays, v.billing_items, v.created_at, p.name as patient_name, p.patient_id as patient_readable_id
       FROM visits v
       JOIN patients p ON v.patient_id = p.id
       WHERE v.clinic_id = ${cId}
@@ -71,7 +71,7 @@ export async function createVisit(clinicId: string, visitData: Omit<Visit, 'id' 
 
   const { 
     patient_id, date, doctor, visit_type, clinical_findings, procedure_notes, tooth_number, 
-    medicine_prescribed, paid, xrays, billing_items, cost, dentition_type
+    medicine_prescribed, paid, xrays, billing_items, cost
   } = visitData;
 
   const totalCost = billing_items && billing_items.length > 0 ? calculateTotalCost(billing_items) : (cost || 0);
@@ -82,12 +82,12 @@ export async function createVisit(clinicId: string, visitData: Omit<Visit, 'id' 
       clinic_id, patient_id, date, doctor, visit_type,
       clinical_findings, procedure_notes, 
       tooth_number, medicine_prescribed, cost, paid, 
-      xrays, billing_items, dentition_type
+      xrays, billing_items
     ) VALUES (
       ${cId}, ${patient_id}, ${date}, ${doctor}, ${visit_type || 'Consultation'},
       ${clinical_findings}, ${procedure_notes}, 
       ${tooth_number}, ${medicine_prescribed}, ${totalCost}, ${paid || 0},
-      ${xrays}, ${serializedBillingItems}, ${dentition_type || 'Adult'}
+      ${xrays}, ${serializedBillingItems}
     )
     RETURNING *
   `;
@@ -124,7 +124,7 @@ export async function updateVisit(clinicId: string, visitData: Visit): Promise<V
 
   const { 
     id, date, doctor, visit_type, clinical_findings, procedure_notes, tooth_number, 
-    medicine_prescribed, paid, xrays, billing_items, cost, dentition_type
+    medicine_prescribed, paid, xrays, billing_items, cost
   } = visitData;
 
   const totalCost = billing_items && billing_items.length > 0 ? calculateTotalCost(billing_items) : (cost || 0);
@@ -142,8 +142,7 @@ export async function updateVisit(clinicId: string, visitData: Visit): Promise<V
       cost = ${totalCost},
       paid = ${paid},
       xrays = ${xrays},
-      billing_items = ${serializedBillingItems},
-      dentition_type = ${dentition_type || 'Adult'}
+      billing_items = ${serializedBillingItems}
     WHERE id = ${id} AND clinic_id = ${cId}
     RETURNING *
   `;

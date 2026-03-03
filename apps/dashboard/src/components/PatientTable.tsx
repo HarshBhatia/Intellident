@@ -141,7 +141,7 @@ export default function PatientTable({ patients, onAddClick, onDeleteSuccess }: 
   const itemsPerPage = 10;
 
   useEffect(() => {
-    fetch('/api/clinic-info/')
+    fetch('/api/clinic-info')
       .then(res => res.json())
       .then(data => setClinic(data));
   }, []);
@@ -160,10 +160,13 @@ export default function PatientTable({ patients, onAddClick, onDeleteSuccess }: 
     }
   }, [currentPage, router, searchParams]);
 
-  // Reset to page 1 ONLY when sorting changes
+  // Reset to page 1 when sorting or filtering changes
   useEffect(() => {
-    setCurrentPage(1);
-  }, [sortConfig]);
+    // Only reset if we are not currently at page 1
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+    }
+  }, [sortConfig, patients]);
 
   const handleSort = (key: SortKey) => {
     setSortConfig((current) => ({
@@ -349,7 +352,6 @@ export default function PatientTable({ patients, onAddClick, onDeleteSuccess }: 
           </div>
           <div className="flex gap-2">
             <button
-              type="button"
               onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
               disabled={currentPage === 1}
               className="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-700 text-xs font-bold bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition"
@@ -360,7 +362,6 @@ export default function PatientTable({ patients, onAddClick, onDeleteSuccess }: 
               Page {currentPage} of {totalPages}
             </div>
             <button
-              type="button"
               onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
               disabled={currentPage === totalPages}
               className="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-700 text-xs font-bold bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition"

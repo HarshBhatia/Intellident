@@ -48,7 +48,7 @@ export default function ExpensesClient() {
       // Fetch expenses based on current date range
       const [expRes, catRes] = await Promise.all([
           fetch(`/api/expenses?start=${dateRange.start}&end=${dateRange.end}`),
-          fetch('/api/expense-categories/')
+          fetch('/api/expense-categories')
       ]);
       if (expRes.ok) setExpenses(await expRes.json());
       if (catRes.ok) setCategories(await catRes.json());
@@ -84,7 +84,7 @@ export default function ExpensesClient() {
     }
 
     try {
-      const res = await fetch('/api/expenses/', {
+      const res = await fetch('/api/expenses', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form)
@@ -100,7 +100,7 @@ export default function ExpensesClient() {
   const handleDelete = async (id: number) => {
       if (!confirm('Delete this record?')) return;
       try {
-          const res = await fetch('/api/expenses/', {
+          const res = await fetch('/api/expenses', {
               method: 'DELETE',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ id })

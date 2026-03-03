@@ -134,31 +134,24 @@ export async function GET(request: Request) {
           id SERIAL PRIMARY KEY,
           name TEXT NOT NULL,
           owner_email TEXT NOT NULL,
-          owner_id TEXT, -- Clerk User ID
           address TEXT,
           phone TEXT,
           google_maps_link TEXT,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
       `;
-      await sql`ALTER TABLE clinics ADD COLUMN IF NOT EXISTS owner_id TEXT`;
       
       await sql`
         CREATE TABLE IF NOT EXISTS clinic_members (
           id SERIAL PRIMARY KEY,
           clinic_id INTEGER REFERENCES clinics(id) ON DELETE CASCADE,
           user_email TEXT NOT NULL,
-          user_id TEXT, -- Clerk User ID
           role TEXT NOT NULL DEFAULT 'DOCTOR', -- OWNER, DOCTOR, RECEPTIONIST
           status TEXT NOT NULL DEFAULT 'ACTIVE',
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           UNIQUE(clinic_id, user_email)
         );
       `;
-      await sql`ALTER TABLE clinic_members ADD COLUMN IF NOT EXISTS user_id TEXT`;
-      try {
-        await sql`CREATE INDEX IF NOT EXISTS idx_clinic_members_user_id ON clinic_members(user_id)`;
-      } catch (err) {}
     } catch (e) { console.error('Error creating org tables:', e); }
 
     // ---------------------------------------------------------
@@ -254,20 +247,14 @@ export async function GET(request: Request) {
       await sql`ALTER TABLE visits ADD COLUMN IF NOT EXISTS visit_type TEXT DEFAULT 'Consultation'`;
       await sql`ALTER TABLE visits ADD COLUMN IF NOT EXISTS xrays TEXT`;
       await sql`ALTER TABLE visits ADD COLUMN IF NOT EXISTS billing_items TEXT`;
-      await sql`ALTER TABLE visits ADD COLUMN IF NOT EXISTS dentition_type TEXT DEFAULT 'Adult'`;
 
       // Migration: Move old data to new columns if new columns are empty
-      // We wrap this in a try-catch because diagnosis/symptoms might not exist in newer schemas
-      try {
-        await sql`
-          UPDATE visits 
-          SET clinical_findings = COALESCE(diagnosis, '') || ' ' || COALESCE(symptoms, ''),
-              procedure_notes = COALESCE(treatment_done, '') || ' ' || COALESCE(notes, '')
-          WHERE clinical_findings IS NULL OR clinical_findings = ''
-        `;
-      } catch (err) {
-        console.log('Note: Skipping legacy visits migration as old columns (diagnosis/symptoms) are missing.');
-      }
+      await sql`
+        UPDATE visits 
+        SET clinical_findings = COALESCE(diagnosis, '') || ' ' || COALESCE(symptoms, ''),
+            procedure_notes = COALESCE(treatment_done, '') || ' ' || COALESCE(notes, '')
+        WHERE clinical_findings IS NULL OR clinical_findings = ''
+      `;
 
 
       // Migrate existing clinical data from patients to visits if visits table is empty
@@ -306,28 +293,7 @@ export async function GET(request: Request) {
     } catch (e) { console.error('Error creating visits table:', e); }
       
     // ---------------------------------------------------------
-    // PHASE 5: Usage Tracking & Rate Limiting
-    // ---------------------------------------------------------
-    try {
-      await sql`
-        CREATE TABLE IF NOT EXISTS usage_logs (
-          id SERIAL PRIMARY KEY,
-          clinic_id INTEGER REFERENCES clinics(id) ON DELETE CASCADE,
-          user_id TEXT,
-          feature TEXT NOT NULL, -- e.g. 'AI_NOTES'
-          status TEXT, -- 'SUCCESS', 'FAILED', 'RATE_LIMITED'
-          metadata TEXT, -- JSON string for extra info
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-      `;
-      await sql`CREATE INDEX IF NOT EXISTS idx_usage_logs_clinic_id_created_at ON usage_logs(clinic_id, created_at)`;
-      console.log('Usage logs table created.');
-    } catch (e) {
-      console.error('Error creating usage logs:', e);
-    }
-      
-    // ---------------------------------------------------------
-    // PHASE 6: Performance Optimization (Indexes)
+    // PHASE 5: Performance Optimization (Indexes)
     // ---------------------------------------------------------
     try {
       const tablesToIndex = ['patients', 'visits', 'treatments', 'doctors', 'expense_categories', 'expenses'];

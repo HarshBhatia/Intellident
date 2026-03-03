@@ -51,52 +51,6 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
   const [selectedXRay, setSelectedXRay] = useState<string | null>(null);
   const [smartNote, setSmartNote] = useState('');
 
-  // Visit Form State
-  const [newVisit, setNewVisit] = useState<Partial<Visit>>({
-    date: new Date().toISOString().split('T')[0],
-    doctor: '',
-    visit_type: 'Consultation',
-    clinical_findings: '',
-    procedure_notes: '',
-    tooth_number: '',
-    dentition_type: 'Adult',
-    cost: 0
-  });
-
-  // Navigation Guard for Unsaved Changes
-  const isFormDirty = useMemo(() => {
-    if (!showVisitForm) return false;
-    return !!(
-      smartNote.trim() || 
-      newVisit.clinical_findings?.trim() || 
-      newVisit.procedure_notes?.trim() || 
-      newVisit.medicine_prescribed?.trim() ||
-      (newVisit.cost && newVisit.cost > 0)
-    );
-  }, [showVisitForm, smartNote, newVisit]);
-
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (isFormDirty) {
-        e.preventDefault();
-        e.returnValue = '';
-      }
-    };
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [isFormDirty]);
-
-  const handleCloseVisitForm = useCallback(() => {
-    if (isFormDirty) {
-      if (!confirm('You have unsaved changes. Are you sure you want to discard them?')) {
-        return;
-      }
-    }
-    setShowVisitForm(false);
-    setEditingVisitId(null);
-    setSmartNote('');
-  }, [isFormDirty]);
-
   useEffect(() => {
     params.then(p => setPatientId(p.id));
   }, [params]);
@@ -120,6 +74,17 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
     }
   }, [patient]);
 
+  // Visit Form State
+  const [newVisit, setNewVisit] = useState<Partial<Visit>>({
+    date: new Date().toISOString().split('T')[0],
+    doctor: '',
+    visit_type: 'Consultation',
+    clinical_findings: '',
+    procedure_notes: '',
+    tooth_number: '',
+    cost: 0
+  });
+
   const handleAIGenerate = async () => {
     if (!smartNote.trim()) {
         showToast('Please enter a note first', 'error');
@@ -128,7 +93,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
 
     try {
         setIsGenerating(true);
-        const res = await fetch('/api/generate-notes/', {
+        const res = await fetch('/api/generate-notes', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ text: smartNote })
@@ -137,13 +102,6 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
         if (res.ok) {
             const data = await res.json();
             console.log('AI Data received:', data);
-            
-            // Auto-detect dentition type from tooth numbers
-            let detectedDentition: 'Adult' | 'Child' = 'Adult';
-            if (data.tooth_number && /[A-E]/i.test(data.tooth_number)) {
-                detectedDentition = 'Child';
-            }
-
             setNewVisit(prev => {
                 const next = {
                     ...prev,
@@ -152,7 +110,6 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                     medicine_prescribed: data.medicine_prescribed || prev.medicine_prescribed,
                     tooth_number: data.tooth_number || prev.tooth_number,
                     visit_type: data.visit_type || prev.visit_type,
-                    dentition_type: detectedDentition,
                     cost: data.cost || prev.cost
                 };
                 console.log('Next newVisit state:', next);
@@ -199,8 +156,8 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
   const fetchInitialData = useCallback(async () => {
     try {
       const [infoRes, docsRes] = await Promise.all([
-        fetch('/api/clinic-info/'),
-        fetch('/api/doctors/')
+        fetch('/api/clinic-info'),
+        fetch('/api/doctors')
       ]);
       
       if (infoRes.ok) setClinicInfo(await infoRes.json());
@@ -302,37 +259,6 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
         return;
     }
 
-    if (!patient) return;
-
-    // --- Optimistic UI Update ---
-    const optimisticVisit: Visit = {
-        ...newVisit,
-        id: editingVisitId || Math.random() * -1, // Temporary negative ID
-        clinic_id: patient.clinic_id || 0,
-        patient_id: patient.id,
-        date: newVisit.date || new Date().toISOString().split('T')[0],
-        doctor: newVisit.doctor || '',
-        cost: Number(newVisit.cost) || 0,
-        paid: Number(newVisit.cost) || 0,
-        billing_items: [],
-        created_at: new Date().toISOString()
-    } as Visit;
-
-    const previousPatient = { ...patient };
-    setPatient(prev => {
-        if (!prev) return prev;
-        const visits = prev.visits ? [...prev.visits] : [];
-        if (editingVisitId) {
-            const index = visits.findIndex(v => v.id === editingVisitId);
-            if (index !== -1) visits[index] = optimisticVisit;
-        } else {
-            visits.unshift(optimisticVisit);
-        }
-        return { ...prev, visits };
-    });
-    setShowVisitForm(false);
-    // ----------------------------
-
     try {
         setIsSaving(true);
         const method = editingVisitId ? 'PUT' : 'POST';
@@ -343,8 +269,9 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
             patient_id: patient.id,
             id: editingVisitId 
         };
+        console.log('Saving visit with body:', body);
 
-        const res = await fetch('/api/visits/', {
+        const res = await fetch('/api/visits', {
             method,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
@@ -353,9 +280,10 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
         if (res.ok) {
             const savedVisit = await res.json();
             showToast(editingVisitId ? 'Visit updated successfully!' : 'New visit recorded!', 'success');
+            setShowVisitForm(false);
             setEditingVisitId(null);
             setActiveVisitId(savedVisit.id);
-            fetchPatient(); // Final sync with real data
+            fetchPatient(); // Refresh timeline
             // Reset form
             setNewVisit({
                 date: new Date().toISOString().split('T')[0],
@@ -367,17 +295,11 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                 medicine_prescribed: '',
                 cost: 0,
                 xrays: '[]'
-            });
-        } else {
-            // Revert optimistic update on failure
-            setPatient(previousPatient);
-            setShowVisitForm(true);
+            });        } else {
             const errorData = await res.json();
             showToast(errorData.error || 'Failed to save visit', 'error');
         }
     } catch {
-        setPatient(previousPatient);
-        setShowVisitForm(true);
         showToast('Error', 'error');
     } finally {
         setIsSaving(false);
@@ -396,7 +318,6 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
         procedure_notes: visit.procedure_notes || '',
         tooth_number: visit.tooth_number || '',
         medicine_prescribed: visit.medicine_prescribed || '',
-        dentition_type: visit.dentition_type || 'Adult',
         cost: Number(visit.cost),
         xrays: visit.xrays || '[]'
     });
@@ -483,7 +404,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
       const updatedXRays = [...existingXRays, newXRay];
       
       // Update Visit in DB
-      const res = await fetch('/api/visits/', {
+      const res = await fetch('/api/visits', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...activeVisit, xrays: JSON.stringify(updatedXRays) })
@@ -513,7 +434,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
       const existingXRays: XRay[] = activeVisit.xrays ? JSON.parse(activeVisit.xrays) : [];
       const updatedXRays = existingXRays.filter((_, i) => i !== index);
 
-      const res = await fetch('/api/visits/', {
+      const res = await fetch('/api/visits', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...activeVisit, xrays: JSON.stringify(updatedXRays) })
@@ -640,15 +561,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
 
         {/* Breadcrumbs */}
         <div className="mb-4">
-            <Link 
-                href="/" 
-                onClick={(e) => {
-                    if (isFormDirty && !confirm('You have unsaved changes. Discard them?')) {
-                        e.preventDefault();
-                    }
-                }}
-                className="text-blue-600 hover:text-blue-800 text-sm flex items-center gap-1 transition"
-            >
+            <Link href="/" className="text-blue-600 hover:text-blue-800 text-sm flex items-center gap-1 transition">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
                 Back to Patients
             </Link>
@@ -763,9 +676,6 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                             key={visit.id}
                             type="button"
                             onClick={() => {
-                                if (isFormDirty && !confirm('You have unsaved changes. Discard them?')) {
-                                    return;
-                                }
                                 if (visit.id) {
                                     setActiveVisitId(visit.id);
                                     setShowVisitForm(false);
@@ -788,9 +698,6 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                 <button 
                     type="button"
                     onClick={() => {
-                        if (isFormDirty && !confirm('You have unsaved changes. Discard them?')) {
-                            return;
-                        }
                         setShowVisitForm(true);
                         setActiveVisitId(null);
                         setEditingVisitId(null);
@@ -822,7 +729,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                             <h3 className="text-lg font-bold text-gray-900 dark:text-white">
                                 {editingVisitId ? 'Update Visit Record' : 'Record New Visit'}
                             </h3>
-                            <button type="button" onClick={handleCloseVisitForm} className="text-gray-400 hover:text-gray-600">✕</button>
+                            <button type="button" onClick={() => { setShowVisitForm(false); setEditingVisitId(null); }} className="text-gray-400 hover:text-gray-600">✕</button>
                         </div>
 
                                                 {!editingVisitId && (
@@ -962,18 +869,17 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                                                                                                 className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 outline-none transition-all text-sm font-medium text-gray-900 dark:text-gray-100 h-20 placeholder-gray-400 dark:placeholder-gray-400" 
                                                                                             />
                                                                                         </div>
-                                                                                                                    <div className="md:col-span-2">
-                                                                                                                        <label className="block text-[10px] font-black text-gray-400 dark:text-gray-400 uppercase tracking-widest mb-3">Teeth Involved (Odontogram)</label>
-                                                                                                                        <div className="p-4 bg-gray-50 dark:bg-gray-950/50 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-x-auto">
-                                                                                                                            <ToothSelector 
-                                                                                                                                value={newVisit.tooth_number || ''} 
-                                                                                                                                dentitionType={newVisit.dentition_type || 'Adult'}
-                                                                                                                                onDentitionTypeChange={(type) => setNewVisit(prev => ({...prev, dentition_type: type}))}
-                                                                                                                                onChange={(val) => setNewVisit(prev => ({...prev, tooth_number: val}))} 
-                                                                                                                                className="w-max mx-auto"
-                                                                                                                            />
-                                                                                                                        </div>
-                                                                                                                    </div>                                                                                    </div>                        
+                                                                                        <div className="md:col-span-2">
+                                                                                            <label className="block text-[10px] font-black text-gray-400 dark:text-gray-400 uppercase tracking-widest mb-3">Teeth Involved (Odontogram)</label>
+                                                                                            <div className="p-4 bg-gray-50 dark:bg-gray-950/50 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-x-auto">
+                                                                                                <ToothSelector 
+                                                                                                    value={newVisit.tooth_number || ''} 
+                                                                                                    onChange={(val) => setNewVisit(prev => ({...prev, tooth_number: val}))} 
+                                                                                                    className="w-max mx-auto"
+                                                                                                />
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    </div>                        
                                                                                 <div className="mb-6 p-4 border border-dashed border-gray-200 dark:border-gray-800 rounded-xl">
                                                                                     <div className="flex justify-between items-center mb-3">
                                                                                         <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Attached Records ({JSON.parse(newVisit.xrays || '[]').length})</h4>
@@ -1010,14 +916,13 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                                                                                 </div>                                                    </div>
                                                 )}
                         
-                                                <div className="flex justify-end gap-3">
-                            <button type="button" onClick={handleCloseVisitForm} className="px-4 py-2 text-gray-500 hover:bg-gray-100 rounded transition font-bold text-xs">Cancel</button>
+                                                <div className="flex justify-end gap-3">                            <button type="button" onClick={() => { setShowVisitForm(false); setEditingVisitId(null); }} className="px-4 py-2 text-gray-500 hover:bg-gray-100 rounded">Cancel</button>
                             <button 
                                 id="save-visit-btn"
                                 type="button" 
                                 onClick={handleSaveVisit} 
                                 disabled={isSaving || !newVisit.clinical_findings?.trim()}
-                                className="px-4 py-2 bg-blue-600 text-white font-bold rounded hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2 text-xs shadow-lg shadow-blue-500/20 active:scale-95"
+                                className="px-4 py-2 bg-blue-600 text-white font-bold rounded hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
                             >
                                 {isSaving && <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" /></svg>}
                                 {editingVisitId ? (isSaving ? 'Updating...' : 'Update Record') : (isSaving ? 'Saving...' : 'Save Visit')}
@@ -1093,7 +998,6 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                                         <div className="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-2xl border border-gray-100 dark:border-gray-800 overflow-x-auto">
                                             <ToothSelector 
                                                 value={visit.tooth_number} 
-                                                dentitionType={visit.dentition_type || 'Adult'}
                                                 readOnly={true} 
                                                 className="w-max mx-auto"
                                             />

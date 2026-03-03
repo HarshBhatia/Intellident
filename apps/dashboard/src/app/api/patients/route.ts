@@ -11,7 +11,7 @@ export async function GET() {
 
     if (!clinicId) return NextResponse.json({ error: 'No clinic selected' }, { status: 400 });
     
-    if (!userEmail || !(await verifyMembership(clinicId, userEmail, userId))) {
+    if (!userEmail || !(await verifyMembership(clinicId, userEmail))) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     const clinicId = await getClinicId();
     if (!clinicId) return NextResponse.json({ error: 'No clinic selected' }, { status: 400 });
 
-    if (!userEmail || !(await verifyMembership(clinicId, userEmail, userId))) {
+    if (!userEmail || !(await verifyMembership(clinicId, userEmail))) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 

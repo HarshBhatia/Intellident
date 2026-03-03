@@ -8,8 +8,7 @@
     "test:unit": "npm test --workspace=dashboard",
     "test:e2e": "npm run test:e2e --workspace=dashboard",
     "lint": "turbo lint",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "prepare": "husky"
+    "format": "prettier --write \"**/*.{ts,tsx,md}\""
   },
   "workspaces": [
     "apps/*",
@@ -20,7 +19,6 @@
     "react-dom": "19.1.0"
   },
   "devDependencies": {
-    "husky": "^9.1.7",
     "turbo": "latest"
   },
   "optionalDependencies": {

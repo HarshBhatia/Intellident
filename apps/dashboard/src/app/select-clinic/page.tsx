@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useClerk } from '@clerk/nextjs';
+import { SignOutButton } from '@clerk/nextjs';
 import Skeleton from '@/components/Skeleton';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -14,7 +14,6 @@ interface Clinic {
 
 export default function SelectClinicPage() {
   const router = useRouter();
-  const { signOut } = useClerk();
   const { user, isLoaded } = useAuth();
   const [clinics, setClinics] = useState<Clinic[]>([]);
   const [loading, setLoading] = useState(true);
@@ -24,7 +23,7 @@ export default function SelectClinicPage() {
   useEffect(() => {
     if (!isLoaded || !user) return;
     
-    fetch('/api/clinics/')
+    fetch('/api/clinics')
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
@@ -32,21 +31,16 @@ export default function SelectClinicPage() {
         }
         setLoading(false);
       });
-  }, [isLoaded, user?.id]);
+  }, [isLoaded, user]);
 
   const handleSelect = async (clinicId: number) => {
     // Set cookie or session for selected clinic
-    await fetch('/api/auth/session/', {
+    await fetch('/api/auth/session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ clinicId })
     });
     router.push('/');
-  };
-
-  const handleSignOut = async () => {
-    await fetch('/api/auth/logout/', { method: 'POST' });
-    await signOut({ redirectUrl: '/sign-in' });
   };
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -55,7 +49,7 @@ export default function SelectClinicPage() {
     setCreating(true);
     
     try {
-      const res = await fetch('/api/clinics/', {
+      const res = await fetch('/api/clinics', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: newClinicName })
@@ -83,13 +77,12 @@ export default function SelectClinicPage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-900 p-4 relative">
       <div className="absolute top-4 right-4">
-        <button 
-          onClick={handleSignOut}
-          className="text-sm font-medium text-gray-500 hover:text-red-600 transition flex items-center gap-1"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
-          Sign out
-        </button>
+        <SignOutButton redirectUrl="/sign-in">
+          <button className="text-sm font-medium text-gray-500 hover:text-red-600 transition flex items-center gap-1">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+            Sign out
+          </button>
+        </SignOutButton>
       </div>
 
       <div className="w-full max-w-md space-y-8">

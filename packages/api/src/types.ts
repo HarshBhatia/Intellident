@@ -24,7 +24,6 @@ export interface Visit {
   paid?: number; // Amount paid for this visit
   xrays?: string; // JSON string of XRay[]
   billing_items?: BillingItem[]; // New field: JSON string of BillingItem[]
-  dentition_type?: 'Adult' | 'Child';
   created_at?: string;
 }
 

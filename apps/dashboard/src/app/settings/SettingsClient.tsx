@@ -110,7 +110,7 @@ const DataExport = () => {
     const handleExport = async (format: 'csv' | 'json') => {
         setExporting(true);
         try {
-            const res = await fetch('/api/patients/');
+            const res = await fetch('/api/patients');
             if (!res.ok) throw new Error('Failed to fetch patients');
             const patients: any[] = await res.json();
 
@@ -206,7 +206,7 @@ const ClinicProfile = () => {
     });
 
     useEffect(() => {
-        fetch('/api/clinic-info/')
+        fetch('/api/clinic-info')
             .then(res => res.json())
             .then(data => {
                 if (data && !data.error) {
@@ -227,7 +227,7 @@ const ClinicProfile = () => {
         e.preventDefault();
         setSaving(true);
         try {
-            const res = await fetch('/api/clinic-info/', {
+            const res = await fetch('/api/clinic-info', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(form)
