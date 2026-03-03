@@ -17,6 +17,14 @@ export function getDb() {
     return neon(url.toString());
   }
 
+  // Handle production build-time pre-rendering without a DB
+  if (process.env.NODE_ENV === 'production') {
+    console.warn('⚠️ DATABASE_URL not set in production. Returning mock DB for build-time safety.');
+    const mockSql = async () => [];
+    (mockSql as any).unsafe = async () => [];
+    return mockSql as any;
+  }
+
   if (process.env.NODE_ENV !== 'production') {
     // Use a path in the user's home directory to avoid monorepo/filesystem issues
     const dbPath = path.resolve(os.homedir(), '.intellident-pgdata');
