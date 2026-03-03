@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, use } from 'react';
+import { useEffect, useState, useCallback, useMemo, use } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Patient, Visit } from '@/types';
 import { useToast } from '@/components/ToastProvider';
@@ -379,10 +379,11 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
     }));
   };
 
-      const activeVisit = useMemo(() => patient.visits?.find(v => v.id === activeVisitId), [patient.visits, activeVisitId]);
-      const xrays: XRay[] = useMemo(() => activeVisit?.xrays ? JSON.parse(activeVisit.xrays) : [], [activeVisit]);
-  
-      const handleXRayUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {    const file = e.target.files?.[0];
+  const activeVisit = useMemo(() => patient?.visits?.find(v => v.id === activeVisitId), [patient?.visits, activeVisitId]);
+  const xrays: XRay[] = useMemo(() => activeVisit?.xrays ? JSON.parse(activeVisit.xrays) : [], [activeVisit]);
+
+  const handleXRayUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     if (!file || !patient || !patientId || !activeVisitId) return;
 
     const activeVisit = patient.visits?.find(v => v.id === activeVisitId);

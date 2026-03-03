@@ -113,7 +113,7 @@ export default function PatientTable({ patients, onAddClick, onDeleteSuccess }: 
   const router = useRouter();
   const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: SortDirection }>({
     key: 'patient_id',
-    direction: 'asc'
+    direction: 'desc'
   });
 
   const searchParams = useSearchParams();
