@@ -51,6 +51,17 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
   const [selectedXRay, setSelectedXRay] = useState<string | null>(null);
   const [smartNote, setSmartNote] = useState('');
 
+  // Visit Form State
+  const [newVisit, setNewVisit] = useState<Partial<Visit>>({
+    date: new Date().toISOString().split('T')[0],
+    doctor: '',
+    visit_type: 'Consultation',
+    clinical_findings: '',
+    procedure_notes: '',
+    tooth_number: '',
+    cost: 0
+  });
+
   // Navigation Guard for Unsaved Changes
   const isFormDirty = useMemo(() => {
     if (!showVisitForm) return false;
@@ -107,17 +118,6 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
         });
     }
   }, [patient]);
-
-  // Visit Form State
-  const [newVisit, setNewVisit] = useState<Partial<Visit>>({
-    date: new Date().toISOString().split('T')[0],
-    doctor: '',
-    visit_type: 'Consultation',
-    clinical_findings: '',
-    procedure_notes: '',
-    tooth_number: '',
-    cost: 0
-  });
 
   const handleAIGenerate = async () => {
     if (!smartNote.trim()) {
