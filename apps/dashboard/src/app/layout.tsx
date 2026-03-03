@@ -65,13 +65,8 @@ export default function RootLayout({
           __html: `
             window.addEventListener('error', (event) => {
               const msg = event.message || '';
-              if (
-                msg.includes('ChunkLoadError') || 
-                msg.includes('loading chunk') || 
-                msg.includes('SyntaxError') ||
-                (event.target && (event.target.tagName === 'SCRIPT' || event.target.tagName === 'LINK'))
-              ) {
-                console.warn('Critical asset error detected, reloading...', msg);
+              if (msg.includes('ChunkLoadError') || msg.includes('loading chunk')) {
+                console.warn('Critical Next.js chunk error, reloading...', msg);
                 window.location.reload();
               }
             }, true);
