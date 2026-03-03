@@ -254,14 +254,20 @@ export async function GET(request: Request) {
       await sql`ALTER TABLE visits ADD COLUMN IF NOT EXISTS visit_type TEXT DEFAULT 'Consultation'`;
       await sql`ALTER TABLE visits ADD COLUMN IF NOT EXISTS xrays TEXT`;
       await sql`ALTER TABLE visits ADD COLUMN IF NOT EXISTS billing_items TEXT`;
+      await sql`ALTER TABLE visits ADD COLUMN IF NOT EXISTS dentition_type TEXT DEFAULT 'Adult'`;
 
       // Migration: Move old data to new columns if new columns are empty
-      await sql`
-        UPDATE visits 
-        SET clinical_findings = COALESCE(diagnosis, '') || ' ' || COALESCE(symptoms, ''),
-            procedure_notes = COALESCE(treatment_done, '') || ' ' || COALESCE(notes, '')
-        WHERE clinical_findings IS NULL OR clinical_findings = ''
-      `;
+      // We wrap this in a try-catch because diagnosis/symptoms might not exist in newer schemas
+      try {
+        await sql`
+          UPDATE visits 
+          SET clinical_findings = COALESCE(diagnosis, '') || ' ' || COALESCE(symptoms, ''),
+              procedure_notes = COALESCE(treatment_done, '') || ' ' || COALESCE(notes, '')
+          WHERE clinical_findings IS NULL OR clinical_findings = ''
+        `;
+      } catch (err) {
+        console.log('Note: Skipping legacy visits migration as old columns (diagnosis/symptoms) are missing.');
+      }
 
 
       // Migrate existing clinical data from patients to visits if visits table is empty

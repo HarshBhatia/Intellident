@@ -146,27 +146,25 @@ export default function PatientTable({ patients, onAddClick, onDeleteSuccess }: 
       .then(data => setClinic(data));
   }, []);
 
-  // Sync page to URL
+  // Reset to page 1 ONLY when sorting changes
   useEffect(() => {
-    const params = new URLSearchParams(searchParams.toString());
+    setCurrentPage(1);
+  }, [sortConfig]);
+
+  // Sync page to URL - Using replaceState for silent updates
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
     if (currentPage > 1) {
       params.set('page', currentPage.toString());
     } else {
       params.delete('page');
     }
     
-    if (params.get('page') !== searchParams.get('page')) {
-      router.replace(`?${params.toString()}`, { scroll: false });
+    const newUrl = `${window.location.pathname}?${params.toString()}`;
+    if (window.location.search !== `?${params.toString()}`) {
+      window.history.replaceState({ ...window.history.state, as: newUrl, url: newUrl }, '', newUrl);
     }
-  }, [currentPage, router, searchParams]);
-
-  // Reset to page 1 when sorting or filtering changes
-  useEffect(() => {
-    // Only reset if we are not currently at page 1
-    if (currentPage !== 1) {
-      setCurrentPage(1);
-    }
-  }, [sortConfig, patients]);
+  }, [currentPage]);
 
   const handleSort = (key: SortKey) => {
     setSortConfig((current) => ({

@@ -59,6 +59,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
     clinical_findings: '',
     procedure_notes: '',
     tooth_number: '',
+    dentition_type: 'Adult',
     cost: 0
   });
 
@@ -136,6 +137,13 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
         if (res.ok) {
             const data = await res.json();
             console.log('AI Data received:', data);
+            
+            // Auto-detect dentition type from tooth numbers
+            let detectedDentition: 'Adult' | 'Child' = 'Adult';
+            if (data.tooth_number && /[A-E]/i.test(data.tooth_number)) {
+                detectedDentition = 'Child';
+            }
+
             setNewVisit(prev => {
                 const next = {
                     ...prev,
@@ -144,6 +152,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                     medicine_prescribed: data.medicine_prescribed || prev.medicine_prescribed,
                     tooth_number: data.tooth_number || prev.tooth_number,
                     visit_type: data.visit_type || prev.visit_type,
+                    dentition_type: detectedDentition,
                     cost: data.cost || prev.cost
                 };
                 console.log('Next newVisit state:', next);
@@ -387,6 +396,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
         procedure_notes: visit.procedure_notes || '',
         tooth_number: visit.tooth_number || '',
         medicine_prescribed: visit.medicine_prescribed || '',
+        dentition_type: visit.dentition_type || 'Adult',
         cost: Number(visit.cost),
         xrays: visit.xrays || '[]'
     });
@@ -952,17 +962,18 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                                                                                                 className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 outline-none transition-all text-sm font-medium text-gray-900 dark:text-gray-100 h-20 placeholder-gray-400 dark:placeholder-gray-400" 
                                                                                             />
                                                                                         </div>
-                                                                                        <div className="md:col-span-2">
-                                                                                            <label className="block text-[10px] font-black text-gray-400 dark:text-gray-400 uppercase tracking-widest mb-3">Teeth Involved (Odontogram)</label>
-                                                                                            <div className="p-4 bg-gray-50 dark:bg-gray-950/50 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-x-auto">
-                                                                                                <ToothSelector 
-                                                                                                    value={newVisit.tooth_number || ''} 
-                                                                                                    onChange={(val) => setNewVisit(prev => ({...prev, tooth_number: val}))} 
-                                                                                                    className="w-max mx-auto"
-                                                                                                />
-                                                                                            </div>
-                                                                                        </div>
-                                                                                    </div>                        
+                                                                                                                    <div className="md:col-span-2">
+                                                                                                                        <label className="block text-[10px] font-black text-gray-400 dark:text-gray-400 uppercase tracking-widest mb-3">Teeth Involved (Odontogram)</label>
+                                                                                                                        <div className="p-4 bg-gray-50 dark:bg-gray-950/50 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-x-auto">
+                                                                                                                            <ToothSelector 
+                                                                                                                                value={newVisit.tooth_number || ''} 
+                                                                                                                                dentitionType={newVisit.dentition_type || 'Adult'}
+                                                                                                                                onDentitionTypeChange={(type) => setNewVisit(prev => ({...prev, dentition_type: type}))}
+                                                                                                                                onChange={(val) => setNewVisit(prev => ({...prev, tooth_number: val}))} 
+                                                                                                                                className="w-max mx-auto"
+                                                                                                                            />
+                                                                                                                        </div>
+                                                                                                                    </div>                                                                                    </div>                        
                                                                                 <div className="mb-6 p-4 border border-dashed border-gray-200 dark:border-gray-800 rounded-xl">
                                                                                     <div className="flex justify-between items-center mb-3">
                                                                                         <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Attached Records ({JSON.parse(newVisit.xrays || '[]').length})</h4>
@@ -1082,6 +1093,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                                         <div className="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-2xl border border-gray-100 dark:border-gray-800 overflow-x-auto">
                                             <ToothSelector 
                                                 value={visit.tooth_number} 
+                                                dentitionType={visit.dentition_type || 'Adult'}
                                                 readOnly={true} 
                                                 className="w-max mx-auto"
                                             />
