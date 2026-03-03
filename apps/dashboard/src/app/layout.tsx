@@ -55,6 +55,17 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{
+          __html: `
+            window.addEventListener('error', (event) => {
+              if (event.message && (event.message.includes('ChunkLoadError') || event.message.includes('loading chunk'))) {
+                window.location.reload();
+              }
+            }, true);
+          `
+        }} />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
