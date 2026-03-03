@@ -1,0 +1,30 @@
+name: E2E Production Smoke Test
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E tests against production
+        run: npm run test:e2e
+        env:
+          PLAYWRIGHT_TEST_BASE_URL: https://zintellident.netlify.app
+          E2E_TEST_SECRET: e2e-secret-key
