@@ -265,11 +265,15 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
     const optimisticVisit: Visit = {
         ...newVisit,
         id: editingVisitId || Math.random() * -1, // Temporary negative ID
+        clinic_id: patient.clinic_id || 0,
+        patient_id: patient.id,
+        date: newVisit.date || new Date().toISOString().split('T')[0],
+        doctor: newVisit.doctor || '',
         cost: Number(newVisit.cost) || 0,
         paid: Number(newVisit.cost) || 0,
         billing_items: [],
         created_at: new Date().toISOString()
-    };
+    } as Visit;
 
     const previousPatient = { ...patient };
     setPatient(prev => {
