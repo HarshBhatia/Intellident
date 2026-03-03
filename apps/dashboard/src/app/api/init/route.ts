@@ -300,7 +300,28 @@ export async function GET(request: Request) {
     } catch (e) { console.error('Error creating visits table:', e); }
       
     // ---------------------------------------------------------
-    // PHASE 5: Performance Optimization (Indexes)
+    // PHASE 5: Usage Tracking & Rate Limiting
+    // ---------------------------------------------------------
+    try {
+      await sql`
+        CREATE TABLE IF NOT EXISTS usage_logs (
+          id SERIAL PRIMARY KEY,
+          clinic_id INTEGER REFERENCES clinics(id) ON DELETE CASCADE,
+          user_id TEXT,
+          feature TEXT NOT NULL, -- e.g. 'AI_NOTES'
+          status TEXT, -- 'SUCCESS', 'FAILED', 'RATE_LIMITED'
+          metadata TEXT, -- JSON string for extra info
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `;
+      await sql`CREATE INDEX IF NOT EXISTS idx_usage_logs_clinic_id_created_at ON usage_logs(clinic_id, created_at)`;
+      console.log('Usage logs table created.');
+    } catch (e) {
+      console.error('Error creating usage logs:', e);
+    }
+      
+    // ---------------------------------------------------------
+    // PHASE 6: Performance Optimization (Indexes)
     // ---------------------------------------------------------
     try {
       const tablesToIndex = ['patients', 'visits', 'treatments', 'doctors', 'expense_categories', 'expenses'];
