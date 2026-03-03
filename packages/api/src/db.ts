@@ -1,51 +1,49 @@
 import { neon } from '@netlify/neon';
 import { PGlite } from '@electric-sql/pglite';
 import path from 'path';
+import fs from 'fs';
+import os from 'os';
+
+// Standard Next.js singleton pattern for development
+const globalForPglite = global as unknown as { 
+  pglite?: any;
+  pglitePromise?: Promise<any>;
+};
 
 export function getDb() {
   const url = process.env.DATABASE_URL || process.env.NETLIFY_DATABASE_URL;
 
-  // Use Neon for Cloud (Dev/Prod)
   if (url) {
-    console.log('🐘 Using Neon Database (Remote)');
     return neon(url.toString());
   }
 
-  // Use PGlite for Local Development
   if (process.env.NODE_ENV !== 'production') {
-    const globalForPglite = global as unknown as { pglite: any };
-    
-    const initPglite = () => {
-      const dbPath = path.resolve(process.cwd(), '.pgdata');
-      console.log('📦 Initializing Local PGlite Database at:', dbPath);
-      try {
-        const instance = new PGlite(dbPath.toString());
-        // Attach a simple flag to track if it's dead
-        (instance as any)._isAborted = false;
-        return instance;
-      } catch (err) {
-        console.error('FAILED TO INITIALIZE PGLITE:', err);
-        throw err;
-      }
+    // Use a path in the user's home directory to avoid monorepo/filesystem issues
+    const dbPath = path.resolve(os.homedir(), '.intellident-pgdata');
+
+    const init = async () => {
+      console.log('📦 Initializing In-Memory PGlite Database');
+      const instance = new PGlite();
+      await instance.waitReady;
+      return instance;
     };
 
-    if (!globalForPglite.pglite) {
-      globalForPglite.pglite = initPglite();
-    }
-
-    const getPglite = () => {
-      if (!globalForPglite.pglite || globalForPglite.pglite._isAborted) {
-        globalForPglite.pglite = initPglite();
-      }
-      return globalForPglite.pglite;
-    };
-
-    // Create a shim that matches Neon's tagged template literal API
-    const sql = async (strings: TemplateStringsArray, ...values: any[]) => {
-      const pglite = getPglite();
+    const getPglite = async () => {
+      if (globalForPglite.pglite) return globalForPglite.pglite;
       
+      if (!globalForPglite.pglitePromise) {
+        globalForPglite.pglitePromise = init().then(inst => {
+          globalForPglite.pglite = inst;
+          return inst;
+        });
+      }
+      
+      return globalForPglite.pglitePromise;
+    };
+
+    const sql = async (strings: TemplateStringsArray, ...values: any[]) => {
       try {
-        await pglite.waitReady;
+        const pglite = await getPglite();
         let query = strings[0];
         for (let i = 1; i < strings.length; i++) {
           query += `$${i}` + strings[i];
@@ -54,24 +52,25 @@ export function getDb() {
         return result.rows;
       } catch (err: any) {
         console.error('PGlite Query Error:', err);
-        // Mark as aborted so next call re-initializes
-        pglite._isAborted = true;
-        globalForPglite.pglite = undefined;
+        if (err?.message?.includes('Aborted')) {
+          delete globalForPglite.pglite;
+          delete globalForPglite.pglitePromise;
+        }
         throw err;
       }
     };
 
-    // Add .unsafe() support for raw strings
     (sql as any).unsafe = async (query: string, params: any[] = []) => {
-      const pglite = getPglite();
       try {
-        await pglite.waitReady;
+        const pglite = await getPglite();
         const result = await pglite.query(query, params);
         return result.rows;
       } catch (err: any) {
         console.error('PGlite Unsafe Query Error:', err);
-        pglite._isAborted = true;
-        globalForPglite.pglite = undefined;
+        if (err?.message?.includes('Aborted')) {
+          delete globalForPglite.pglite;
+          delete globalForPglite.pglitePromise;
+        }
         throw err;
       }
     };
@@ -79,5 +78,5 @@ export function getDb() {
     return sql as any;
   }
 
-  throw new Error("DATABASE_URL is not set and not in development mode.");
+  throw new Error("DATABASE_URL not set.");
 }

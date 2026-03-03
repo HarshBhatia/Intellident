@@ -134,24 +134,31 @@ export async function GET(request: Request) {
           id SERIAL PRIMARY KEY,
           name TEXT NOT NULL,
           owner_email TEXT NOT NULL,
+          owner_id TEXT, -- Clerk User ID
           address TEXT,
           phone TEXT,
           google_maps_link TEXT,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
       `;
+      await sql`ALTER TABLE clinics ADD COLUMN IF NOT EXISTS owner_id TEXT`;
       
       await sql`
         CREATE TABLE IF NOT EXISTS clinic_members (
           id SERIAL PRIMARY KEY,
           clinic_id INTEGER REFERENCES clinics(id) ON DELETE CASCADE,
           user_email TEXT NOT NULL,
+          user_id TEXT, -- Clerk User ID
           role TEXT NOT NULL DEFAULT 'DOCTOR', -- OWNER, DOCTOR, RECEPTIONIST
           status TEXT NOT NULL DEFAULT 'ACTIVE',
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           UNIQUE(clinic_id, user_email)
         );
       `;
+      await sql`ALTER TABLE clinic_members ADD COLUMN IF NOT EXISTS user_id TEXT`;
+      try {
+        await sql`CREATE INDEX IF NOT EXISTS idx_clinic_members_user_id ON clinic_members(user_id)`;
+      } catch (err) {}
     } catch (e) { console.error('Error creating org tables:', e); }
 
     // ---------------------------------------------------------

@@ -40,7 +40,7 @@ export async function getClinicId() {
   return cookieStore.get('clinic_id')?.value || headerList.get('x-clinic-id');
 }
 
-export async function verifyMembership(clinicId: number | string, userEmail: string): Promise<boolean> {
+export async function verifyMembership(clinicId: number | string, userEmail: string, userId?: string): Promise<boolean> {
   // Only bypass membership check for the DEFAULT mock user
   if (await isE2E() && userEmail === MOCK_E2E_USER.email) return true;
 
@@ -50,12 +50,31 @@ export async function verifyMembership(clinicId: number | string, userEmail: str
   if (isNaN(cId)) return false;
 
   try {
+    // Try matching by userId first (Fastest, no Clerk latency)
+    if (userId) {
+      const result = await sql`
+        SELECT 1 FROM clinic_members 
+        WHERE clinic_id = ${cId} 
+        AND user_id = ${userId}
+        AND status = 'ACTIVE'
+      `;
+      if (result.length > 0) return true;
+    }
+
+    // Fallback to email (Sync mapping if missing)
     const result = await sql`
-      SELECT 1 FROM clinic_members 
+      SELECT id FROM clinic_members 
       WHERE clinic_id = ${cId} 
       AND user_email = ${userEmail}
       AND status = 'ACTIVE'
     `;
+    
+    if (result.length > 0 && userId) {
+      // Auto-populate user_id for next time
+      sql`UPDATE clinic_members SET user_id = ${userId} WHERE id = ${result[0].id}`.catch(console.error);
+      return true;
+    }
+
     return result.length > 0;
   } catch (error) {
     console.error('Membership verification failed:', error);
@@ -63,7 +82,7 @@ export async function verifyMembership(clinicId: number | string, userEmail: str
   }
 }
 
-export async function getMemberRole(clinicId: number | string, userEmail: string): Promise<string | null> {
+export async function getMemberRole(clinicId: number | string, userEmail: string, userId?: string): Promise<string | null> {
   if (await isE2E() && userEmail === MOCK_E2E_USER.email) return 'OWNER';
 
   const sql = getDb();
@@ -72,12 +91,28 @@ export async function getMemberRole(clinicId: number | string, userEmail: string
   if (isNaN(cId)) return null;
 
   try {
+    if (userId) {
+      const result = await sql`
+        SELECT role FROM clinic_members 
+        WHERE clinic_id = ${cId} 
+        AND user_id = ${userId}
+        AND status = 'ACTIVE'
+      `;
+      if (result.length > 0) return result[0].role;
+    }
+
     const result = await sql`
-      SELECT role FROM clinic_members 
+      SELECT id, role FROM clinic_members 
       WHERE clinic_id = ${cId} 
       AND user_email = ${userEmail}
       AND status = 'ACTIVE'
     `;
+    
+    if (result.length > 0 && userId) {
+      sql`UPDATE clinic_members SET user_id = ${userId} WHERE id = ${result[0].id}`.catch(console.error);
+      return result[0].role;
+    }
+
     return result.length > 0 ? result[0].role : null;
   } catch (error) {
     console.error('Role fetch failed:', error);

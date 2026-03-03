@@ -15,7 +15,12 @@ export default function Navbar({ activePage }: { activePage?: string }) {
   }, []);
 
   const toggleTheme = () => {
-    setTheme(theme === 'dark' ? 'light' : 'dark');
+    if (theme === 'system') {
+      const isSystemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      setTheme(isSystemDark ? 'light' : 'dark');
+    } else {
+      setTheme(theme === 'dark' ? 'light' : 'dark');
+    }
   };
 
   const handleSwitchClinic = async () => {

@@ -259,6 +259,33 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
         return;
     }
 
+    if (!patient) return;
+
+    // --- Optimistic UI Update ---
+    const optimisticVisit: Visit = {
+        ...newVisit,
+        id: editingVisitId || Math.random() * -1, // Temporary negative ID
+        cost: Number(newVisit.cost) || 0,
+        paid: Number(newVisit.cost) || 0,
+        billing_items: [],
+        created_at: new Date().toISOString()
+    };
+
+    const previousPatient = { ...patient };
+    setPatient(prev => {
+        if (!prev) return prev;
+        const visits = prev.visits ? [...prev.visits] : [];
+        if (editingVisitId) {
+            const index = visits.findIndex(v => v.id === editingVisitId);
+            if (index !== -1) visits[index] = optimisticVisit;
+        } else {
+            visits.unshift(optimisticVisit);
+        }
+        return { ...prev, visits };
+    });
+    setShowVisitForm(false);
+    // ----------------------------
+
     try {
         setIsSaving(true);
         const method = editingVisitId ? 'PUT' : 'POST';
@@ -269,9 +296,8 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
             patient_id: patient.id,
             id: editingVisitId 
         };
-        console.log('Saving visit with body:', body);
 
-        const res = await fetch('/api/visits', {
+        const res = await fetch('/api/visits/', {
             method,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
@@ -280,10 +306,9 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
         if (res.ok) {
             const savedVisit = await res.json();
             showToast(editingVisitId ? 'Visit updated successfully!' : 'New visit recorded!', 'success');
-            setShowVisitForm(false);
             setEditingVisitId(null);
             setActiveVisitId(savedVisit.id);
-            fetchPatient(); // Refresh timeline
+            fetchPatient(); // Final sync with real data
             // Reset form
             setNewVisit({
                 date: new Date().toISOString().split('T')[0],
@@ -295,11 +320,17 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                 medicine_prescribed: '',
                 cost: 0,
                 xrays: '[]'
-            });        } else {
+            });
+        } else {
+            // Revert optimistic update on failure
+            setPatient(previousPatient);
+            setShowVisitForm(true);
             const errorData = await res.json();
             showToast(errorData.error || 'Failed to save visit', 'error');
         }
     } catch {
+        setPatient(previousPatient);
+        setShowVisitForm(true);
         showToast('Error', 'error');
     } finally {
         setIsSaving(false);

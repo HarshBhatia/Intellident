@@ -23,7 +23,7 @@ export default function SelectClinicPage() {
   useEffect(() => {
     if (!isLoaded || !user) return;
     
-    fetch('/api/clinics')
+    fetch('/api/clinics/')
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
@@ -31,7 +31,7 @@ export default function SelectClinicPage() {
         }
         setLoading(false);
       });
-  }, [isLoaded, user]);
+  }, [isLoaded, user?.id]);
 
   const handleSelect = async (clinicId: number) => {
     // Set cookie or session for selected clinic
