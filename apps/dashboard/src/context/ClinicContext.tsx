@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 
 export interface ClinicInfo {
   clinic_name: string;
@@ -22,6 +23,7 @@ const ClinicContext = createContext<ClinicContextType | undefined>(undefined);
 export function ClinicProvider({ children }: { children: React.ReactNode }) {
   const [clinic, setClinic] = useState<ClinicInfo | null>(null);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   const fetchClinic = useCallback(async () => {
     try {
@@ -31,6 +33,9 @@ export function ClinicProvider({ children }: { children: React.ReactNode }) {
         const data = await res.json();
         setClinic(data);
         console.log('[ClinicProvider] Clinic info loaded:', data.clinic_name);
+      } else if (res.status === 403) {
+        console.warn('[ClinicProvider] Forbidden access to clinic. Redirecting to selection...');
+        router.push('/select-clinic');
       } else {
         console.warn('[ClinicProvider] Failed to fetch clinic info:', res.status);
       }
@@ -39,7 +44,7 @@ export function ClinicProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     fetchClinic();
