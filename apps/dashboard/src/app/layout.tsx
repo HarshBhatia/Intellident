@@ -10,6 +10,8 @@ import "./globals.css";
 
 validateEnv();
 
+export const revalidate = 0;
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
