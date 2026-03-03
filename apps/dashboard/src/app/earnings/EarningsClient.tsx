@@ -55,8 +55,6 @@ export default function EarningsClient() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 font-sans text-gray-900 dark:text-gray-100 transition-colors pb-12">
-      <Navbar activePage="Financials" />
-
       <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         
         {/* Controls Bar */}

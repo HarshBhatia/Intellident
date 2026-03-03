@@ -1,14 +1,24 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useTheme } from './ThemeProvider';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { UserButton } from "@clerk/nextjs";
 
-export default function Navbar({ activePage }: { activePage?: string }) {
+export default function Navbar() {
   const router = useRouter();
+  const pathname = usePathname();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+
+  const activePage = useMemo(() => {
+    if (pathname === '/') return 'Dashboard';
+    if (pathname.startsWith('/patients/')) return 'Patient Details';
+    if (pathname.startsWith('/earnings')) return 'Financials';
+    if (pathname.startsWith('/expenses')) return 'Expense Tracker';
+    if (pathname.startsWith('/settings')) return 'Settings';
+    return '';
+  }, [pathname]);
 
   useEffect(() => {
     setMounted(true);

@@ -117,8 +117,6 @@ export default function ExpensesClient() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 font-sans text-gray-900 dark:text-gray-100 transition-colors pb-12">
-      <Navbar activePage="Expense Tracker" />
-
       <main className="max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">

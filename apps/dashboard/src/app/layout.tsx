@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { ClerkProvider } from "@clerk/nextjs";
 import { dark } from "@clerk/themes";
 import Footer from "@/components/Footer";
+import Navbar from "@/components/Navbar";
 import { validateEnv } from "@/lib/env";
 import { ClinicProvider } from "@/context/ClinicContext";
 import Script from "next/script";
@@ -12,7 +13,7 @@ import "./globals.css";
 
 validateEnv();
 
-export const revalidate = 0;
+export const dynamic = 'force-dynamic';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -63,7 +64,14 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{
           __html: `
             window.addEventListener('error', (event) => {
-              if (event.message && (event.message.includes('ChunkLoadError') || event.message.includes('loading chunk'))) {
+              const msg = event.message || '';
+              if (
+                msg.includes('ChunkLoadError') || 
+                msg.includes('loading chunk') || 
+                msg.includes('SyntaxError') ||
+                (event.target && (event.target.tagName === 'SCRIPT' || event.target.tagName === 'LINK'))
+              ) {
+                console.warn('Critical asset error detected, reloading...', msg);
                 window.location.reload();
               }
             }, true);
@@ -88,6 +96,7 @@ export default function RootLayout({
             <ThemeProvider defaultTheme="system">
               <ToastProvider>
                 <div className="flex flex-col min-h-screen">
+                  <Navbar />
                   <main className="flex-1">
                     {children}
                   </main>

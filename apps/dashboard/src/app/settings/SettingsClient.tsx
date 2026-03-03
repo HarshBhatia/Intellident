@@ -306,8 +306,6 @@ export default function SettingsClient() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 font-sans text-gray-900 dark:text-gray-100 transition-colors flex flex-col">
-      <Navbar activePage="Settings" />
-
       <div className="flex-1 flex flex-col md:flex-row max-w-7xl mx-auto w-full">
         {/* Sidebar */}
         <aside className="w-64 border-r border-gray-200 dark:border-gray-800 pt-8 px-4 hidden md:block transition-colors shrink-0">
