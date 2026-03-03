@@ -15,6 +15,9 @@ export async function getVisits(clinicId: string, patientId?: string): Promise<V
 }
 
 export async function createVisit(clinicId: string, data: any): Promise<Visit> {
+  if (data.date && new Date(data.date) > new Date()) {
+    throw new Error('Visit date cannot be in the future');
+  }
   const sql = getDb();
   const cId = parseInt(clinicId);
   const cost = data.billing_items?.reduce((s: number, i: any) => s + i.amount, 0) || data.cost || 0;
@@ -27,6 +30,9 @@ export async function createVisit(clinicId: string, data: any): Promise<Visit> {
 }
 
 export async function updateVisit(clinicId: string, data: Visit): Promise<Visit> {
+  if (data.date && new Date(data.date) > new Date()) {
+    throw new Error('Visit date cannot be in the future');
+  }
   const sql = getDb();
   const cId = parseInt(clinicId);
   const cost = data.billing_items?.reduce((s, i) => s + i.amount, 0) || data.cost || 0;
