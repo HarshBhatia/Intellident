@@ -1,6 +1,5 @@
 import { neon } from '@netlify/neon';
 import { PGlite } from '@electric-sql/pglite';
-import path from 'path';
 
 const globalForPglite = global as unknown as { 
   pglite?: any;
@@ -18,11 +17,13 @@ export function getDb() {
     return mockSql as any;
   }
 
-  // Use dynamic imports for Node-only modules to avoid browser bundling issues
-  const dbPath = path.resolve(process.env.HOME || '', '.intellident-pgdata');
-
   const init = async () => {
+    // Dynamic imports to prevent browser bundling crashes
+    const path = await import('path');
     const fs = await import('fs');
+    const os = await import('os');
+    
+    const dbPath = path.resolve(os.homedir(), '.intellident-pgdata');
     if (!fs.existsSync(dbPath)) fs.mkdirSync(dbPath, { recursive: true });
     const lockFile = path.join(dbPath, 'postmaster.pid');
     if (fs.existsSync(lockFile)) { try { fs.unlinkSync(lockFile); } catch (e) {} }
