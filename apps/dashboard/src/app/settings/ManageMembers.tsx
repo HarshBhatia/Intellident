@@ -20,7 +20,7 @@ export default function ManageMembers() {
 
   const fetchMembers = async () => {
     try {
-      const res = await fetch('/api/members');
+      const res = await fetch('/api/members/');
       if (res.ok) {
         const data = await res.json();
         setMembers(data.members || []);
@@ -42,7 +42,7 @@ export default function ManageMembers() {
     if (!newEmail) return;
     setInviting(true);
     try {
-      const res = await fetch('/api/members', {
+      const res = await fetch('/api/members/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: newEmail })

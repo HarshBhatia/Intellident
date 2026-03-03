@@ -35,7 +35,7 @@ export default function SelectClinicPage() {
 
   const handleSelect = async (clinicId: number) => {
     // Set cookie or session for selected clinic
-    await fetch('/api/auth/session', {
+    await fetch('/api/auth/session/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ clinicId })
@@ -49,7 +49,7 @@ export default function SelectClinicPage() {
     setCreating(true);
     
     try {
-      const res = await fetch('/api/clinics', {
+      const res = await fetch('/api/clinics/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: newClinicName })

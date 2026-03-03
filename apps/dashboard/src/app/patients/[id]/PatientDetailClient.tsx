@@ -127,7 +127,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
 
     try {
         setIsGenerating(true);
-        const res = await fetch('/api/generate-notes', {
+        const res = await fetch('/api/generate-notes/', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ text: smartNote })
@@ -190,8 +190,8 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
   const fetchInitialData = useCallback(async () => {
     try {
       const [infoRes, docsRes] = await Promise.all([
-        fetch('/api/clinic-info'),
-        fetch('/api/doctors')
+        fetch('/api/clinic-info/'),
+        fetch('/api/doctors/')
       ]);
       
       if (infoRes.ok) setClinicInfo(await infoRes.json());
@@ -473,7 +473,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
       const updatedXRays = [...existingXRays, newXRay];
       
       // Update Visit in DB
-      const res = await fetch('/api/visits', {
+      const res = await fetch('/api/visits/', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...activeVisit, xrays: JSON.stringify(updatedXRays) })
@@ -503,7 +503,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
       const existingXRays: XRay[] = activeVisit.xrays ? JSON.parse(activeVisit.xrays) : [];
       const updatedXRays = existingXRays.filter((_, i) => i !== index);
 
-      const res = await fetch('/api/visits', {
+      const res = await fetch('/api/visits/', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...activeVisit, xrays: JSON.stringify(updatedXRays) })

@@ -141,7 +141,7 @@ export default function PatientTable({ patients, onAddClick, onDeleteSuccess }: 
   const itemsPerPage = 10;
 
   useEffect(() => {
-    fetch('/api/clinic-info')
+    fetch('/api/clinic-info/')
       .then(res => res.json())
       .then(data => setClinic(data));
   }, []);
