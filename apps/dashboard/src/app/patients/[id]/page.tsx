@@ -7,25 +7,8 @@ import { cookies } from 'next/headers';
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
-  const clinicId = (await cookies()).get('clinic_id')?.value;
-  
-  if (!clinicId) return { title: 'Patient Details' };
-
-  try {
-    const sql = getDb();
-    const rows = await sql`SELECT name FROM patients WHERE patient_id = ${id} AND clinic_id = ${clinicId}`;
-    
-    if (rows && rows.length > 0) {
-      return {
-        title: `${rows[0].name} | IntelliDent`,
-      };
-    }
-  } catch (error) {
-    console.error('Metadata generation error:', error);
-  }
-  
   return {
-    title: 'Patient Details',
+    title: `Patient ${id} | IntelliDent`,
   };
 }
 
