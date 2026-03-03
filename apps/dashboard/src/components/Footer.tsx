@@ -13,8 +13,9 @@ export default function Footer() {
                         © {currentYear} IntelliDent Platform. Built for Excellence.
                     </p>
                     
-                                <div className="flex items-center gap-4 text-[10px] font-bold text-gray-400 dark:text-gray-600 uppercase tracking-widest">
-                                  <span>v1.0.3 - {new Date().toISOString().split('T')[0]}</span>                        <span className="w-1 h-1 bg-gray-200 dark:bg-gray-800 rounded-full"></span>
+                                            <div className="flex items-center gap-4 text-[10px] font-bold text-gray-400 dark:text-gray-600 uppercase tracking-widest">
+                    
+                                              <span>v1.0.4 - {new Date().toISOString().split('T')[0]}</span>                        <span className="w-1 h-1 bg-gray-200 dark:bg-gray-800 rounded-full"></span>
                         <Link href="/privacy" className="hover:text-blue-600 transition">Privacy Policy</Link>
                         <span className="w-1 h-1 bg-gray-200 dark:bg-gray-800 rounded-full"></span>
                         <Link href="/terms" className="hover:text-blue-600 transition">Terms of Service</Link>

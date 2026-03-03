@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useToast } from '@/components/ToastProvider';
 import Navbar from '@/components/Navbar';
 import { useClinic } from '@/context/ClinicContext';
+import ManageMembers from './ManageMembers';
 
 interface Item {
   id: number;
@@ -178,7 +179,7 @@ const DataExport = () => {
                         <button 
                             onClick={() => handleExport('json')}
                             disabled={exporting}
-                            className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-800 rounded-xl hover:border-blue-500 hover:bg-blue-50 dark:hover:border-blue-900/10 transition group text-left disabled:opacity-50"
+                            className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-800 rounded-xl hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition group text-left disabled:opacity-50"
                         >
                             <div>
                                 <p className="font-bold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition">JSON Format</p>
@@ -223,7 +224,7 @@ const ClinicProfile = () => {
         e.preventDefault();
         setSaving(true);
         try {
-            const res = await fetch('/api/clinic-info', {
+            const res = await fetch('/api/clinic-info/', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(form)
@@ -278,11 +279,10 @@ const ClinicProfile = () => {
     );
 };
 
-import ManageMembers from './ManageMembers';
-
 export default function SettingsClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  console.log('[SettingsClient] Rendering with tab:', searchParams.get('tab'));
   const [activeSection, setActiveSection] = useState<'profile' | 'members' | 'treatments' | 'doctors' | 'expenses' | 'export'>(
     (searchParams.get('tab') as any) || 'profile'
   );
