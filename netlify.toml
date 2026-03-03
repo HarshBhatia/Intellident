@@ -1,6 +1,6 @@
 [build]
-  base = "apps/dashboard"
-  command = "npm run build"
+  command = "npx turbo build --filter=dashboard"
+  publish = "apps/dashboard/.next"
 
 [build.environment]
   NEXT_DISABLE_TURBOPACK = "1"
