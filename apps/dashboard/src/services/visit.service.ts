@@ -11,7 +11,7 @@ export async function getVisits(clinicId: string, patientId?: string): Promise<V
   const rows = patientId 
     ? await sql`SELECT *, dentition_type FROM visits WHERE clinic_id = ${cId} AND patient_id = ${patientId} ORDER BY date DESC`
     : await sql`SELECT v.*, p.name as patient_name FROM visits v JOIN patients p ON v.patient_id = p.id WHERE v.clinic_id = ${cId} ORDER BY v.date DESC LIMIT 50`;
-  return rows.map(r => ({ ...r, billing_items: parseBillingItems(r.billing_items) })) as Visit[];
+  return rows.map((r: any) => ({ ...r, billing_items: parseBillingItems(r.billing_items) })) as Visit[];
 }
 
 export async function createVisit(clinicId: string, data: any): Promise<Visit> {

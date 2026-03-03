@@ -27,16 +27,20 @@ export default function PatientTable({ patients, onAddClick, onDeleteSuccess }: 
   const [currentPage, setCurrentPage] = useState(Number(searchParams.get('page')) || 1);
   const itemsPerPage = 10;
 
-  // Sync page to URL - Stable navigation
+  // Sync page to URL - Silent update to prevent full page refresh
   useEffect(() => {
-    const params = new URLSearchParams(searchParams.toString());
-    if (currentPage > 1) params.set('page', currentPage.toString());
-    else params.delete('page');
-    
-    if (params.get('page') !== searchParams.get('page')) {
-      router.replace(`?${params.toString()}`, { scroll: false });
+    const params = new URLSearchParams(window.location.search);
+    if (currentPage > 1) {
+      params.set('page', currentPage.toString());
+    } else {
+      params.delete('page');
     }
-  }, [currentPage, router, searchParams]);
+    
+    const newUrl = `${window.location.pathname}?${params.toString()}`;
+    if (window.location.search !== `?${params.toString()}`) {
+      window.history.replaceState({ ...window.history.state, as: newUrl, url: newUrl }, '', newUrl);
+    }
+  }, [currentPage]);
 
   useEffect(() => { setCurrentPage(1); }, [sortConfig]);
 

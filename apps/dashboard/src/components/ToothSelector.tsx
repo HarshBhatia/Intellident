@@ -1,22 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+
+type DentitionType = 'Adult' | 'Child';
 
 interface ToothSelectorProps {
   value: string;
+  dentitionType?: DentitionType;
+  onDentitionTypeChange?: (type: DentitionType) => void;
   onChange?: (value: string) => void;
   readOnly?: boolean;
+  className?: string;
 }
 
-// Custom SVG Paths for realistic tooth shapes
-const SHAPES = {
-  Molar: "M4 4c0-1 2-2 4-2s4 1 4 2v4c0 2-1 3-2 5v7c0 1-1 2-2 2s-2-1-2-2v-7c-1-2-2-3-2-5V4z M12 4c0-1 2-2 4-2s4 1 4 2v4c0 2-1 3-2 5v7c0 1-1 2-2 2s-2-1-2-2v-7c-1-2-2-3-2-5V4z",
-  Premolar: "M8 4c0-1 2-2 4-2s4 1 4 2v6c0 3-1 5-2 7v4c0 1-1 2-2 2s-2-1-2-2v-4c-1-2-2-4-2-7V4z",
-  Canine: "M9 2c1-1 3-1 4 0l1 4c1 2 1 5 0 8l-1 6c0 1-1 2-2 2s-2-1-2-2l-1-6c-1-3-1-6 0-8l1-4z",
-  Incisor: "M9 2h6v6c0 3-1 6-2 9v5c0 1-1 2-2 2s-2-1-2-2v-5c-1-3-2-6-2-9V2z"
-};
-
-// Simplified but anatomical SVG components
+// Simplified anatomical SVG components
 const MolarIcon = () => (
   <svg viewBox="0 0 24 24" className="w-full h-full">
     <path d="M6 4c-1 0-2 1-2 2v4c0 2 1 4 2 6v6c0 1 1 2 2 2s2-1 2-2v-6c1-2 2-4 2-6V6c0-1-1-2-2-2H6z M14 4c-1 0-2 1-2 2v4c0 2 1 4 2 6v6c0 1 1 2 2 2s2-1 2-2v-6c1-2 2-4 2-6V6c0-1-1-2-2-2H14z" fill="currentColor" />
@@ -41,94 +38,154 @@ const IncisorIcon = () => (
   </svg>
 );
 
-export default function ToothSelector({ value, onChange, readOnly = false, className }: ToothSelectorProps & { className?: string }) {
-  const [selected, setSelected] = useState<Set<number>>(new Set());
+export default function ToothSelector({ 
+  value, 
+  dentitionType: initialDentitionType = 'Adult',
+  onDentitionTypeChange,
+  onChange, 
+  readOnly = false, 
+  className 
+}: ToothSelectorProps) {
+  const [dentitionType, setDentitionType] = useState<DentitionType>(initialDentitionType);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    setDentitionType(initialDentitionType);
+  }, [initialDentitionType]);
 
   useEffect(() => {
     if (value) {
-      const nums = value.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
-      setSelected(new Set(nums));
+      const items = value.split(',').map(s => s.trim()).filter(s => s !== '');
+      setSelected(new Set(items));
     } else {
       setSelected(new Set());
     }
   }, [value]);
 
-  const toggleTooth = (num: number) => {
+  const toggleTooth = (id: string) => {
     const newSet = new Set(selected);
-    if (newSet.has(num)) {
-      newSet.delete(num);
+    if (newSet.has(id)) {
+      newSet.delete(id);
     } else {
-      newSet.add(num);
+      newSet.add(id);
     }
     setSelected(newSet);
-    onChange?.(Array.from(newSet).sort((a, b) => a - b).join(', '));
+    onChange?.(Array.from(newSet).join(', '));
   };
 
-  const getToothIcon = (q: number) => {
-    if (q >= 6) return <MolarIcon />;
-    if (q >= 4) return <PremolarIcon />;
-    if (q === 3) return <CanineIcon />;
-    return <IncisorIcon />;
+  const getToothIcon = (type: string, qIdx: number) => {
+    if (type === 'Adult') {
+        if (qIdx >= 6) return <MolarIcon />;
+        if (qIdx >= 4) return <PremolarIcon />;
+        if (qIdx === 3) return <CanineIcon />;
+        return <IncisorIcon />;
+    } else {
+        if (qIdx >= 4) return <MolarIcon />;
+        if (qIdx === 3) return <CanineIcon />;
+        return <IncisorIcon />;
+    }
   };
 
-  const Tooth = ({ num, q, flipped = false }: { num: number; q: number; flipped?: boolean }) => {
-    const isSelected = selected.has(num);
+  const Tooth = ({ id, label, qIdx, flipped = false }: { id: string; label: string; qIdx: number; flipped?: boolean }) => {
+    const isSelected = selected.has(id);
     return (
       <div 
-        onClick={() => !readOnly && toggleTooth(num)}
+        onClick={() => !readOnly && toggleTooth(id)}
         className={`flex flex-col items-center group px-0.5 ${readOnly ? 'cursor-default' : 'cursor-pointer'}`}
       >
-        <span className="text-[9px] font-bold text-gray-400 mb-1">{q}</span>
+        <span className="text-[9px] font-bold text-gray-400 mb-1">{label}</span>
         <div className={`
           w-7 h-10 relative transition-all duration-200 
           ${isSelected ? 'scale-110 drop-shadow-[0_0_8px_rgba(34,197,94,0.5)]' : (!readOnly ? 'hover:scale-105 opacity-60 hover:opacity-100' : 'opacity-40')}
           ${flipped ? 'rotate-180' : ''}
           ${isSelected ? 'text-green-500' : 'text-gray-300 dark:text-gray-600'}
         `}>
-          {getToothIcon(q)}
+          {getToothIcon(dentitionType, qIdx)}
         </div>
       </div>
     );
   };
 
-  const upperLeft = [1,2,3,4,5,6,7,8].map(n => ({ u: n, q: 9-n }));
-  const upperRight = [9,10,11,12,13,14,15,16].map(n => ({ u: n, q: n-8 }));
-  const lowerLeft = [32,31,30,29,28,27,26,25].map(n => ({ u: n, q: n-24 }));
-  const lowerRight = [17,18,19,20,21,22,23,24].map(n => ({ u: n, q: n-16 }));
+  const quadrants = useMemo(() => {
+    if (dentitionType === 'Adult') {
+        return {
+            upperLeft: [8,7,6,5,4,3,2,1].map(n => ({ id: `UL-${n}`, label: n.toString(), qIdx: n })),
+            upperRight: [1,2,3,4,5,6,7,8].map(n => ({ id: `UR-${n}`, label: n.toString(), qIdx: n })),
+            lowerLeft: [8,7,6,5,4,3,2,1].map(n => ({ id: `LL-${n}`, label: n.toString(), qIdx: n })),
+            lowerRight: [1,2,3,4,5,6,7,8].map(n => ({ id: `LR-${n}`, label: n.toString(), qIdx: n }))
+        };
+    } else {
+        const labels = ['A', 'B', 'C', 'D', 'E'];
+        return {
+            upperLeft: [5,4,3,2,1].map(n => ({ id: `CUL-${labels[n-1]}`, label: labels[n-1], qIdx: n })),
+            upperRight: [1,2,3,4,5].map(n => ({ id: `CUR-${labels[n-1]}`, label: labels[n-1], qIdx: n })),
+            lowerLeft: [5,4,3,2,1].map(n => ({ id: `CLL-${labels[n-1]}`, label: labels[n-1], qIdx: n })),
+            lowerRight: [1,2,3,4,5].map(n => ({ id: `CLR-${labels[n-1]}`, label: labels[n-1], qIdx: n }))
+        };
+    }
+  }, [dentitionType]);
+
+  const handleModeToggle = (type: DentitionType) => {
+      if (readOnly) return;
+      setDentitionType(type);
+      onDentitionTypeChange?.(type);
+  };
 
   return (
-    <div className={className || "bg-[#111] p-8 rounded-2xl border border-gray-800 shadow-2xl select-none w-full overflow-x-auto transition-colors"}>
-      <div className={`${readOnly ? '' : 'min-w-[650px]'} flex flex-col items-center`}>
+    <div className={className || "bg-[#111] p-6 rounded-2xl border border-gray-800 shadow-2xl select-none w-full overflow-x-auto transition-colors"}>
+      <div className={`${readOnly ? '' : 'min-w-[500px]'} flex flex-col items-center`}>
         
-        {/* Upper Arch */}
-        <div className={`flex items-end ${readOnly ? 'gap-4' : 'gap-12'} mb-8`}>
-            <div className={`flex ${readOnly ? 'gap-0.5' : 'gap-2'} items-end border-r border-gray-800 ${readOnly ? 'pr-2' : 'pr-6'}`}>
-                 {upperLeft.map(t => <Tooth key={t.u} num={t.u} q={t.q} />)}
+        {!readOnly && (
+            <div className="flex gap-2 mb-8 p-1 bg-gray-900 rounded-xl border border-gray-800">
+                {(['Adult', 'Child'] as const).map(mode => (
+                    <button
+                        key={mode}
+                        type="button"
+                        onClick={() => handleModeToggle(mode)}
+                        className={`px-6 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${dentitionType === mode ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}
+                    >
+                        {mode}
+                    </button>
+                ))}
             </div>
-            <div className={`flex ${readOnly ? 'gap-0.5' : 'gap-2'} items-end`}>
-                 {upperRight.map(t => <Tooth key={t.u} num={t.u} q={t.q} />)}
+        )}
+
+        {/* Upper Arch */}
+        <div className={`flex items-end ${readOnly ? 'gap-4' : 'gap-10'} mb-6`}>
+            <div className={`flex items-end border-r border-gray-800 ${readOnly ? 'pr-2' : 'pr-5'}`}>
+                 {quadrants.upperLeft.map(t => <Tooth key={t.id} id={t.id} label={t.label} qIdx={t.qIdx} />)}
+            </div>
+            <div className="flex items-end">
+                 {quadrants.upperRight.map(t => <Tooth key={t.id} id={t.id} label={t.label} qIdx={t.qIdx} />)}
             </div>
         </div>
 
         {/* Midline */}
-        <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-800 to-transparent mb-8"></div>
+        <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-800 to-transparent mb-6"></div>
 
         {/* Lower Arch */}
-        <div className={`flex items-start ${readOnly ? 'gap-4' : 'gap-12'}`}>
-             <div className={`flex ${readOnly ? 'gap-0.5' : 'gap-2'} items-start border-r border-gray-800 ${readOnly ? 'pr-2' : 'pr-6'}`}>
-                {lowerLeft.map(t => <Tooth key={t.u} num={t.u} q={t.q} flipped />)}
+        <div className={`flex items-start ${readOnly ? 'gap-4' : 'gap-10'}`}>
+             <div className={`flex items-start border-r border-gray-800 ${readOnly ? 'pr-2' : 'pr-5'}`}>
+                {quadrants.lowerLeft.map(t => <Tooth key={t.id} id={t.id} label={t.label} qIdx={t.qIdx} flipped />)}
             </div>
-            <div className={`flex ${readOnly ? 'gap-0.5' : 'gap-2'} items-start`}>
-                 {lowerRight.map(t => <Tooth key={t.u} num={t.u} q={t.q} flipped />)}
+            <div className="flex items-start">
+                 {quadrants.lowerRight.map(t => <Tooth key={t.id} id={t.id} label={t.label} qIdx={t.qIdx} flipped />)}
             </div>
         </div>
 
         {!readOnly && (
-            <div className="mt-10 flex items-center gap-4">
+            <div className="mt-8 flex items-center justify-between w-full px-4">
                 <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-green-500 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.5)]"></div>
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Selected Treatment Area</span>
+                    <div className="w-2 h-2 bg-green-500 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.5)]"></div>
+                    <span className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Selection Active</span>
                 </div>
+                <button 
+                    type="button"
+                    onClick={() => { setSelected(new Set()); onChange?.(''); }}
+                    className="text-[9px] font-bold text-red-500/50 hover:text-red-500 uppercase tracking-widest transition"
+                >
+                    Clear All
+                </button>
             </div>
         )}
       </div>
