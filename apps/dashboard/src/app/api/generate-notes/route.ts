@@ -1,77 +1,57 @@
 import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
+import { getAuthContext, getClinicId, verifyMembership } from '@/lib/auth';
+import { getDb } from '@intellident/api';
+
+const AI_RATE_LIMIT_PER_HOUR = 20;
 
 export async function POST(request: Request) {
   const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return NextResponse.json({ error: 'GEMINI_API_KEY is not configured' }, { status: 500 });
 
-  if (!apiKey) {
-    return NextResponse.json({ error: 'GEMINI_API_KEY is not configured on the server' }, { status: 500 });
+  const { userId, userEmail } = await getAuthContext();
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const clinicId = await getClinicId();
+  if (!clinicId) return NextResponse.json({ error: 'No clinic selected' }, { status: 400 });
+
+  if (!userEmail || !(await verifyMembership(clinicId, userEmail, userId))) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
+
+  const sql = getDb();
+  const cId = typeof clinicId === 'string' ? parseInt(clinicId) : clinicId;
+
+  try {
+    const recentUsage = await sql`
+      SELECT COUNT(*) as count FROM usage_logs 
+      WHERE clinic_id = ${cId} AND feature = 'AI_NOTES' AND created_at > NOW() - INTERVAL '1 hour'
+    `;
+    if (parseInt(recentUsage[0].count) >= AI_RATE_LIMIT_PER_HOUR) {
+      await sql`INSERT INTO usage_logs (clinic_id, user_id, feature, status) VALUES (${cId}, ${userId}, 'AI_NOTES', 'RATE_LIMITED')`;
+      return NextResponse.json({ error: 'Too many AI requests. Please wait a while.' }, { status: 429 });
+    }
+  } catch (e) { console.error('Rate limit check failed:', e); }
 
   const genAI = new GoogleGenerativeAI(apiKey);
   
   try {
-    const contentType = request.headers.get('content-type') || '';
-    let textToAnalyze = "";
+    const body = await request.json();
+    const textToAnalyze = body.text;
+    if (!textToAnalyze || textToAnalyze.length > 5000) return NextResponse.json({ error: 'Input too long or missing' }, { status: 400 });
 
-    // 1. Handle either Audio (FormData) or JSON (Text)
-    if (contentType.includes('multipart/form-data')) {
-        const formData = await request.formData();
-        const file = formData.get('audio') as File;
-
-        if (!file) {
-            return NextResponse.json({ error: 'No audio file provided' }, { status: 400 });
-        }
-
-        const arrayBuffer = await file.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
-        const base64Audio = buffer.toString('base64');
-
-        const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
-        const prompt = "Analyze this doctor-patient consultation audio and extract clinical information.";
-        
-        const result = await model.generateContent([
-            {
-                inlineData: {
-                    mimeType: "audio/aac",
-                    data: base64Audio
-                }
-            },
-            { text: prompt }
-        ]);
-        const response = await result.response;
-        textToAnalyze = response.text();
-    } else {
-        const body = await request.json();
-        textToAnalyze = body.text;
-    }
-
-    if (!textToAnalyze) {
-        return NextResponse.json({ error: 'No text to analyze' }, { status: 400 });
-    }
-
-    // 2. Use Gemini to parse text into structured JSON
     const model = genAI.getGenerativeModel({ 
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.5-flash",
       generationConfig: { 
         responseMimeType: "application/json",
         responseSchema: {
           type: SchemaType.OBJECT,
           properties: {
-            clinical_findings: { 
-                type: SchemaType.STRING,
-                description: "Clinical findings, diagnosis, and symptoms observed"
-            },
-            procedure_notes: { 
-                type: SchemaType.STRING, 
-                description: "Details of the procedure performed or general notes"
-            },
+            clinical_findings: { type: SchemaType.STRING },
+            procedure_notes: { type: SchemaType.STRING },
             medicine_prescribed: { type: SchemaType.STRING },
             tooth_number: { type: SchemaType.STRING },
-            visit_type: { 
-                type: SchemaType.STRING,
-                description: "Must be one of: Consultation, Procedure, Follow-up, Other"
-            },
+            visit_type: { type: SchemaType.STRING },
             cost: { type: SchemaType.NUMBER }
           },
           required: ["clinical_findings", "visit_type"]
@@ -79,26 +59,17 @@ export async function POST(request: Request) {
       }
     });
 
-    const extractionPrompt = `Extract detailed dental clinical data from this text: "${textToAnalyze}". 
-    
-    Guidelines:
-    - clinical_findings: Be descriptive. Include specific symptoms, initial observations, and diagnosis (e.g., "Deep distal caries on tooth 17 with associated pulpitis symptoms").
-    - procedure_notes: Detail the steps taken during the treatment (e.g., "Caries excavation, pulp capping with MTA, and composite restoration performed").
-    - medicine_prescribed: List full names and dosages.
-    - tooth_number: List separated by commas.
-    - visit_type: Must be one of: Consultation, Procedure, Follow-up, Other.
-    - cost: Default to 0 if not mentioned.
-    
-    Aim for professional, detailed notes that a doctor would find useful for history tracking, but keep it concise.`;
-
+    const extractionPrompt = `Extract dental clinical data from: "${textToAnalyze}". Use 1-8 for Adult, A-E for Child teeth. Return JSON.`;
     const result = await model.generateContent(extractionPrompt);
     const response = await result.response;
     const structuredData = JSON.parse(response.text());
 
+    sql`INSERT INTO usage_logs (clinic_id, user_id, feature, status, metadata) VALUES (${cId}, ${userId}, 'AI_NOTES', 'SUCCESS', ${JSON.stringify({ inputLength: textToAnalyze.length })})`.catch(console.error);
     return NextResponse.json(structuredData);
 
   } catch (error: any) {
-    console.error('Error generating notes:', error);
-    return NextResponse.json({ error: 'Failed to process notes', details: error.message }, { status: 500 });
+    console.error('AI error:', error);
+    sql`INSERT INTO usage_logs (clinic_id, user_id, feature, status, metadata) VALUES (${cId}, ${userId}, 'AI_NOTES', 'FAILED', ${JSON.stringify({ error: error.message })})`.catch(console.error);
+    return NextResponse.json({ error: 'AI processing failed' }, { status: 500 });
   }
 }

@@ -20,24 +20,27 @@ export interface Visit {
   procedure_notes?: string;
   tooth_number?: string;
   medicine_prescribed?: string;
-  cost?: number; // Total cost of the visit (sum of billing items)
-  paid?: number; // Amount paid for this visit
-  xrays?: string; // JSON string of XRay[]
-  billing_items?: BillingItem[]; // New field: JSON string of BillingItem[]
+  cost?: number;
+  paid?: number;
+  xrays?: string;
+  billing_items?: BillingItem[];
+  dentition_type?: 'Adult' | 'Child';
   created_at?: string;
 }
 
 export interface Patient {
   id?: number;
-  patient_id: string; // Unique ID for the patient within a clinic (e.g., PID-001)
+  patient_id: string;
   name: string;
   age?: number;
   gender?: string;
   phone_number?: string;
-  patient_type?: string; // e.g., "New", "Regular", "Emergency"
-  user_email?: string; // Associated Clerk user email if any
+  patient_type?: string;
+  user_email?: string;
   clinic_id: number;
+  is_active?: boolean;
+  xrays?: string;
   created_at?: string;
   last_visit?: string;
-  visits?: Visit[]; // Optional: for detailed patient view
+  visits?: Visit[];
 }

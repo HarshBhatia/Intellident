@@ -51,6 +51,51 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
   const [selectedXRay, setSelectedXRay] = useState<string | null>(null);
   const [smartNote, setSmartNote] = useState('');
 
+  // Visit Form State
+  const [newVisit, setNewVisit] = useState<Partial<Visit>>({
+    date: new Date().toISOString().split('T')[0],
+    doctor: '',
+    visit_type: 'Consultation',
+    clinical_findings: '',
+    procedure_notes: '',
+    tooth_number: '',
+    dentition_type: 'Adult',
+    cost: 0,
+    xrays: '[]'
+  });
+
+  // Navigation Guard
+  const isFormDirty = useMemo(() => {
+    if (!showVisitForm) return false;
+    return !!(
+      smartNote.trim() || 
+      newVisit.clinical_findings?.trim() || 
+      newVisit.procedure_notes?.trim() || 
+      newVisit.medicine_prescribed?.trim() ||
+      (newVisit.cost && newVisit.cost > 0)
+    );
+  }, [showVisitForm, smartNote, newVisit]);
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isFormDirty) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isFormDirty]);
+
+  const handleCloseVisitForm = useCallback(() => {
+    if (isFormDirty) {
+      if (!confirm('You have unsaved changes. Discard them?')) return;
+    }
+    setShowVisitForm(false);
+    setEditingVisitId(null);
+    setSmartNote('');
+  }, [isFormDirty]);
+
   useEffect(() => {
     params.then(p => setPatientId(p.id));
   }, [params]);
@@ -74,17 +119,6 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
     }
   }, [patient]);
 
-  // Visit Form State
-  const [newVisit, setNewVisit] = useState<Partial<Visit>>({
-    date: new Date().toISOString().split('T')[0],
-    doctor: '',
-    visit_type: 'Consultation',
-    clinical_findings: '',
-    procedure_notes: '',
-    tooth_number: '',
-    cost: 0
-  });
-
   const handleAIGenerate = async () => {
     if (!smartNote.trim()) {
         showToast('Please enter a note first', 'error');
@@ -93,34 +127,33 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
 
     try {
         setIsGenerating(true);
-        const res = await fetch('/api/generate-notes', {
+        const res = await fetch('/api/generate-notes/');
+        const resData = await fetch('/api/generate-notes/', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ text: smartNote })
         });
 
-        if (res.ok) {
-            const data = await res.json();
-            console.log('AI Data received:', data);
-            setNewVisit(prev => {
-                const next = {
-                    ...prev,
-                    clinical_findings: data.clinical_findings || prev.clinical_findings,
-                    procedure_notes: data.procedure_notes || prev.procedure_notes,
-                    medicine_prescribed: data.medicine_prescribed || prev.medicine_prescribed,
-                    tooth_number: data.tooth_number || prev.tooth_number,
-                    visit_type: data.visit_type || prev.visit_type,
-                    cost: data.cost || prev.cost
-                };
-                console.log('Next newVisit state:', next);
-                return next;
-            });
+        if (resData.ok) {
+            const data = await resData.json();
+            let detectedDentition: 'Adult' | 'Child' = 'Adult';
+            if (data.tooth_number && /[A-E]/i.test(data.tooth_number)) {
+                detectedDentition = 'Child';
+            }
+
+            setNewVisit(prev => ({
+                ...prev,
+                clinical_findings: data.clinical_findings || prev.clinical_findings,
+                procedure_notes: data.procedure_notes || prev.procedure_notes,
+                medicine_prescribed: data.medicine_prescribed || prev.medicine_prescribed,
+                tooth_number: data.tooth_number || prev.tooth_number,
+                visit_type: data.visit_type || prev.visit_type,
+                dentition_type: detectedDentition,
+                cost: data.cost || prev.cost
+            }));
             setShowManualFields(true);
             showToast('Note parsed successfully!', 'success');
-            setSmartNote(''); // Clear smart note after parsing
-        } else {
-            const err = await res.json();
-            showToast(err.error || 'AI generation failed', 'error');
+            setSmartNote('');
         }
     } catch {
         showToast('Error connecting to AI service', 'error');
@@ -132,70 +165,46 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
   const fetchPatient = useCallback(async () => {
     if (!patientId) return;
     try {
-      const url = isDebug && debugClinicId 
-        ? `/api/debug/patient-details?id=${patientId}&clinicId=${debugClinicId}`
-        : `/api/patients/${patientId}`;
-        
-      const res = await fetch(url);
+      const res = await fetch(`/api/patients/${patientId}/`);
       if (!res.ok) throw new Error('Failed to fetch patient');
       const data = await res.json();
       setPatient(data);
-      
-      // Use functional update to avoid activeVisitId dependency
       if (data.visits && data.visits.length > 0) {
         setActiveVisitId(currentId => currentId || data.visits[0].id);
       }
     } catch (err) {
-      console.error('Fetch patient error:', err);
+      console.error(err);
       showToast('Error loading patient', 'error');
     } finally {
       setLoading(false);
     }
-  }, [patientId, showToast, isDebug, debugClinicId]); 
+  }, [patientId, showToast]); 
 
   const fetchInitialData = useCallback(async () => {
     try {
       const [infoRes, docsRes] = await Promise.all([
-        fetch('/api/clinic-info'),
-        fetch('/api/doctors')
+        fetch('/api/clinic-info/'),
+        fetch('/api/doctors/')
       ]);
-      
       if (infoRes.ok) setClinicInfo(await infoRes.json());
       if (docsRes.ok) setDoctors(await docsRes.json());
     } catch (err) {
-      console.error('Error loading initial data:', err);
+      console.error(err);
     }
   }, []);
 
   useEffect(() => {
-    if (user) {
-        fetchInitialData();
-    }
-  }, [user, fetchInitialData]);
+    if (user?.id) fetchInitialData();
+  }, [user?.id, fetchInitialData]);
 
   useEffect(() => {
-    if (user && patientId) {
-        fetchPatient();
-    }
-  }, [user, patientId, fetchPatient]);
-
-  // Auto-select doctor if only one exists
-  useEffect(() => {
-    if (doctors.length === 1) {
-        setNewVisit(prev => ({ ...prev, doctor: doctors[0].name }));
-    }
-  }, [doctors]);
-
-  useEffect(() => {
-    if (patient?.visits && patient.visits.length > 0) {
-        setNewVisit(prev => ({ ...prev, doctor: prev.doctor || patient.visits![0].doctor }));
-    }
-  }, [patient]);
+    if (user?.id && patientId) fetchPatient();
+  }, [user?.id, patientId, fetchPatient]);
 
   const handleUpdatePatient = async () => {
     if (!patientId) return;
     try {
-        const res = await fetch(`/api/patients/${patientId}`, {
+        const res = await fetch(`/api/patients/${patientId}/`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(editPatient)
@@ -203,104 +212,67 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
         if (res.ok) {
             showToast('Patient updated successfully!', 'success');
             setShowEditForm(false);
-            // Update local state or re-fetch
             fetchPatient();
-            // Clear URL param
-            const newUrl = window.location.pathname;
-            window.history.replaceState({}, '', newUrl);
-        } else {
-            const err = await res.json();
-            showToast(err.error || 'Failed to update patient', 'error');
         }
     } catch {
         showToast('Error updating patient', 'error');
     }
   };
 
-  const handleDeletePatient = async () => {
-    if (!patientId || !confirm('Are you sure you want to delete this patient? This will archive their records.')) return;
-    try {
-        const res = await fetch(`/api/patients/${patientId}`, { method: 'DELETE' });
-        if (res.ok) {
-            showToast('Patient deleted successfully', 'success');
-            router.push('/');
-        } else {
-            showToast('Failed to delete patient', 'error');
-        }
-    } catch {
-        showToast('Error deleting patient', 'error');
-    }
-  };
-
   const handleSaveVisit = async () => {
     if (!patient || !patient.id) return;
-    
-    // Mandatory fields validation
-    if (!newVisit.date) {
-        showToast('Visit date is required', 'error');
-        return;
-    }
-    if (!newVisit.doctor) {
-        showToast('Please select a doctor', 'error');
-        return;
-    }
-    if (!newVisit.visit_type) {
-        showToast('Visit type is required', 'error');
-        return;
-    }
-    if (newVisit.cost === undefined || newVisit.cost === null || isNaN(newVisit.cost)) {
-        showToast('Amount is required', 'error');
+    if (!newVisit.clinical_findings?.trim()) {
+        showToast('Clinical findings are required', 'error');
         return;
     }
 
-    // Future date validation
-    if (newVisit.date && new Date(newVisit.date) > new Date()) {
-        showToast('Visit date cannot be in the future', 'error');
-        return;
-    }
+    const optimisticVisit: Visit = {
+        ...newVisit,
+        id: editingVisitId || Math.random() * -1,
+        clinic_id: patient.clinic_id || 0,
+        patient_id: patient.id,
+        date: newVisit.date || new Date().toISOString().split('T')[0],
+        cost: Number(newVisit.cost) || 0,
+        paid: Number(newVisit.cost) || 0,
+        billing_items: [],
+        created_at: new Date().toISOString()
+    } as Visit;
+
+    const previousPatient = { ...patient };
+    setPatient(prev => {
+        if (!prev) return prev;
+        const visits = prev.visits ? [...prev.visits] : [];
+        if (editingVisitId) {
+            const index = visits.findIndex(v => v.id === editingVisitId);
+            if (index !== -1) visits[index] = optimisticVisit;
+        } else {
+            visits.unshift(optimisticVisit);
+        }
+        return { ...prev, visits };
+    });
+    setShowVisitForm(false);
 
     try {
         setIsSaving(true);
         const method = editingVisitId ? 'PUT' : 'POST';
-        const body = { 
-            ...newVisit, 
-            cost: Number(newVisit.cost) || 0,
-            paid: Number(newVisit.cost) || 0, 
-            patient_id: patient.id,
-            id: editingVisitId 
-        };
-        console.log('Saving visit with body:', body);
-
-        const res = await fetch('/api/visits', {
+        const res = await fetch('/api/visits/', {
             method,
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
+            body: JSON.stringify({ ...newVisit, patient_id: patient.id, id: editingVisitId })
         });
-        
         if (res.ok) {
             const savedVisit = await res.json();
-            showToast(editingVisitId ? 'Visit updated successfully!' : 'New visit recorded!', 'success');
-            setShowVisitForm(false);
+            showToast('Visit saved!', 'success');
             setEditingVisitId(null);
             setActiveVisitId(savedVisit.id);
-            fetchPatient(); // Refresh timeline
-            // Reset form
-            setNewVisit({
-                date: new Date().toISOString().split('T')[0],
-                doctor: patient.visits?.[0]?.doctor || '',
-                visit_type: 'Consultation',
-                clinical_findings: '',
-                procedure_notes: '',
-                tooth_number: '',
-                medicine_prescribed: '',
-                cost: 0,
-                xrays: '[]'
-            });        } else {
-            const errorData = await res.json();
-            showToast(errorData.error || 'Failed to save visit', 'error');
+            fetchPatient();
+        } else {
+            setPatient(previousPatient);
+            setShowVisitForm(true);
         }
     } catch {
-        showToast('Error', 'error');
+        setPatient(previousPatient);
+        setShowVisitForm(true);
     } finally {
         setIsSaving(false);
     }
@@ -318,6 +290,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
         procedure_notes: visit.procedure_notes || '',
         tooth_number: visit.tooth_number || '',
         medicine_prescribed: visit.medicine_prescribed || '',
+        dentition_type: visit.dentition_type || 'Adult',
         cost: Number(visit.cost),
         xrays: visit.xrays || '[]'
     });
@@ -325,142 +298,39 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
   };
 
   const handleDeleteVisit = async (visitId: number) => {
-    if (!confirm('Are you sure you want to delete this visit record?')) return;
-    
+    if (!confirm('Delete this visit record?')) return;
     try {
-        const res = await fetch(`/api/visits?id=${visitId}`, { method: 'DELETE' });
+        const res = await fetch(`/api/visits/?id=${visitId}`, { method: 'DELETE' });
         if (res.ok) {
             showToast('Visit deleted', 'success');
             fetchPatient();
-        } else {
-            showToast('Failed to delete visit', 'error');
         }
-    } catch (e) {
-        console.error(e);
+    } catch {
         showToast('Error', 'error');
     }
   };
 
+  const activeVisit = useMemo(() => patient?.visits?.find(v => v.id === activeVisitId), [patient?.visits, activeVisitId]);
+  const xrays: XRay[] = useMemo(() => {
+      try { return activeVisit?.xrays ? JSON.parse(activeVisit.xrays) : []; } catch { return []; }
+  }, [activeVisit]);
+
   const handleFormXRayUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     try {
       setUploadingXRay(true);
       const url = await uploadImage(file);
-      if (!url) throw new Error('Upload failed');
-
-      const currentXRays: XRay[] = newVisit.xrays ? JSON.parse(newVisit.xrays) : [];
-      const newXRay: XRay = {
-        url,
-        name: file.name,
-        date: new Date().toISOString().split('T')[0]
-      };
-
-      setNewVisit(prev => ({
-        ...prev,
-        xrays: JSON.stringify([...currentXRays, newXRay])
-      }));
-      showToast('X-Ray attached', 'success');
-    } catch (err) {
-      console.error(err);
-      showToast('Error attaching X-Ray', 'error');
-    } finally {
-      setUploadingXRay(false);
-    }
-  };
-
-  const handleDeleteFormXRay = (index: number) => {
-    const currentXRays: XRay[] = newVisit.xrays ? JSON.parse(newVisit.xrays) : [];
-    const updatedXRays = currentXRays.filter((_, i) => i !== index);
-    setNewVisit(prev => ({
-      ...prev,
-      xrays: JSON.stringify(updatedXRays)
-    }));
-  };
-
-  const activeVisit = useMemo(() => patient?.visits?.find(v => v.id === activeVisitId), [patient?.visits, activeVisitId]);
-  const xrays: XRay[] = useMemo(() => activeVisit?.xrays ? JSON.parse(activeVisit.xrays) : [], [activeVisit]);
-
-  const handleXRayUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !patient || !patientId || !activeVisitId) return;
-
-    const activeVisit = patient.visits?.find(v => v.id === activeVisitId);
-    if (!activeVisit) return;
-
-    try {
-      setUploadingXRay(true);
-      const url = await uploadImage(file);
-      if (!url) throw new Error('Upload failed');
-
-      const existingXRays: XRay[] = activeVisit.xrays ? JSON.parse(activeVisit.xrays) : [];
-      const newXRay: XRay = {
-        url,
-        name: file.name,
-        date: new Date().toISOString().split('T')[0]
-      };
-
-      const updatedXRays = [...existingXRays, newXRay];
-      
-      // Update Visit in DB
-      const res = await fetch('/api/visits', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...activeVisit, xrays: JSON.stringify(updatedXRays) })
-      });
-
-      if (res.ok) {
-        showToast('X-Ray uploaded', 'success');
-        fetchPatient();
-      } else {
-        showToast('Failed to update visit records', 'error');
+      if (url) {
+          const currentXRays = newVisit.xrays ? JSON.parse(newVisit.xrays) : [];
+          setNewVisit(prev => ({ ...prev, xrays: JSON.stringify([...currentXRays, { url, name: file.name, date: new Date().toISOString().split('T')[0] }]) }));
       }
-    } catch (err) {
-      console.error(err);
-      showToast('Error uploading X-Ray', 'error');
-    } finally {
-      setUploadingXRay(false);
-    }
-  };
-
-  const handleDeleteXRay = async (index: number) => {
-    if (!patient || !patientId || !activeVisitId || !confirm('Delete this X-Ray?')) return;
-
-    const activeVisit = patient.visits?.find(v => v.id === activeVisitId);
-    if (!activeVisit) return;
-
-    try {
-      const existingXRays: XRay[] = activeVisit.xrays ? JSON.parse(activeVisit.xrays) : [];
-      const updatedXRays = existingXRays.filter((_, i) => i !== index);
-
-      const res = await fetch('/api/visits', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...activeVisit, xrays: JSON.stringify(updatedXRays) })
-      });
-
-      if (res.ok) {
-        showToast('X-Ray removed', 'success');
-        fetchPatient();
-      }
-    } catch (err) {
-      console.error(err);
-      showToast('Error', 'error');
-    }
+    } finally { setUploadingXRay(false); }
   };
 
   const formatNaturalDate = (dateStr: string) => {
-    try {
-      const date = new Date(dateStr);
-      return new Intl.DateTimeFormat('en-GB', {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric'
-      }).format(date);
-    } catch (e) {
-      return dateStr;
-    }
+    try { return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(dateStr)); }
+    catch { return dateStr; }
   };
 
   if (loading || !patient) return <div className="p-8"><Skeleton className="h-10 w-48 mb-4" /><Skeleton className="h-64 w-full" /></div>;
@@ -468,100 +338,11 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 font-sans text-gray-900 dark:text-gray-100 transition-colors">
       <Navbar activePage="Patient Details" />
-      
       <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-        {/* Edit Patient Modal */}
-        {showEditForm && (
-            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[250] flex items-center justify-center p-4">
-                <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
-                    <div className="p-6 border-b dark:border-gray-800 flex justify-between items-center bg-gray-50/50 dark:bg-gray-800/20">
-                        <h3 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight">Edit Patient Profile</h3>
-                        <button onClick={() => {
-                            setShowEditForm(false);
-                            const newUrl = window.location.pathname;
-                            window.history.replaceState({}, '', newUrl);
-                        }} className="text-gray-400 hover:text-gray-600 text-2xl">✕</button>
-                    </div>
-                    <div className="p-8 space-y-6">
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Full Name</label>
-                                <input 
-                                    type="text" 
-                                    value={editPatient.name || ''} 
-                                    onChange={e => setEditPatient({...editPatient, name: e.target.value})}
-                                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition text-sm font-bold"
-                                />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Age</label>
-                                    <input 
-                                        type="number" 
-                                        value={editPatient.age || ''} 
-                                        onChange={e => setEditPatient({...editPatient, age: Number(e.target.value)})}
-                                        className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition text-sm font-bold"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Gender</label>
-                                    <select 
-                                        value={editPatient.gender || ''} 
-                                        onChange={e => setEditPatient({...editPatient, gender: e.target.value})}
-                                        className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition text-sm font-bold appearance-none"
-                                    >
-                                        <option value="Male">Male</option>
-                                        <option value="Female">Female</option>
-                                        <option value="Other">Other</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Phone Number</label>
-                                <input 
-                                    type="text" 
-                                    value={editPatient.phone_number || ''} 
-                                    onChange={e => setEditPatient({...editPatient, phone_number: e.target.value})}
-                                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition text-sm font-bold"
-                                />
-                            </div>
-                        </div>
-                    </div>
-                    <div className="p-6 bg-gray-50 dark:bg-gray-800/50 flex flex-col sm:flex-row gap-3">
-                        <button 
-                            type="button"
-                            onClick={handleDeletePatient}
-                            className="px-4 py-2 text-red-600 dark:text-red-400 font-bold hover:bg-red-50 dark:hover:bg-red-900/20 transition rounded-xl flex items-center justify-center gap-2 border border-red-100 dark:border-red-900/30 text-xs"
-                        >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                            Delete Patient
-                        </button>
-                        <div className="flex-1 flex justify-end gap-3">
-                            <button 
-                                onClick={() => {
-                                    setShowEditForm(false);
-                                    const newUrl = window.location.pathname;
-                                    window.history.replaceState({}, '', newUrl);
-                                }}
-                                className="px-6 py-2 text-gray-600 dark:text-gray-400 font-bold hover:bg-gray-100 dark:hover:bg-gray-800 transition rounded-xl text-xs"
-                            >
-                                Cancel
-                            </button>
-                            <button 
-                                onClick={handleUpdatePatient}
-                                className="px-6 py-2 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition shadow-lg shadow-blue-500/20 active:scale-95 text-xs"
-                            >
-                                Save Changes
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        )}
-
-        {/* Breadcrumbs */}
+        
+        {/* Navigation Breadcrumbs */}
         <div className="mb-4">
-            <Link href="/" className="text-blue-600 hover:text-blue-800 text-sm flex items-center gap-1 transition">
+            <Link href="/" onClick={(e) => { if (isFormDirty && !confirm('Discard changes?')) e.preventDefault(); }} className="text-blue-600 hover:text-blue-800 text-sm flex items-center gap-1 transition">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
                 Back to Patients
             </Link>
@@ -570,482 +351,166 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
         {/* Header */}
         <div className="flex justify-between items-start mb-8">
             <div>
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white capitalize">{patient.name}</h1>
-                <p className="text-sm text-gray-500 font-mono mt-1">ID: {patient.patient_id}</p>
+                <h1 className="text-3xl font-bold capitalize">{patient.name}</h1>
+                <p className="text-sm text-gray-500 font-mono">ID: {patient.patient_id}</p>
             </div>
             <div className="flex gap-2">
-                <button 
-                    onClick={() => setShowEditForm(true)}
-                    className="px-4 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-bold text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition shadow-sm flex items-center gap-2"
-                >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                    Edit Profile
-                </button>
-                <button 
-                    onClick={handleDeletePatient}
-                    className="px-4 py-2 bg-white dark:bg-gray-900 border border-red-100 dark:border-red-900/30 rounded-xl text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition shadow-sm flex items-center gap-2"
-                >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                    Delete
-                </button>
+                <button onClick={() => setShowEditForm(true)} className="px-4 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-bold shadow-sm">Edit Profile</button>
             </div>
         </div>
 
-        {/* Row 1: Patient Info, Financial Overview, X-Rays */}
+        {/* Row 1: Patient Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
-                <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Patient Info</h2>
+            <div className="bg-white dark:bg-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-800 shadow-sm">
+                <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Patient Info</h2>
                 <div className="space-y-3 text-sm">
                     <div className="flex justify-between"><span className="text-gray-500">Phone</span><span className="font-medium">{patient.phone_number || '-'}</span></div>
                     <div className="flex justify-between"><span className="text-gray-500">Age</span><span className="font-medium">{patient.age}</span></div>
                     <div className="flex justify-between"><span className="text-gray-500">Gender</span><span className="font-medium">{patient.gender}</span></div>
-                    <div className="flex justify-between"><span className="text-gray-500">Total Visits</span><span className="font-medium">{patient.visits?.length || 0}</span></div>
                 </div>
             </div>
-
-            <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
-                <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Financial Overview</h2>
-                <div className="space-y-3 text-sm">
-                    {(() => {
-                        const totalPaid = patient.visits?.reduce((sum, v) => sum + Number(v.paid || v.cost || 0), 0) || 0;
-                        return (
-                            <div className="flex justify-between items-center">
-                                <span className="text-gray-500">Total Collected</span>
-                                <span className="font-bold text-gray-900 dark:text-white text-lg font-mono">₹{totalPaid.toLocaleString()}</span>
-                            </div>
-                        );
-                    })()}
-                </div>
+            <div className="bg-white dark:bg-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-800 shadow-sm">
+                <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Finances</h2>
+                <div className="text-2xl font-black">₹{(patient.visits?.reduce((sum, v) => sum + Number(v.paid || 0), 0) || 0).toLocaleString()}</div>
+                <p className="text-[10px] text-gray-500 uppercase mt-1">Total Collected</p>
             </div>
-
-            <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
-                <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest">X-Rays & Records</h2>
-                    <label className="cursor-pointer text-blue-600 hover:text-blue-700 transition">
-                        <input type="file" className="hidden" accept="image/*" onChange={handleXRayUpload} disabled={uploadingXRay || !activeVisitId} />
-                        {uploadingXRay ? (
-                            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" /></svg>
-                        ) : (
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
-                        )}
-                    </label>
-                </div>
+            <div className="bg-white dark:bg-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-800 shadow-sm">
+                <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Attached Records</h2>
                 <div className="grid grid-cols-4 gap-2">
                     {xrays.map((x, i) => (
-                        <div key={i} className="relative group aspect-square">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img 
-                                src={x.url} 
-                                alt={x.name} 
-                                className="w-full h-full object-cover rounded border border-gray-200 dark:border-gray-700 cursor-pointer"
-                                onClick={() => setSelectedXRay(x.url)}
-                            />
-                            <button 
-                                type="button"
-                                onClick={(e) => { e.stopPropagation(); handleDeleteXRay(i); }}
-                                className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition shadow-sm"
-                            >
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                            </button>
-                        </div>
+                        <img key={i} src={x.url} className="w-full aspect-square object-cover rounded cursor-pointer" onClick={() => setSelectedXRay(x.url)} alt="record" />
                     ))}
-                    {xrays.length === 0 && (
-                        <div className="col-span-4 py-4 text-center text-[10px] text-gray-400 border border-dashed rounded border-gray-200 dark:border-gray-800">
-                            No records attached
-                        </div>
-                    )}
+                    {xrays.length === 0 && <div className="col-span-4 py-4 text-center text-[10px] text-gray-400 border border-dashed rounded">No records</div>}
                 </div>
             </div>
         </div>
 
-        {/* Full Screen Image Modal */}
-        {selectedXRay && (
-            <div className="fixed inset-0 bg-black/90 z-[300] flex items-center justify-center p-4" onClick={() => setSelectedXRay(null)}>
-                <button className="absolute top-6 right-6 text-white text-4xl">&times;</button>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={selectedXRay} alt="X-Ray Full" className="max-w-full max-h-full object-contain shadow-2xl" />
-            </div>
-        )}
-
-        {/* Row 2: Visit Timeline with Tabs */}
+        {/* Visit Management */}
         <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-900 p-1 rounded-xl w-fit overflow-x-auto no-scrollbar">
-                    {patient.visits?.map((visit) => (
-                        <button
-                            key={visit.id}
-                            type="button"
-                            onClick={() => {
-                                if (visit.id) {
-                                    setActiveVisitId(visit.id);
-                                    setShowVisitForm(false);
-                                }
-                            }}
-                            className={`px-4 py-2 text-xs font-bold whitespace-nowrap rounded-lg transition-all ${
-                                activeVisitId === visit.id && !showVisitForm
-                                    ? 'bg-white dark:bg-gray-800 text-blue-600 shadow-sm'
-                                    : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-                            }`}
-                        >
-                            {formatNaturalDate(visit.date)}
+            <div className="flex justify-between items-center bg-gray-100 dark:bg-gray-900 p-1 rounded-xl">
+                <div className="flex gap-1 overflow-x-auto no-scrollbar">
+                    {patient.visits?.map(v => (
+                        <button key={v.id} onClick={() => { if (isFormDirty && !confirm('Discard changes?')) return; setActiveVisitId(v.id || null); setShowVisitForm(false); }} className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${activeVisitId === v.id && !showVisitForm ? 'bg-white dark:bg-gray-800 text-blue-600 shadow-sm' : 'text-gray-500'}`}>
+                            {formatNaturalDate(v.date)}
                         </button>
                     ))}
-                    {(!patient.visits || patient.visits.length === 0) && (
-                        <span className="text-xs text-gray-400 px-4 py-2">No visits</span>
-                    )}
                 </div>
-                
-                <button 
-                    type="button"
-                    onClick={() => {
-                        setShowVisitForm(true);
-                        setActiveVisitId(null);
-                        setEditingVisitId(null);
-                        setShowManualFields(false);
-                        setNewVisit({
-                            date: new Date().toISOString().split('T')[0],
-                            doctor: patient.visits?.[0]?.doctor || '',
-                            visit_type: 'Consultation',
-                            clinical_findings: '',
-                            procedure_notes: '',
-                            tooth_number: '',
-                            medicine_prescribed: '',
-                            cost: 0,
-                            xrays: '[]'
-                        });
-                    }}
-                    className={`bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-bold text-xs shadow-sm flex items-center gap-2 transition whitespace-nowrap ${showVisitForm && !editingVisitId ? 'ring-2 ring-blue-400 ring-offset-2 dark:ring-offset-gray-950' : ''}`}
-                >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
-                    NEW VISIT
-                </button>
+                <button onClick={() => { if (isFormDirty && !confirm('Discard changes?')) return; setShowVisitForm(true); setEditingVisitId(null); }} className="bg-blue-600 text-white px-4 py-2 rounded-xl font-bold text-xs">+ NEW VISIT</button>
             </div>
 
             <div className="min-h-[400px]">
-                {/* New Visit / Edit Form */}
                 {showVisitForm && (
                     <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-blue-200 dark:border-blue-900 p-6 animate-in slide-in-from-top-4 duration-300">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-                                {editingVisitId ? 'Update Visit Record' : 'Record New Visit'}
-                            </h3>
-                            <button type="button" onClick={() => { setShowVisitForm(false); setEditingVisitId(null); }} className="text-gray-400 hover:text-gray-600">✕</button>
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-lg font-bold">{editingVisitId ? 'Edit Visit' : 'New Visit'}</h3>
+                            <button onClick={handleCloseVisitForm} className="text-gray-400 hover:text-gray-600">✕</button>
                         </div>
 
-                                                {!editingVisitId && (
-                                                    <div className="mb-8 p-5 bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-2xl">
-                                                        <label className="block text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-2">Smart AI Entry</label>
-                                                        <div className="flex flex-col gap-3">
-                                                            <textarea 
-                                                                placeholder="e.g. Scaling done for tooth 17, 18. Patient had pain. Prescribed Amoxicillin. Cost 1500."
-                                                                value={smartNote}
-                                                                onChange={(e) => setSmartNote(e.target.value)}
-                                                                className="w-full p-4 bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-800 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition min-h-[80px] placeholder-gray-400 dark:placeholder-gray-400" 
-                                                            />
-                                                            <div className="flex justify-between items-center">
-                                                                {!showManualFields && (
-                                                                    <button 
-                                                                        type="button"
-                                                                        onClick={() => setShowManualFields(true)}
-                                                                        className="text-[10px] font-black text-gray-400 hover:text-blue-600 uppercase tracking-widest transition"
-                                                                    >
-                                                                        + Enter Details Manually
-                                                                    </button>
-                                                                )}
-                                                                <button 
-                                                                    type="button"
-                                                                    onClick={handleAIGenerate}
-                                                                    disabled={isGenerating || !smartNote.trim()}
-                                                                    className="ml-auto px-6 py-2 bg-blue-600 text-white rounded-lg font-bold text-xs hover:bg-blue-700 transition disabled:opacity-50 flex items-center gap-2"
-                                                                >
-                                                                    {isGenerating ? (
-                                                                        <>
-                                                                            <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" /></svg>
-                                                                            Parsing...
-                                                                        </>
-                                                                    ) : (
-                                                                        <>
-                                                                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                                                                            Parse with AI
-                                                                        </>
-                                                                    )}
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                )}
-                        
-                                                {showManualFields && (
-                                                    <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-                                                        <div className="grid grid-cols-2 gap-4 mb-4">
-                                                            <div>
-                                                                <label htmlFor="visit-date" className="block text-[10px] font-black text-gray-400 dark:text-gray-400 uppercase tracking-widest mb-1.5">Date <span className="text-red-500">*</span></label>
-                                                                <input 
-                                                                    id="visit-date"
-                                                                    name="date"
-                                                                    type="date" 
-                                                                    value={newVisit.date || ''} 
-                                                                    max={new Date().toISOString().split('T')[0]}
-                                                                    onChange={e => setNewVisit(prev => ({...prev, date: e.target.value}))} 
-                                                                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 outline-none transition-all text-sm font-medium text-gray-900 dark:text-gray-100" 
-                                                                />
-                                                            </div>
-                                                            <div>
-                                                                <label htmlFor="visit-doctor" className="block text-[10px] font-black text-gray-400 dark:text-gray-400 uppercase tracking-widest mb-1.5">Doctor <span className="text-red-500">*</span></label>
-                                                                <select 
-                                                                    id="visit-doctor"
-                                                                    name="doctor"
-                                                                    value={newVisit.doctor || ''} 
-                                                                    onChange={e => setNewVisit(prev => ({...prev, doctor: e.target.value}))} 
-                                                                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 outline-none transition-all text-sm font-medium text-gray-900 dark:text-gray-100 appearance-none"
-                                                                >
-                                                                    <option value="">Select Doctor</option>
-                                                                    {doctors.map(d => (
-                                                                        <option key={d.id} value={d.name}>{d.name}</option>
-                                                                    ))}
-                                                                </select>
-                                                            </div>
-                                                        </div>
-                                                        <div className="grid grid-cols-2 gap-4 mb-4">
-                                                            <div>
-                                                                <label htmlFor="visit-type" className="block text-[10px] font-black text-gray-400 dark:text-gray-400 uppercase tracking-widest mb-1.5">Visit Type <span className="text-red-500">*</span></label>
-                                                                <select 
-                                                                    id="visit-type"
-                                                                    name="visit_type"
-                                                                    value={newVisit.visit_type || 'Consultation'} 
-                                                                    onChange={e => setNewVisit(prev => ({...prev, visit_type: e.target.value}))} 
-                                                                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 outline-none transition-all text-sm font-medium text-gray-900 dark:text-gray-100 appearance-none"
-                                                                >
-                                                                    <option value="Consultation">Consultation</option>
-                                                                    <option value="Procedure">Procedure</option>
-                                                                    <option value="Follow-up">Follow-up</option>
-                                                                    <option value="Other">Other</option>
-                                                                </select>
-                                                            </div>
-                                                            <div>
-                                                                <label htmlFor="visit-cost" className="block text-[10px] font-black text-gray-400 dark:text-gray-400 uppercase tracking-widest mb-1.5">Amount (₹) <span className="text-red-500">*</span></label>
-                                                                <input 
-                                                                    id="visit-cost"
-                                                                    name="cost"
-                                                                    type="number" 
-                                                                    value={newVisit.cost ?? ''} 
-                                                                    onChange={e => setNewVisit(prev => ({...prev, cost: e.target.value === '' ? undefined : Number(e.target.value)}))} 
-                                                                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 outline-none transition-all text-sm font-medium text-gray-900 dark:text-gray-100" 
-                                                                />
-                                                            </div>
-                                                        </div>
-                        
-                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                                            <div>
-                                                                <label htmlFor="visit-findings" className="block text-[10px] font-black text-gray-400 dark:text-gray-400 uppercase tracking-widest mb-1.5">Clinical Findings <span className="text-red-500">*</span></label>
-                                                                <textarea 
-                                                                    id="visit-findings"
-                                                                    name="clinical_findings"
-                                                                    placeholder="e.g. Dental Caries, Pain, Swelling..." 
-                                                                    value={newVisit.clinical_findings || ''} 
-                                                                    onChange={e => setNewVisit(prev => ({...prev, clinical_findings: e.target.value}))} 
-                                                                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 outline-none transition-all text-sm font-medium text-gray-900 dark:text-gray-100 h-24 placeholder-gray-400 dark:placeholder-gray-400" 
-                                                                />
-                                                            </div>
-                                                            <div>
-                                                                <label htmlFor="visit-procedure" className="block text-[10px] font-black text-gray-400 dark:text-gray-400 uppercase tracking-widest mb-1.5">Procedure & Notes</label>
-                                                                <textarea 
-                                                                    id="visit-procedure"
-                                                                    name="procedure_notes"
-                                                                    placeholder="Details of treatment done..." 
-                                                                    value={newVisit.procedure_notes || ''} 
-                                                                    onChange={e => setNewVisit(prev => ({...prev, procedure_notes: e.target.value}))} 
-                                                                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 outline-none transition-all text-sm font-medium text-gray-900 dark:text-gray-100 h-24 placeholder-gray-400 dark:placeholder-gray-400" 
-                                                                />
-                                                            </div>
-                                                                                        <div className="md:col-span-2">
-                                                                                            <label htmlFor="visit-medicine" className="block text-[10px] font-black text-gray-400 dark:text-gray-400 uppercase tracking-widest mb-1.5">Medicine Prescribed</label>
-                                                                                            <textarea 
-                                                                                                id="visit-medicine"
-                                                                                                name="medicine_prescribed"
-                                                                                                placeholder="Medicines and dosage..." 
-                                                                                                value={newVisit.medicine_prescribed || ''} 
-                                                                                                onChange={e => setNewVisit(prev => ({...prev, medicine_prescribed: e.target.value}))} 
-                                                                                                className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 outline-none transition-all text-sm font-medium text-gray-900 dark:text-gray-100 h-20 placeholder-gray-400 dark:placeholder-gray-400" 
-                                                                                            />
-                                                                                        </div>
-                                                                                        <div className="md:col-span-2">
-                                                                                            <label className="block text-[10px] font-black text-gray-400 dark:text-gray-400 uppercase tracking-widest mb-3">Teeth Involved (Odontogram)</label>
-                                                                                            <div className="p-4 bg-gray-50 dark:bg-gray-950/50 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-x-auto">
-                                                                                                <ToothSelector 
-                                                                                                    value={newVisit.tooth_number || ''} 
-                                                                                                    onChange={(val) => setNewVisit(prev => ({...prev, tooth_number: val}))} 
-                                                                                                    className="w-max mx-auto"
-                                                                                                />
-                                                                                            </div>
-                                                                                        </div>
-                                                                                    </div>                        
-                                                                                <div className="mb-6 p-4 border border-dashed border-gray-200 dark:border-gray-800 rounded-xl">
-                                                                                    <div className="flex justify-between items-center mb-3">
-                                                                                        <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Attached Records ({JSON.parse(newVisit.xrays || '[]').length})</h4>
-                                                                                        <label className="cursor-pointer bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition flex items-center gap-2">
-                                                                                            <input type="file" className="hidden" accept="image/*" onChange={handleFormXRayUpload} disabled={uploadingXRay} />
-                                                                                            {uploadingXRay ? (
-                                                                                                <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" /></svg>
-                                                                                            ) : (
-                                                                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
-                                                                                            )}
-                                                                                            Attach X-Ray
-                                                                                        </label>
-                                                                                    </div>
-                                                                                    <div className="flex flex-wrap gap-3">
-                                                                                        {(() => {
-                                                                                            const formXRays: XRay[] = newVisit.xrays ? JSON.parse(newVisit.xrays) : [];
-                                                                                            return formXRays.map((x, i) => (
-                                                                                                <div key={i} className="relative group w-16 h-16">
-                                                                                                    <img src={x.url} alt="Attached" className="w-full h-full object-cover rounded-lg border border-gray-200 dark:border-gray-700" />
-                                                                                                    <button 
-                                                                                                        type="button"
-                                                                                                        onClick={() => handleDeleteFormXRay(i)}
-                                                                                                        className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 shadow-sm"
-                                                                                                    >
-                                                                                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                                                                                                    </button>
-                                                                                                </div>
-                                                                                            ));
-                                                                                        })()}
-                                                                                        {(!newVisit.xrays || JSON.parse(newVisit.xrays).length === 0) && (
-                                                                                            <p className="text-[10px] text-gray-400 italic">No images attached yet.</p>
-                                                                                        )}
-                                                                                    </div>
-                                                                                </div>                                                    </div>
-                                                )}
-                        
-                                                <div className="flex justify-end gap-3">                            <button type="button" onClick={() => { setShowVisitForm(false); setEditingVisitId(null); }} className="px-4 py-2 text-gray-500 hover:bg-gray-100 rounded">Cancel</button>
-                            <button 
-                                id="save-visit-btn"
-                                type="button" 
-                                onClick={handleSaveVisit} 
-                                disabled={isSaving || !newVisit.clinical_findings?.trim()}
-                                className="px-4 py-2 bg-blue-600 text-white font-bold rounded hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
-                            >
-                                {isSaving && <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" /></svg>}
-                                {editingVisitId ? (isSaving ? 'Updating...' : 'Update Record') : (isSaving ? 'Saving...' : 'Save Visit')}
-                            </button>
+                        {!editingVisitId && (
+                            <div className="mb-8 p-5 bg-blue-50 dark:bg-blue-900/10 rounded-2xl border border-blue-100 dark:border-blue-900/30">
+                                <label className="block text-[10px] font-black text-blue-600 uppercase mb-2">Smart AI Entry</label>
+                                <textarea value={smartNote} onChange={(e) => setSmartNote(e.target.value)} placeholder="Describe the visit in simple words..." className="w-full p-4 rounded-xl border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-800 text-sm focus:ring-2 focus:ring-blue-500 outline-none min-h-[100px]" />
+                                <div className="flex justify-between mt-3">
+                                    <button onClick={() => setShowManualFields(!showManualFields)} className="text-[10px] font-bold text-blue-600 uppercase">{showManualFields ? 'Hide Manual Fields' : 'Show Manual Fields'}</button>
+                                    <button onClick={handleAIGenerate} disabled={isGenerating || !smartNote.trim()} className="bg-blue-600 text-white px-6 py-2 rounded-lg text-xs font-bold disabled:opacity-50">{isGenerating ? 'Parsing...' : 'Parse with AI'}</button>
+                                </div>
+                            </div>
+                        )}
+
+                        {(showManualFields || editingVisitId) && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in duration-500">
+                                <div className="space-y-4">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-[10px] font-black text-gray-400 uppercase mb-1.5">Date</label>
+                                            <input type="date" value={newVisit.date} onChange={e => setNewVisit(prev => ({...prev, date: e.target.value}))} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-black text-gray-400 uppercase mb-1.5">Doctor</label>
+                                            <select value={newVisit.doctor} onChange={e => setNewVisit(prev => ({...prev, doctor: e.target.value}))} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm">
+                                                <option value="">Select Doctor</option>
+                                                {doctors.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-black text-gray-400 uppercase mb-1.5">Clinical Assessment</label>
+                                        <textarea value={newVisit.clinical_findings} onChange={e => setNewVisit(prev => ({...prev, clinical_findings: e.target.value}))} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm h-32" />
+                                    </div>
+                                </div>
+                                <div className="space-y-4">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-[10px] font-black text-gray-400 uppercase mb-1.5">Visit Type</label>
+                                            <select value={newVisit.visit_type} onChange={e => setNewVisit(prev => ({...prev, visit_type: e.target.value}))} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm">
+                                                <option value="Consultation">Consultation</option>
+                                                <option value="Procedure">Procedure</option>
+                                                <option value="Follow-up">Follow-up</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-black text-gray-400 uppercase mb-1.5">Amount (₹)</label>
+                                            <input type="number" value={newVisit.cost} onChange={e => setNewVisit(prev => ({...prev, cost: Number(e.target.value)}))} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm" />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-black text-gray-400 uppercase mb-1.5">Procedure & Notes</label>
+                                        <textarea value={newVisit.procedure_notes} onChange={e => setNewVisit(prev => ({...prev, procedure_notes: e.target.value}))} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm h-32" />
+                                    </div>
+                                </div>
+                                <div className="md:col-span-2">
+                                    <label className="block text-[10px] font-black text-gray-400 uppercase mb-3">Teeth Involved (Odontogram)</label>
+                                    <div className="p-4 bg-gray-50 dark:bg-gray-950/50 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-x-auto">
+                                        <ToothSelector 
+                                            value={newVisit.tooth_number || ''} 
+                                            dentitionType={newVisit.dentition_type || 'Adult'}
+                                            onDentitionTypeChange={(type) => setNewVisit(prev => ({...prev, dentition_type: type}))}
+                                            onChange={(val) => setNewVisit(prev => ({...prev, tooth_number: val}))} 
+                                            className="w-max mx-auto"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="flex justify-end gap-3 mt-8 pt-6 border-t dark:border-gray-800">
+                            <button onClick={handleCloseVisitForm} className="px-6 py-2 text-gray-500 font-bold text-xs uppercase tracking-widest transition">Cancel</button>
+                            <button onClick={handleSaveVisit} disabled={isSaving || !newVisit.clinical_findings?.trim()} className="bg-blue-600 text-white px-10 py-2 rounded-xl font-bold text-xs uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 disabled:opacity-50">{isSaving ? 'Saving...' : 'Save Visit'}</button>
                         </div>
                     </div>
                 )}
 
-                {/* Visit Content */}
-                {!showVisitForm && patient.visits?.filter(v => v.id === activeVisitId).map((visit) => (
-                    <div key={visit.id} className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden animate-in fade-in duration-300 flex flex-col md:flex-row border-l-4 border-blue-500">
-                        {/* Left Column: Narrative & Details */}
-                        <div className="flex-1 p-6 md:p-8 border-r border-gray-100 dark:border-gray-800">
-                            <div className="flex justify-between items-start mb-8">
+                {!showVisitForm && activeVisit && (
+                    <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden border-l-4 border-blue-500 animate-in fade-in duration-500">
+                        <div className="p-8">
+                            <div className="flex justify-between items-start mb-10">
                                 <div>
-                                    <div className="flex items-center gap-3 mb-2">
-                                        <span className="text-[11px] font-bold text-gray-900 dark:text-white flex items-center gap-1.5 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded">
-                                            <svg className="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-                                            {visit.doctor || 'No doctor'}
-                                        </span>
-                                    </div>
-                                    <h3 className="text-2xl font-black text-gray-900 dark:text-white leading-tight tracking-tight">
-                                        {visit.visit_type || 'Consultation'}
-                                    </h3>
+                                    <div className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] mb-2">{activeVisit.doctor}</div>
+                                    <h3 className="text-3xl font-black tracking-tight">{activeVisit.visit_type}</h3>
                                 </div>
-                                <div className="flex gap-1">
-                                    <button 
-                                        type="button"
-                                        onClick={() => handleEditVisit(visit)}
-                                        className="text-gray-400 hover:text-blue-600 p-2 rounded-lg transition-colors"
-                                        title="Edit Visit"
-                                    >
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                                    </button>
-                                    <button 
-                                        type="button"
-                                        onClick={() => clinicInfo && generatePrescriptionPDF(patient, clinicInfo, visit)}
-                                        className="text-gray-400 hover:text-blue-600 p-2 rounded-lg transition-colors"
-                                        title="Print Prescription"
-                                        disabled={!clinicInfo}
-                                    >
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
-                                    </button>
-                                    <button 
-                                        type="button"
-                                        onClick={() => visit.id && handleDeleteVisit(visit.id)}
-                                        className="text-gray-400 hover:text-red-500 p-2 rounded-lg transition-colors"
-                                        title="Delete Record"
-                                    >
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                    </button>
+                                <div className="flex gap-2">
+                                    <button onClick={() => handleEditVisit(activeVisit)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg></button>
+                                    <button onClick={() => activeVisit.id && handleDeleteVisit(activeVisit.id)} className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-400 hover:text-red-600 rounded-lg transition-colors"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
                                 </div>
                             </div>
-
-                            <div className="space-y-8">
-                                <section>
-                                    <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Clinical Assessment</h4>
-                                    <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
-                                        {visit.clinical_findings || 'General Consultation'}
-                                    </p>
-                                </section>
-
-                                <section>
-                                    <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Procedure Details</h4>
-                                    <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
-                                        {visit.procedure_notes || 'No procedure notes recorded.'}
-                                    </p>
-                                </section>
-
-                                {visit.tooth_number && (
-                                    <section>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+                                <div>
+                                    <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Clinical Assessment</h4>
+                                    <p className="text-sm leading-relaxed whitespace-pre-wrap">{activeVisit.clinical_findings}</p>
+                                </div>
+                                <div>
+                                    <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Procedure Details</h4>
+                                    <p className="text-sm leading-relaxed whitespace-pre-wrap">{activeVisit.procedure_notes || 'No notes'}</p>
+                                </div>
+                                {activeVisit.tooth_number && (
+                                    <div className="md:col-span-2">
                                         <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Treatment Area</h4>
-                                        <div className="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-2xl border border-gray-100 dark:border-gray-800 overflow-x-auto">
-                                            <ToothSelector 
-                                                value={visit.tooth_number} 
-                                                readOnly={true} 
-                                                className="w-max mx-auto"
-                                            />
+                                        <div className="p-4 bg-gray-50 dark:bg-gray-950/50 rounded-2xl border border-gray-100 dark:border-gray-800 overflow-x-auto w-max mx-auto md:mx-0">
+                                            <ToothSelector value={activeVisit.tooth_number} dentitionType={activeVisit.dentition_type} readOnly />
                                         </div>
-                                    </section>
+                                    </div>
                                 )}
                             </div>
-                        </div>
-
-                        {/* Right Column: Prescription & Financials */}
-                        <div className="w-full md:w-80 bg-gray-50/50 dark:bg-gray-800/20 p-6 md:p-8 flex flex-col justify-between">
-                            <div className="space-y-8">
-                                <section>
-                                    <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                                        <span className="text-blue-600 dark:text-blue-400">Rx</span> Prescription
-                                    </h4>
-                                    {visit.medicine_prescribed ? (
-                                        <div className="text-sm font-medium text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-900/50 p-4 rounded-xl border border-gray-100 dark:border-gray-800 italic leading-relaxed shadow-sm">
-                                            {visit.medicine_prescribed}
-                                        </div>
-                                    ) : (
-                                        <p className="text-xs text-gray-400 italic">No medicines prescribed.</p>
-                                    )}
-                                </section>
-                            </div>
-
-                            <div className="mt-12 pt-4 border-t border-gray-100 dark:border-gray-800 flex justify-between items-center">
-                                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest flex items-center gap-2">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-                                    Paid in full
-                                </span>
-                                <span className="text-sm font-bold text-gray-900 dark:text-white font-mono">₹{Number(visit.paid || visit.cost).toLocaleString()}</span>
-                            </div>
-                        </div>
-                    </div>
-                ))}
-
-                {(!patient.visits || patient.visits.length === 0) && !showVisitForm && (
-                    <div className="text-center py-20 bg-gray-50 dark:bg-gray-900/50 rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-800">
-                        <div className="flex flex-col items-center gap-4 text-gray-400">
-                            <svg className="w-12 h-12 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
-                            <p className="font-medium">No clinical history found for this patient.</p>
-                            <button 
-                                onClick={() => setShowVisitForm(true)}
-                                className="text-blue-600 font-bold hover:underline"
-                            >
-                                Record the first visit
-                            </button>
                         </div>
                     </div>
                 )}

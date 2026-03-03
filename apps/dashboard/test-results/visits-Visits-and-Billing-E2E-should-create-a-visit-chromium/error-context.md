@@ -1,0 +1,115 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - main [ref=e3]:
+      - generic [ref=e4]:
+        - navigation [ref=e5]:
+          - generic [ref=e7]:
+            - generic [ref=e8] [cursor=pointer]:
+              - img [ref=e10]
+              - generic [ref=e12]: IntelliDent
+              - generic [ref=e13]: "|"
+              - generic [ref=e14]: Patient Details
+            - generic [ref=e15]:
+              - button "Switch Clinic" [ref=e16]
+              - button "Toggle Theme" [ref=e17]:
+                - img [ref=e18]
+              - button "Earnings" [ref=e20]:
+                - img [ref=e21]
+                - generic [ref=e23]: Earnings
+              - button "Expenses" [ref=e24]:
+                - img [ref=e25]
+                - generic [ref=e27]: Expenses
+              - button "Settings" [ref=e28]:
+                - img [ref=e29]
+                - generic [ref=e32]: Settings
+        - generic [ref=e33]:
+          - link "Back to Patients" [ref=e35] [cursor=pointer]:
+            - /url: /
+            - img [ref=e36]
+            - text: Back to Patients
+          - generic [ref=e38]:
+            - generic [ref=e39]:
+              - heading "Visit Patient" [level=1] [ref=e40]
+              - paragraph [ref=e41]: "ID: PID-1"
+            - generic [ref=e42]:
+              - button "Edit Profile" [ref=e43]:
+                - img [ref=e44]
+                - text: Edit Profile
+              - button "Delete" [ref=e46]:
+                - img [ref=e47]
+                - text: Delete
+          - generic [ref=e49]:
+            - generic [ref=e50]:
+              - heading "Patient Info" [level=2] [ref=e51]
+              - generic [ref=e52]:
+                - generic [ref=e53]:
+                  - generic [ref=e54]: Phone
+                  - generic [ref=e55]: "-"
+                - generic [ref=e56]:
+                  - generic [ref=e57]: Age
+                  - generic [ref=e58]: "0"
+                - generic [ref=e59]:
+                  - generic [ref=e60]: Gender
+                  - generic [ref=e61]: Male
+                - generic [ref=e62]:
+                  - generic [ref=e63]: Total Visits
+                  - generic [ref=e64]: "0"
+            - generic [ref=e65]:
+              - heading "Financial Overview" [level=2] [ref=e66]
+              - generic [ref=e68]:
+                - generic [ref=e69]: Total Collected
+                - generic [ref=e70]: ₹0
+            - generic [ref=e71]:
+              - generic [ref=e72]:
+                - heading "X-Rays & Records" [level=2] [ref=e73]
+                - img [ref=e75] [cursor=pointer]
+              - generic [ref=e78]: No records attached
+          - generic [ref=e79]:
+            - generic [ref=e80]:
+              - generic [ref=e82]: No visits
+              - button "NEW VISIT" [active] [ref=e83]:
+                - img [ref=e84]
+                - text: NEW VISIT
+            - generic [ref=e87]:
+              - generic [ref=e88]:
+                - heading "Record New Visit" [level=3] [ref=e89]
+                - button "✕" [ref=e90]
+              - generic [ref=e91]:
+                - generic [ref=e92]: Smart AI Entry
+                - generic [ref=e93]:
+                  - textbox "e.g. Scaling done for tooth 17, 18. Patient had pain. Prescribed Amoxicillin. Cost 1500." [ref=e94]
+                  - generic [ref=e95]:
+                    - button "+ Enter Details Manually" [ref=e96]
+                    - button "Parse with AI" [disabled] [ref=e97]:
+                      - img [ref=e98]
+                      - text: Parse with AI
+              - generic [ref=e100]:
+                - button "Cancel" [ref=e101]
+                - button "Save Visit" [disabled] [ref=e102]
+    - contentinfo [ref=e103]:
+      - generic [ref=e105]:
+        - paragraph [ref=e106]: © 2026 IntelliDent Platform. Built for Excellence.
+        - generic [ref=e107]:
+          - generic [ref=e108]: v1.0.2 - 2026-03-03
+          - link "Privacy Policy" [ref=e110] [cursor=pointer]:
+            - /url: /privacy/
+          - link "Terms of Service" [ref=e112] [cursor=pointer]:
+            - /url: /terms/
+  - generic [ref=e117] [cursor=pointer]:
+    - button "Open Next.js Dev Tools" [ref=e118]:
+      - img [ref=e119]
+    - generic [ref=e122]:
+      - button "Open issues overlay" [ref=e123]:
+        - generic [ref=e124]:
+          - generic [ref=e125]: "1"
+          - generic [ref=e126]: "2"
+        - generic [ref=e127]:
+          - text: Issue
+          - generic [ref=e128]: s
+      - button "Collapse issues badge" [ref=e129]:
+        - img [ref=e130]
+  - alert [ref=e132]: Visit Patient | IntelliDent | IntelliDent
+```

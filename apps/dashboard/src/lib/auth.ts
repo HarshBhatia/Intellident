@@ -40,22 +40,32 @@ export async function getClinicId() {
   return cookieStore.get('clinic_id')?.value || headerList.get('x-clinic-id');
 }
 
-export async function verifyMembership(clinicId: number | string, userEmail: string): Promise<boolean> {
-  // Only bypass membership check for the DEFAULT mock user
+export async function verifyMembership(clinicId: number | string, userEmail: string, userId?: string): Promise<boolean> {
   if (await isE2E() && userEmail === MOCK_E2E_USER.email) return true;
 
   const sql = getDb();
   const cId = typeof clinicId === 'string' ? parseInt(clinicId) : clinicId;
-  
   if (isNaN(cId)) return false;
 
   try {
+    if (userId) {
+      const result = await sql`
+        SELECT 1 FROM clinic_members 
+        WHERE clinic_id = ${cId} AND user_id = ${userId} AND status = 'ACTIVE'
+      `;
+      if (result.length > 0) return true;
+    }
+
     const result = await sql`
-      SELECT 1 FROM clinic_members 
-      WHERE clinic_id = ${cId} 
-      AND user_email = ${userEmail}
-      AND status = 'ACTIVE'
+      SELECT id FROM clinic_members 
+      WHERE clinic_id = ${cId} AND user_email = ${userEmail} AND status = 'ACTIVE'
     `;
+    
+    if (result.length > 0 && userId) {
+      sql`UPDATE clinic_members SET user_id = ${userId} WHERE id = ${result[0].id}`.catch(console.error);
+      return true;
+    }
+
     return result.length > 0;
   } catch (error) {
     console.error('Membership verification failed:', error);
@@ -63,20 +73,25 @@ export async function verifyMembership(clinicId: number | string, userEmail: str
   }
 }
 
-export async function getMemberRole(clinicId: number | string, userEmail: string): Promise<string | null> {
+export async function getMemberRole(clinicId: number | string, userEmail: string, userId?: string): Promise<string | null> {
   if (await isE2E() && userEmail === MOCK_E2E_USER.email) return 'OWNER';
 
   const sql = getDb();
   const cId = typeof clinicId === 'string' ? parseInt(clinicId) : clinicId;
-  
   if (isNaN(cId)) return null;
 
   try {
+    if (userId) {
+      const result = await sql`
+        SELECT role FROM clinic_members 
+        WHERE clinic_id = ${cId} AND user_id = ${userId} AND status = 'ACTIVE'
+      `;
+      if (result.length > 0) return result[0].role;
+    }
+
     const result = await sql`
       SELECT role FROM clinic_members 
-      WHERE clinic_id = ${cId} 
-      AND user_email = ${userEmail}
-      AND status = 'ACTIVE'
+      WHERE clinic_id = ${cId} AND user_email = ${userEmail} AND status = 'ACTIVE'
     `;
     return result.length > 0 ? result[0].role : null;
   } catch (error) {

@@ -1,83 +1,70 @@
 import { neon } from '@netlify/neon';
 import { PGlite } from '@electric-sql/pglite';
 import path from 'path';
+import fs from 'fs';
+import os from 'os';
+
+const globalForPglite = global as unknown as { 
+  pglite?: any;
+  pglitePromise?: Promise<any>;
+};
 
 export function getDb() {
   const url = process.env.DATABASE_URL || process.env.NETLIFY_DATABASE_URL;
 
-  // Use Neon for Cloud (Dev/Prod)
-  if (url) {
-    console.log('🐘 Using Neon Database (Remote)');
-    return neon(url.toString());
+  if (url) return neon(url.toString());
+
+  if (process.env.NODE_ENV === 'production') {
+    const mockSql = async () => [];
+    (mockSql as any).unsafe = async () => [];
+    return mockSql as any;
   }
 
-  // Use PGlite for Local Development
-  if (process.env.NODE_ENV !== 'production') {
-    const globalForPglite = global as unknown as { pglite: any };
-    
-    const initPglite = () => {
-      const dbPath = path.resolve(process.cwd(), '.pgdata');
-      console.log('📦 Initializing Local PGlite Database at:', dbPath);
-      try {
-        const instance = new PGlite(dbPath.toString());
-        // Attach a simple flag to track if it's dead
-        (instance as any)._isAborted = false;
-        return instance;
-      } catch (err) {
-        console.error('FAILED TO INITIALIZE PGLITE:', err);
-        throw err;
-      }
-    };
+  const dbPath = path.resolve(os.homedir(), '.intellident-pgdata');
 
-    if (!globalForPglite.pglite) {
-      globalForPglite.pglite = initPglite();
+  const init = async () => {
+    if (!fs.existsSync(dbPath)) fs.mkdirSync(dbPath, { recursive: true });
+    const lockFile = path.join(dbPath, 'postmaster.pid');
+    if (fs.existsSync(lockFile)) { try { fs.unlinkSync(lockFile); } catch (e) {} }
+    const instance = new PGlite(dbPath.toString());
+    await instance.waitReady;
+    return instance;
+  };
+
+  const getPglite = async () => {
+    if (globalForPglite.pglite) return globalForPglite.pglite;
+    if (!globalForPglite.pglitePromise) {
+      globalForPglite.pglitePromise = init().then(inst => {
+        globalForPglite.pglite = inst;
+        return inst;
+      });
     }
+    return globalForPglite.pglitePromise;
+  };
 
-    const getPglite = () => {
-      if (!globalForPglite.pglite || globalForPglite.pglite._isAborted) {
-        globalForPglite.pglite = initPglite();
-      }
-      return globalForPglite.pglite;
-    };
+  const sql = async (strings: TemplateStringsArray, ...values: any[]) => {
+    try {
+      const pglite = await getPglite();
+      let query = strings[0];
+      for (let i = 1; i < strings.length; i++) query += `$${i}` + strings[i];
+      const result = await pglite.query(query, values);
+      return result.rows;
+    } catch (err: any) {
+      if (err?.message?.includes('Aborted')) { delete globalForPglite.pglite; delete globalForPglite.pglitePromise; }
+      throw err;
+    }
+  };
 
-    // Create a shim that matches Neon's tagged template literal API
-    const sql = async (strings: TemplateStringsArray, ...values: any[]) => {
-      const pglite = getPglite();
-      
-      try {
-        await pglite.waitReady;
-        let query = strings[0];
-        for (let i = 1; i < strings.length; i++) {
-          query += `$${i}` + strings[i];
-        }
-        const result = await pglite.query(query, values);
-        return result.rows;
-      } catch (err: any) {
-        console.error('PGlite Query Error:', err);
-        // Mark as aborted so next call re-initializes
-        pglite._isAborted = true;
-        globalForPglite.pglite = undefined;
-        throw err;
-      }
-    };
+  (sql as any).unsafe = async (query: string, params: any[] = []) => {
+    try {
+      const pglite = await getPglite();
+      const result = await pglite.query(query, params);
+      return result.rows;
+    } catch (err: any) {
+      if (err?.message?.includes('Aborted')) { delete globalForPglite.pglite; delete globalForPglite.pglitePromise; }
+      throw err;
+    }
+  };
 
-    // Add .unsafe() support for raw strings
-    (sql as any).unsafe = async (query: string, params: any[] = []) => {
-      const pglite = getPglite();
-      try {
-        await pglite.waitReady;
-        const result = await pglite.query(query, params);
-        return result.rows;
-      } catch (err: any) {
-        console.error('PGlite Unsafe Query Error:', err);
-        pglite._isAborted = true;
-        globalForPglite.pglite = undefined;
-        throw err;
-      }
-    };
-
-    return sql as any;
-  }
-
-  throw new Error("DATABASE_URL is not set and not in development mode.");
+  return sql as any;
 }
