@@ -858,31 +858,28 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                                                                     className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 outline-none transition-all text-sm font-medium text-gray-900 dark:text-gray-100 h-24 placeholder-gray-400 dark:placeholder-gray-400" 
                                                                 />
                                                             </div>
-                                                            <div>
-                                                                <label htmlFor="visit-medicine" className="block text-[10px] font-black text-gray-400 dark:text-gray-400 uppercase tracking-widest mb-1.5">Medicine Prescribed</label>
-                                                                <textarea 
-                                                                    id="visit-medicine"
-                                                                    name="medicine_prescribed"
-                                                                    placeholder="Medicines and dosage..." 
-                                                                    value={newVisit.medicine_prescribed || ''} 
-                                                                    onChange={e => setNewVisit(prev => ({...prev, medicine_prescribed: e.target.value}))} 
-                                                                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 outline-none transition-all text-sm font-medium text-gray-900 dark:text-gray-100 h-20 placeholder-gray-400 dark:placeholder-gray-400" 
-                                                                />
-                                                            </div>
-                                                            <div className="flex flex-col justify-end pb-4">
-                                                                <label htmlFor="visit-teeth" className="block text-[10px] font-black text-gray-400 dark:text-gray-400 uppercase tracking-widest mb-1.5">Teeth Involved</label>
-                                                                <input 
-                                                                    id="visit-teeth"
-                                                                    name="tooth_number"
-                                                                    type="text" 
-                                                                    placeholder="e.g. 17, 18" 
-                                                                    value={newVisit.tooth_number || ''} 
-                                                                    onChange={e => setNewVisit(prev => ({...prev, tooth_number: e.target.value}))} 
-                                                                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 outline-none transition-all text-sm font-medium text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400" 
-                                                                />
-                                                            </div>
-                                                        </div>
-                        
+                                                                                        <div className="md:col-span-2">
+                                                                                            <label htmlFor="visit-medicine" className="block text-[10px] font-black text-gray-400 dark:text-gray-400 uppercase tracking-widest mb-1.5">Medicine Prescribed</label>
+                                                                                            <textarea 
+                                                                                                id="visit-medicine"
+                                                                                                name="medicine_prescribed"
+                                                                                                placeholder="Medicines and dosage..." 
+                                                                                                value={newVisit.medicine_prescribed || ''} 
+                                                                                                onChange={e => setNewVisit(prev => ({...prev, medicine_prescribed: e.target.value}))} 
+                                                                                                className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 outline-none transition-all text-sm font-medium text-gray-900 dark:text-gray-100 h-20 placeholder-gray-400 dark:placeholder-gray-400" 
+                                                                                            />
+                                                                                        </div>
+                                                                                        <div className="md:col-span-2">
+                                                                                            <label className="block text-[10px] font-black text-gray-400 dark:text-gray-400 uppercase tracking-widest mb-3">Teeth Involved (Odontogram)</label>
+                                                                                            <div className="p-4 bg-gray-50 dark:bg-gray-950/50 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-x-auto">
+                                                                                                <ToothSelector 
+                                                                                                    value={newVisit.tooth_number || ''} 
+                                                                                                    onChange={(val) => setNewVisit(prev => ({...prev, tooth_number: val}))} 
+                                                                                                    className="w-max mx-auto"
+                                                                                                />
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    </div>                        
                                                                                 <div className="mb-6 p-4 border border-dashed border-gray-200 dark:border-gray-800 rounded-xl">
                                                                                     <div className="flex justify-between items-center mb-3">
                                                                                         <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Attached Records ({JSON.parse(newVisit.xrays || '[]').length})</h4>
