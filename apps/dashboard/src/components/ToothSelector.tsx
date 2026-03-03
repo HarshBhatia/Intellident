@@ -80,7 +80,6 @@ export default function ToothSelector({
         if (qIdx === 3) return <CanineIcon />;
         return <IncisorIcon />;
     } else {
-        // Child: A,B,C are incisors/canine, D,E are molars
         if (qIdx >= 4) return <MolarIcon />;
         if (qIdx === 3) return <CanineIcon />;
         return <IncisorIcon />;
@@ -107,22 +106,21 @@ export default function ToothSelector({
     );
   };
 
-  // Quadrant Data Generation
   const quadrants = useMemo(() => {
     if (dentitionType === 'Adult') {
         return {
-            upperLeft: [1,2,3,4,5,6,7,8].map(n => ({ id: `UL-${9-n}`, label: (9-n).toString(), qIdx: 9-n })),
+            upperLeft: [8,7,6,5,4,3,2,1].map(n => ({ id: `UL-${n}`, label: n.toString(), qIdx: n })),
             upperRight: [1,2,3,4,5,6,7,8].map(n => ({ id: `UR-${n}`, label: n.toString(), qIdx: n })),
-            lowerLeft: [1,2,3,4,5,6,7,8].map(n => ({ id: `LL-${n}`, label: n.toString(), qIdx: n })),
-            lowerRight: [1,2,3,4,5,6,7,8].map(n => ({ id: `LR-${9-n}`, label: (9-n).toString(), qIdx: 9-n }))
+            lowerLeft: [8,7,6,5,4,3,2,1].map(n => ({ id: `LL-${n}`, label: n.toString(), qIdx: n })),
+            lowerRight: [1,2,3,4,5,6,7,8].map(n => ({ id: `LR-${n}`, label: n.toString(), qIdx: n }))
         };
     } else {
         const labels = ['A', 'B', 'C', 'D', 'E'];
         return {
             upperLeft: [5,4,3,2,1].map(n => ({ id: `CUL-${labels[n-1]}`, label: labels[n-1], qIdx: n })),
             upperRight: [1,2,3,4,5].map(n => ({ id: `CUR-${labels[n-1]}`, label: labels[n-1], qIdx: n })),
-            lowerLeft: [1,2,3,4,5].map(n => ({ id: `CLL-${labels[n-1]}`, label: labels[n-1], qIdx: n })),
-            lowerRight: [5,4,3,2,1].map(n => ({ id: `CLR-${labels[n-1]}`, label: labels[n-1], qIdx: n }))
+            lowerLeft: [5,4,3,2,1].map(n => ({ id: `CLL-${labels[n-1]}`, label: labels[n-1], qIdx: n })),
+            lowerRight: [1,2,3,4,5].map(n => ({ id: `CLR-${labels[n-1]}`, label: labels[n-1], qIdx: n }))
         };
     }
   }, [dentitionType]);
@@ -131,10 +129,6 @@ export default function ToothSelector({
       if (readOnly) return;
       setDentitionType(type);
       onDentitionTypeChange?.(type);
-      // Optional: Clear selection when switching modes? 
-      // Usually better to keep it if internal IDs match, but here they are different.
-      // setSelected(new Set());
-      // onChange?.('');
   };
 
   return (
