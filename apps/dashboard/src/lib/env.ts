@@ -13,10 +13,6 @@ export function validateEnv() {
     'CLERK_SECRET_KEY',
   ];
 
-  if (isProd) {
-    required.push('DATABASE_URL');
-  }
-
   const missing = required.filter(key => !env[key as keyof typeof env]);
 
   if (missing.length > 0) {
