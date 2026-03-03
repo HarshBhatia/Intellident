@@ -25,7 +25,7 @@ export function getDb() {
     return mockSql as any;
   }
 
-  if (process.env.NODE_ENV !== 'production') {
+  if ((process.env.NODE_ENV as string) !== 'production') {
     // Use a path in the user's home directory to avoid monorepo/filesystem issues
     const dbPath = path.resolve(os.homedir(), '.intellident-pgdata');
 
