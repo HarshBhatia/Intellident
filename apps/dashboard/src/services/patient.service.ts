@@ -27,11 +27,9 @@ export async function getPatients(clinicId: string): Promise<Patient[]> {
       p.patient_type, 
       p.created_at, 
       p.clinic_id,
-      MAX(v.date) as last_visit
+      (SELECT MAX(date) FROM visits v WHERE v.patient_id = p.id AND v.clinic_id = ${cId}) as last_visit
     FROM patients p
-    LEFT JOIN visits v ON p.id = v.patient_id
     WHERE p.clinic_id = ${cId} AND p.is_active = TRUE
-    GROUP BY p.id, p.patient_id, p.name, p.age, p.gender, p.phone_number, p.patient_type, p.created_at, p.clinic_id
     ORDER BY p.created_at DESC
   `;
   return rows as Patient[];
