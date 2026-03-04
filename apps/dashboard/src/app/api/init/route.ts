@@ -160,14 +160,25 @@ export async function GET(request: Request) {
       await sql`CREATE INDEX IF NOT EXISTS idx_usage_logs_clinic_id_created_at ON usage_logs(clinic_id, created_at)`;
     } catch (e) {}
       
-    // 7. Indexes
+    // 7. Performance Indexes
     try {
+      // Basic clinic_id indexes
       const dataTables = ['patients', 'visits', 'treatments', 'doctors', 'expense_categories', 'expenses'];
       for (const table of dataTables) {
         await sql.unsafe(`CREATE INDEX IF NOT EXISTS idx_${table}_clinic_id ON ${table}(clinic_id)`);
       }
+      
+      // Composite indexes for common query patterns
+      await sql`CREATE INDEX IF NOT EXISTS idx_visits_clinic_patient ON visits(clinic_id, patient_id)`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_visits_clinic_date ON visits(clinic_id, date DESC)`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_patients_clinic_active ON patients(clinic_id) WHERE is_active = TRUE`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_expenses_clinic_date ON expenses(clinic_id, date)`;
+      
+      // Legacy index (keep for backward compatibility)
       await sql`CREATE INDEX IF NOT EXISTS idx_visits_patient_id ON visits(patient_id)`;
-    } catch (e) {}
+    } catch (e) {
+      console.error('Error creating indexes:', e);
+    }
 
     return NextResponse.json({ message: 'Database initialized & optimized successfully' });
   } catch (error: any) {

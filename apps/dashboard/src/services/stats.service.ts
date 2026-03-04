@@ -28,67 +28,76 @@ export async function getClinicStats(clinicId: string, startDate: Date, endDate:
   if (!clinicId) throw new Error('Clinic ID is required');
   const sql = getDb();
   
-  // Fetch visits data for revenue calculation
-  const visits = await sql`
-    SELECT date, paid, billing_items, procedure_notes
+  // Fetch ALL visits for monthly trend (no date filter)
+  const allVisits = await sql`
+    SELECT date, paid
     FROM visits 
     WHERE clinic_id = ${clinicId}
   `;
 
-  // Fetch expenses data
-  const expenses = await sql`SELECT date, amount FROM expenses WHERE clinic_id = ${clinicId}`;
+  // Fetch FILTERED visits for category breakdown (with date filter)
+  const filteredVisits = await sql`
+    SELECT date, paid, billing_items, procedure_notes
+    FROM visits 
+    WHERE clinic_id = ${clinicId}
+    AND date >= ${startDate.toISOString().split('T')[0]}
+    AND date <= ${endDate.toISOString().split('T')[0]}
+  `;
+
+  // Fetch expenses data (with date filter)
+  const expenses = await sql`
+    SELECT date, amount 
+    FROM expenses 
+    WHERE clinic_id = ${clinicId}
+    AND date >= ${startDate.toISOString().split('T')[0]}
+    AND date <= ${endDate.toISOString().split('T')[0]}
+  `;
 
   const categoryMap: Record<string, number> = {};
   const monthlyMap: Record<string, number> = {}; 
   let filteredRevenue = 0;
   let totalExpenses = 0;
 
-  // 1. Process Revenue from Visits
-  visits.forEach((visit: any) => {
+  // 1. Process ALL visits for monthly trend
+  allVisits.forEach((visit: any) => {
       const visitDate = new Date(visit.date);
       const paidAmount = Number(visit.paid) || 0;
       
-      // Monthly trend (All history)
       if (!isNaN(visitDate.getTime())) {
           const monthKey = visitDate.toISOString().slice(0, 7); 
           monthlyMap[monthKey] = (monthlyMap[monthKey] || 0) + paidAmount;
-
-          // Filtered range for categories
-          if (visitDate >= startDate && visitDate <= endDate) {
-              filteredRevenue += paidAmount;
-              
-              let items: BillingItem[] = [];
-              try {
-                if (visit.billing_items) {
-                  items = JSON.parse(visit.billing_items);
-                }
-              } catch (e) {
-                console.error('Error parsing billing_items in stats:', e);
-              }
-
-              if (items.length > 0) {
-                // If we have billing items, distribute the 'paid' amount proportionally to their costs
-                // but for now let's just use the descriptions to categorize.
-                // If multiple items, we split the paid amount.
-                const splitAmt = paidAmount / items.length;
-                items.forEach((item: any) => {
-                  const cat = normalizeCategory(item.description);
-                  categoryMap[cat] = (categoryMap[cat] || 0) + splitAmt;
-                });
-              } else {
-                const cat = normalizeCategory(visit.procedure_notes || 'Other');
-                categoryMap[cat] = (categoryMap[cat] || 0) + paidAmount;
-              }
-          }
       }
   });
 
-  // 2. Process Expenses
-  expenses.forEach((e: any) => { 
-      const eDate = new Date(e.date);
-      if (eDate >= startDate && eDate <= endDate) {
-          totalExpenses += Number(e.amount) || 0; 
+  // 2. Process FILTERED visits for revenue and categories
+  filteredVisits.forEach((visit: any) => {
+      const paidAmount = Number(visit.paid) || 0;
+      filteredRevenue += paidAmount;
+      
+      let items: BillingItem[] = [];
+      try {
+        if (visit.billing_items) {
+          items = JSON.parse(visit.billing_items);
+        }
+      } catch (e) {
+        console.error('Error parsing billing_items in stats:', e);
       }
+
+      if (items.length > 0) {
+        const splitAmt = paidAmount / items.length;
+        items.forEach((item: any) => {
+          const cat = normalizeCategory(item.description);
+          categoryMap[cat] = (categoryMap[cat] || 0) + splitAmt;
+        });
+      } else {
+        const cat = normalizeCategory(visit.procedure_notes || 'Other');
+        categoryMap[cat] = (categoryMap[cat] || 0) + paidAmount;
+      }
+  });
+
+  // 3. Process Expenses (already filtered by SQL)
+  expenses.forEach((e: any) => { 
+      totalExpenses += Number(e.amount) || 0; 
   });
 
   // 3. Final Formatting with Rounding

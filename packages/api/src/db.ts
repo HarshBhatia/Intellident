@@ -9,7 +9,16 @@ const globalForPglite = global as unknown as {
 export function getDb() {
   const url = process.env.DATABASE_URL || process.env.NETLIFY_DATABASE_URL;
 
-  if (url) return neon(url.toString());
+  if (url) {
+    // @netlify/neon automatically handles connection pooling
+    // Use fetchOptions to optimize for serverless
+    return neon(url.toString(), {
+      fetchOptions: {
+        cache: 'no-store', // Prevent stale data
+        priority: 'high'   // Prioritize database requests
+      }
+    });
+  }
 
   if (process.env.NODE_ENV === 'production') {
     const mockSql = async () => [];
