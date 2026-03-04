@@ -17,7 +17,7 @@ export async function getPatients(clinicId: string): Promise<Patient[]> {
   const sql = getDb();
   const cId = parseInt(clinicId);
   
-  // Optimized: Use correlated subquery with proper indexes
+  // Optimized: Use LEFT JOIN with GROUP BY instead of correlated subquery
   const rows = await sql`
     SELECT 
       p.id, 
@@ -29,9 +29,11 @@ export async function getPatients(clinicId: string): Promise<Patient[]> {
       p.patient_type, 
       p.created_at, 
       p.clinic_id,
-      (SELECT MAX(date) FROM visits WHERE patient_id = p.id AND clinic_id = ${cId}) as last_visit
+      MAX(v.date) as last_visit
     FROM patients p
+    LEFT JOIN visits v ON v.patient_id = p.id AND v.clinic_id = ${cId}
     WHERE p.clinic_id = ${cId} AND p.is_active = TRUE
+    GROUP BY p.id, p.patient_id, p.name, p.age, p.gender, p.phone_number, p.patient_type, p.created_at, p.clinic_id
     ORDER BY p.created_at DESC
   `;
   return rows as Patient[];

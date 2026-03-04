@@ -48,25 +48,23 @@ export async function verifyMembership(clinicId: number | string, userEmail: str
   if (isNaN(cId)) return false;
 
   try {
-    if (userId) {
-      const result = await sql`
-        SELECT 1 FROM clinic_members 
-        WHERE clinic_id = ${cId} AND user_id = ${userId} AND status = 'ACTIVE'
-      `;
-      if (result.length > 0) return true;
-    }
-
+    // Single query checking both user_id and email
     const result = await sql`
-      SELECT id FROM clinic_members 
-      WHERE clinic_id = ${cId} AND user_email = ${userEmail} AND status = 'ACTIVE'
+      SELECT id, user_id FROM clinic_members 
+      WHERE clinic_id = ${cId} 
+      AND (user_id = ${userId || ''} OR user_email = ${userEmail})
+      AND status = 'ACTIVE'
+      LIMIT 1
     `;
     
-    if (result.length > 0 && userId) {
+    if (result.length === 0) return false;
+    
+    // Update user_id if missing (fire and forget)
+    if (userId && !result[0].user_id) {
       sql`UPDATE clinic_members SET user_id = ${userId} WHERE id = ${result[0].id}`.catch(console.error);
-      return true;
     }
 
-    return result.length > 0;
+    return true;
   } catch (error) {
     console.error('Membership verification failed:', error);
     return false;

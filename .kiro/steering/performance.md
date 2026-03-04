@@ -89,6 +89,12 @@ For read-heavy endpoints, consider:
    - Batches: clinic info, patients, doctors in single request
    - Uses Promise.all for parallel query execution
 
+3. **Patients List Endpoint** (`/api/patients`)
+   - Revalidation: 30 seconds
+   - Cache-Control: `public, s-maxage=30, stale-while-revalidate=60`
+   - Optimized query with LEFT JOIN instead of correlated subquery
+   - Performance logging enabled for monitoring
+
 ### API Batching
 
 The `/api/dashboard-data` endpoint combines three separate API calls into one:

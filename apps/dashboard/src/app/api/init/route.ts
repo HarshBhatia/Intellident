@@ -105,6 +105,8 @@ export async function GET(request: Request) {
       await sql`ALTER TABLE clinic_members ADD COLUMN IF NOT EXISTS user_id TEXT`;
       try {
         await sql`CREATE INDEX IF NOT EXISTS idx_clinic_members_user_id ON clinic_members(user_id)`;
+        await sql`CREATE INDEX IF NOT EXISTS idx_clinic_members_clinic_user ON clinic_members(clinic_id, user_id) WHERE status = 'ACTIVE'`;
+        await sql`CREATE INDEX IF NOT EXISTS idx_clinic_members_clinic_email ON clinic_members(clinic_id, user_email) WHERE status = 'ACTIVE'`;
       } catch (err) {}
     } catch (e) { console.error('Error creating org tables:', e); }
 
