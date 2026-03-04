@@ -224,7 +224,7 @@ const ClinicProfile = () => {
         e.preventDefault();
         setSaving(true);
         try {
-            const res = await fetch('/api/clinic-info/', {
+            const res = await fetch('/api/clinic-info', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(form)

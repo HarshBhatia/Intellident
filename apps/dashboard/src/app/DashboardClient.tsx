@@ -22,22 +22,32 @@ export default function DashboardClient() {
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '');
 
-  const fetchDoctors = useCallback(async () => {
+  // Batched data fetch for better performance
+  const fetchDashboardData = useCallback(async () => {
     try {
-      const res = await fetch('/api/doctors/');
+      const res = await fetch('/api/dashboard-data');
+      if (res.status === 401) {
+        router.push('/sign-in');
+        return;
+      }
       if (res.ok) {
         const data = await res.json();
-        setDoctors(data);
+        setPatients(data.patients || []);
+        setDoctors(data.doctors || []);
       }
     } catch (error) {
-      console.error('Error fetching doctors:', error);
+      console.error('Error fetching dashboard data:', error);
+      setPatients([]);
       setDoctors([]);
+    } finally {
+      setLoadingPatients(false);
     }
-  }, []);
+  }, [router]);
 
+  // Fallback: individual fetch for patients only (used after add/delete)
   const fetchPatients = useCallback(async () => {
     try {
-      const res = await fetch('/api/patients/');
+      const res = await fetch('/api/patients');
       if (res.status === 401) {
         router.push('/sign-in');
         return;
@@ -48,23 +58,18 @@ export default function DashboardClient() {
       }
     } catch (error) {
       console.error(error);
-    } finally {
-      setLoadingPatients(false);
     }
   }, [router]);
 
   useEffect(() => {
     const init = async () => {
       if (user?.id) {
-        await Promise.allSettled([
-          fetchPatients(),
-          fetchDoctors()
-        ]);
+        await fetchDashboardData();
         setIsInitialLoad(false);
       }
     };
     init();
-  }, [user?.id, fetchPatients, fetchDoctors]);
+  }, [user?.id, fetchDashboardData]);
 
   const filteredPatients = useMemo(() => {
     return (patients || []).filter(p => 

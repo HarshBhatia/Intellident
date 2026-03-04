@@ -28,7 +28,7 @@ export function ClinicProvider({ children }: { children: React.ReactNode }) {
   const fetchClinic = useCallback(async () => {
     try {
       console.log('[ClinicProvider] Fetching clinic info...');
-      const res = await fetch('/api/clinic-info/');
+      const res = await fetch('/api/clinic-info');
       if (res.ok) {
         const data = await res.json();
         setClinic(data);

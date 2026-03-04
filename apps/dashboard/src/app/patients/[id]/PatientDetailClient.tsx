@@ -119,7 +119,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
 
     try {
         setIsGenerating(true);
-        const resData = await fetch('/api/generate-notes/', {
+        const resData = await fetch('/api/generate-notes', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ text: smartNote })
@@ -229,7 +229,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
     try {
         setIsSaving(true);
         const method = editingVisitId ? 'PUT' : 'POST';
-        const res = await fetch('/api/visits/', {
+        const res = await fetch('/api/visits', {
             method,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ...newVisit, patient_id: patient.id, id: editingVisitId })

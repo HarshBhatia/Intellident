@@ -23,7 +23,7 @@ export default function SelectClinicPage() {
 
   useEffect(() => {
     if (!isLoaded || !user) return;
-    fetch('/api/clinics/')
+    fetch('/api/clinics')
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) setClinics(data);
@@ -50,7 +50,7 @@ export default function SelectClinicPage() {
     if (!newClinicName.trim()) return;
     setCreating(true);
     try {
-      const res = await fetch('/api/clinics/', {
+      const res = await fetch('/api/clinics', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: newClinicName })
