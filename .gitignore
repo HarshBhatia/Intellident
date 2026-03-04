@@ -7,6 +7,16 @@ dist
 *.log
 .DS_Store
 .netlify
-.DS_Store
-*.log
 deno.lock
+
+# Test artifacts
+test-results/
+playwright-report/
+coverage/
+*.tsbuildinfo
+
+# Vercel
+.vercel
+
+# Clerk
+.clerk/
