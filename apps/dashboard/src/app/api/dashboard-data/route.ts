@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import { cookies } from 'next/headers';
 import { getDb } from '@intellident/api';
+import { getAuthContext, verifyMembership } from '@/lib/auth';
 
 // Cache for 30 seconds
 export const revalidate = 30;
 
 export async function GET() {
   try {
-    const { userId } = await auth();
+    const { userId, userEmail } = await getAuthContext();
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -18,6 +18,11 @@ export async function GET() {
 
     if (!clinicId) {
       return NextResponse.json({ error: 'No clinic selected' }, { status: 400 });
+    }
+
+    // Verify membership
+    if (!userEmail || !(await verifyMembership(clinicId, userEmail))) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const db = await getDb();
@@ -54,10 +59,10 @@ export async function GET() {
         'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60',
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Dashboard data fetch error:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch dashboard data' },
+      { error: 'Failed to fetch dashboard data', details: error.message },
       { status: 500 }
     );
   }
