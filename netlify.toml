@@ -7,6 +7,7 @@
   NEXT_DISABLE_TURBOPACK = "1"
   NODE_VERSION = "20"
   NETLIFY_NEXT_SKEW_PROTECTION = "true"
+  CLERK_MIDDLEWARE_ENABLED = "true"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
