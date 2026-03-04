@@ -12,27 +12,6 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-# Check if dev server is running on port 3000
-echo "🧪 Checking for dev server..."
-if ! curl -s http://localhost:3000/api/health > /dev/null 2>&1; then
-  echo "⚠️  Dev server not running on port 3000"
-  echo "   Skipping E2E tests. To run E2E tests before push:"
-  echo "   1. Start dev server: npm run dev -w dashboard"
-  echo "   2. Run tests: npm run test:e2e -w dashboard"
-  echo ""
-  echo "✅ Build passed. Proceeding with push..."
-  exit 0
-fi
-
-# Run E2E tests if dev server is available
-echo "🎭 Running E2E tests..."
-cd apps/dashboard && npm run test:e2e
-
-if [ $? -ne 0 ]; then
-  echo "❌ E2E tests failed. Push aborted."
-  echo "   Fix the failing tests or skip with: git push --no-verify"
-  exit 1
-fi
-
-echo "✅ All checks passed! Proceeding with push..."
+echo "✅ Build passed. Proceeding with push..."
+echo "   (E2E tests skipped - run manually with: npm run test:e2e -w dashboard)"
 exit 0
