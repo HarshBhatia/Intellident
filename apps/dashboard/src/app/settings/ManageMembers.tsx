@@ -119,8 +119,6 @@ export default function ManageMembers() {
         </form>
       )}
 
-      <div className="mt-10">
-
       {loading ? (
         <div className="space-y-3">
            {[1,2,3].map(i => <div key={i} className="h-12 bg-gray-100 dark:bg-gray-800 animate-pulse rounded-md"></div>)}

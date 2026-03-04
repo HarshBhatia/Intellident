@@ -763,6 +763,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                             <button onClick={handleCloseVisitForm} className="px-6 py-2 text-gray-500 font-bold text-xs uppercase tracking-widest transition">Cancel</button>
                             <button onClick={handleSaveVisit} disabled={isSaving || !newVisit.clinical_findings?.trim()} className="bg-blue-600 text-white px-10 py-2 rounded-xl font-bold text-xs uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 disabled:opacity-50">{isSaving ? 'Saving...' : 'Save Visit'}</button>
                         </div>
+                        </div>
                     </div>
                 )}
 
