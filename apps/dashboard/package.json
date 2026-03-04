@@ -9,6 +9,11 @@
     "lint": "eslint",
     "test": "jest",
     "test:e2e": "E2E_TEST_SECRET=e2e-secret-key playwright test",
+    "test:e2e:ui": "E2E_TEST_SECRET=e2e-secret-key playwright test --ui",
+    "test:e2e:headed": "E2E_TEST_SECRET=e2e-secret-key playwright test --headed",
+    "test:e2e:debug": "E2E_TEST_SECRET=e2e-secret-key playwright test --debug",
+    "test:e2e:report": "playwright show-report",
+    "test:e2e:run": "./run-e2e-tests.sh",
     "prepare": "husky"
   },
   "dependencies": {
