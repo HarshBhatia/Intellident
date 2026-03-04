@@ -25,35 +25,38 @@ export async function GET() {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const db = await getDb();
+    const sql = await getDb();
+    const cId = parseInt(clinicId);
 
     // Batch all queries using Promise.all for parallel execution
     const [clinicResult, patientsResult, doctorsResult] = await Promise.all([
-      db.query(
-        `SELECT name as clinic_name, owner_name, phone, address, email, google_maps_link 
-         FROM clinics WHERE id = $1`,
-        [clinicId]
-      ),
-      db.query(
-        `SELECT p.*, 
-          (SELECT MAX(date) FROM visits WHERE patient_id = p.id AND clinic_id = $1) as last_visit
-         FROM patients p 
-         WHERE p.clinic_id = $1 
-         ORDER BY p.id DESC`,
-        [clinicId]
-      ),
-      db.query(
-        `SELECT id, name, clinic_id, user_email 
-         FROM doctors 
-         WHERE clinic_id = $1`,
-        [clinicId]
-      ),
+      sql`SELECT name as clinic_name, owner_name, phone, address, email, google_maps_link 
+          FROM clinics WHERE id = ${cId}`,
+      sql`SELECT 
+            p.id, 
+            p.patient_id, 
+            p.name, 
+            p.age, 
+            p.gender, 
+            p.phone_number, 
+            p.patient_type, 
+            p.created_at, 
+            p.clinic_id,
+            MAX(v.date) as last_visit
+          FROM patients p
+          LEFT JOIN visits v ON v.patient_id = p.id AND v.clinic_id = ${cId}
+          WHERE p.clinic_id = ${cId} AND p.is_active = TRUE
+          GROUP BY p.id, p.patient_id, p.name, p.age, p.gender, p.phone_number, p.patient_type, p.created_at, p.clinic_id
+          ORDER BY p.created_at DESC`,
+      sql`SELECT id, name, clinic_id, user_email 
+          FROM doctors 
+          WHERE clinic_id = ${cId}`,
     ]);
 
     return NextResponse.json({
-      clinic: clinicResult.rows[0] || null,
-      patients: patientsResult.rows || [],
-      doctors: doctorsResult.rows || [],
+      clinic: clinicResult[0] || null,
+      patients: patientsResult || [],
+      doctors: doctorsResult || [],
     }, {
       headers: {
         'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60',
