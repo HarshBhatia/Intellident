@@ -53,6 +53,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
     tooth_number: '',
     dentition_type: 'Adult',
     cost: 0,
+    paid: 0,
     xrays: '[]'
   });
 
@@ -207,7 +208,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
         patient_id: patient.id,
         date: newVisit.date || new Date().toISOString().split('T')[0],
         cost: Number(newVisit.cost) || 0,
-        paid: Number(newVisit.cost) || 0,
+        paid: Number(newVisit.paid) || 0,
         billing_items: [],
         created_at: new Date().toISOString()
     } as Visit;
@@ -266,6 +267,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
         medicine_prescribed: visit.medicine_prescribed || '',
         dentition_type: visit.dentition_type || 'Adult',
         cost: Number(visit.cost),
+        paid: Number(visit.paid || 0),
         xrays: visit.xrays || '[]'
     });
     setShowVisitForm(true);
@@ -328,9 +330,103 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                 <p className="text-sm text-gray-500 font-mono">ID: {patient.patient_id}</p>
             </div>
             <div className="flex gap-2">
-                <button onClick={() => setShowEditForm(true)} className="px-4 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-bold shadow-sm">Edit Profile</button>
+                <button onClick={() => setShowEditForm(true)} className="px-4 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-bold shadow-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">Edit Profile</button>
             </div>
         </div>
+
+        {/* Edit Patient Modal */}
+        {showEditForm && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+                <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
+                    <div className="sticky top-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 p-6 flex justify-between items-center">
+                        <h2 className="text-2xl font-bold">Edit Patient Profile</h2>
+                        <button onClick={() => setShowEditForm(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    <div className="p-6 space-y-6">
+                        <div>
+                            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Patient Name</label>
+                            <input 
+                                type="text" 
+                                value={editPatient.name || ''} 
+                                onChange={e => setEditPatient(prev => ({...prev, name: e.target.value}))}
+                                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                                placeholder="Enter patient name"
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Age</label>
+                                <input 
+                                    type="number" 
+                                    value={editPatient.age || ''} 
+                                    onChange={e => setEditPatient(prev => ({...prev, age: Number(e.target.value)}))}
+                                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                                    placeholder="Age"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Gender</label>
+                                <select 
+                                    value={editPatient.gender || ''} 
+                                    onChange={e => setEditPatient(prev => ({...prev, gender: e.target.value}))}
+                                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                                >
+                                    <option value="">Select Gender</option>
+                                    <option value="Male">Male</option>
+                                    <option value="Female">Female</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Phone Number</label>
+                            <input 
+                                type="tel" 
+                                value={editPatient.phone_number || ''} 
+                                onChange={e => setEditPatient(prev => ({...prev, phone_number: e.target.value}))}
+                                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                                placeholder="Phone number"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Patient Type</label>
+                            <select 
+                                value={editPatient.patient_type || ''} 
+                                onChange={e => setEditPatient(prev => ({...prev, patient_type: e.target.value}))}
+                                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                            >
+                                <option value="">Select Type</option>
+                                <option value="New">New</option>
+                                <option value="Returning">Returning</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="sticky bottom-0 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-6 flex justify-end gap-3">
+                        <button 
+                            onClick={() => setShowEditForm(false)} 
+                            className="px-6 py-3 text-gray-600 dark:text-gray-400 font-bold text-sm uppercase tracking-wider hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                            onClick={handleUpdatePatient} 
+                            className="px-8 py-3 bg-blue-600 text-white font-bold text-sm uppercase tracking-wider rounded-xl shadow-lg shadow-blue-500/20 hover:bg-blue-700 active:scale-95 transition-all"
+                        >
+                            Save Changes
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
 
         {/* Row 1: Patient Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -344,8 +440,44 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
             </div>
             <div className="bg-white dark:bg-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-800 shadow-sm">
                 <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Finances</h2>
-                <div className="text-2xl font-black">₹{(patient.visits?.reduce((sum, v) => sum + Number(v.paid || 0), 0) || 0).toLocaleString()}</div>
-                <p className="text-[10px] text-gray-500 uppercase mt-1">Total Collected</p>
+                {(() => {
+                    const totalCost = patient.visits?.reduce((sum, v) => sum + Number(v.cost || 0), 0) || 0;
+                    const totalPaid = patient.visits?.reduce((sum, v) => sum + Number(v.paid || 0), 0) || 0;
+                    const balance = totalCost - totalPaid;
+                    
+                    return (
+                        <div className="space-y-3">
+                            <div>
+                                <div className="text-2xl font-black text-green-600 dark:text-green-400">₹{totalPaid.toLocaleString()}</div>
+                                <p className="text-[10px] text-gray-500 uppercase mt-0.5">Total Collected</p>
+                            </div>
+                            {totalCost > 0 && (
+                                <>
+                                    <div className="pt-3 border-t border-gray-100 dark:border-gray-800">
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-gray-500">Total Cost</span>
+                                            <span className="font-semibold">₹{totalCost.toLocaleString()}</span>
+                                        </div>
+                                    </div>
+                                    {balance > 0 && (
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-gray-500">Balance Due</span>
+                                            <span className="font-semibold text-red-600 dark:text-red-400">₹{balance.toLocaleString()}</span>
+                                        </div>
+                                    )}
+                                    {balance === 0 && totalCost > 0 && (
+                                        <div className="flex items-center gap-2 text-xs text-green-600 dark:text-green-400">
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                            </svg>
+                                            <span className="font-semibold">Fully Paid</span>
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                        </div>
+                    );
+                })()}
             </div>
             <div className="bg-white dark:bg-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-800 shadow-sm">
                 <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Attached Records</h2>
@@ -412,20 +544,60 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                                     </div>
                                 </div>
                                 <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-[10px] font-black text-gray-400 uppercase mb-1.5">Visit Type</label>
+                                        <select value={newVisit.visit_type} onChange={e => setNewVisit(prev => ({...prev, visit_type: e.target.value}))} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm">
+                                            <option value="Consultation">Consultation</option>
+                                            <option value="Procedure">Procedure</option>
+                                            <option value="Follow-up">Follow-up</option>
+                                        </select>
+                                    </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
-                                            <label className="block text-[10px] font-black text-gray-400 uppercase mb-1.5">Visit Type</label>
-                                            <select value={newVisit.visit_type} onChange={e => setNewVisit(prev => ({...prev, visit_type: e.target.value}))} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm">
-                                                <option value="Consultation">Consultation</option>
-                                                <option value="Procedure">Procedure</option>
-                                                <option value="Follow-up">Follow-up</option>
-                                            </select>
+                                            <label className="block text-[10px] font-black text-gray-400 uppercase mb-1.5">Total Cost (₹)</label>
+                                            <input 
+                                                type="number" 
+                                                value={newVisit.cost} 
+                                                onChange={e => {
+                                                    const cost = Number(e.target.value);
+                                                    setNewVisit(prev => ({
+                                                        ...prev, 
+                                                        cost,
+                                                        // Auto-set paid to cost if paid is 0 or not set
+                                                        paid: prev.paid === 0 || !prev.paid ? cost : prev.paid
+                                                    }));
+                                                }} 
+                                                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm" 
+                                                placeholder="0"
+                                            />
                                         </div>
                                         <div>
-                                            <label className="block text-[10px] font-black text-gray-400 uppercase mb-1.5">Amount (₹)</label>
-                                            <input type="number" value={newVisit.cost} onChange={e => setNewVisit(prev => ({...prev, cost: Number(e.target.value)}))} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm" />
+                                            <label className="block text-[10px] font-black text-gray-400 uppercase mb-1.5">Paid Amount (₹)</label>
+                                            <input 
+                                                type="number" 
+                                                value={newVisit.paid} 
+                                                onChange={e => setNewVisit(prev => ({...prev, paid: Number(e.target.value)}))} 
+                                                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm" 
+                                                placeholder="0"
+                                            />
                                         </div>
                                     </div>
+                                    {newVisit.cost && newVisit.paid !== undefined && newVisit.cost > newVisit.paid && (
+                                        <div className="flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 rounded-lg">
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                            </svg>
+                                            <span className="font-semibold">Balance Due: ₹{(newVisit.cost - newVisit.paid).toLocaleString()}</span>
+                                        </div>
+                                    )}
+                                    {newVisit.cost && newVisit.paid !== undefined && newVisit.cost === newVisit.paid && newVisit.cost > 0 && (
+                                        <div className="flex items-center gap-2 text-xs text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-3 py-2 rounded-lg">
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                            </svg>
+                                            <span className="font-semibold">Fully Paid</span>
+                                        </div>
+                                    )}
                                     <div>
                                         <label className="block text-[10px] font-black text-gray-400 uppercase mb-1.5">Procedure & Notes</label>
                                         <textarea value={newVisit.procedure_notes} onChange={e => setNewVisit(prev => ({...prev, procedure_notes: e.target.value}))} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm h-32" />
