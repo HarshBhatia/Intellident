@@ -40,8 +40,8 @@ export async function POST(request: Request) {
     }
 
     // Role Check: Only OWNER can add members
-    const role = await getMemberRole(clinicId, userEmail);
-    if (role !== 'OWNER') {
+    const userRole = await getMemberRole(clinicId, userEmail);
+    if (userRole !== 'OWNER') {
         return NextResponse.json({ error: 'Only clinic owners can manage members' }, { status: 403 });
     }
 
