@@ -12,16 +12,26 @@ export interface ClinicInfo {
   google_maps_link: string;
 }
 
+export interface Doctor {
+  id: number;
+  name: string;
+  clinic_id: number;
+  user_email: string | null;
+}
+
 interface ClinicContextType {
   clinic: ClinicInfo | null;
+  doctors: Doctor[];
   loading: boolean;
   refreshClinic: () => Promise<void>;
+  refreshDoctors: () => Promise<void>;
 }
 
 const ClinicContext = createContext<ClinicContextType | undefined>(undefined);
 
 export function ClinicProvider({ children }: { children: React.ReactNode }) {
   const [clinic, setClinic] = useState<ClinicInfo | null>(null);
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
@@ -46,12 +56,35 @@ export function ClinicProvider({ children }: { children: React.ReactNode }) {
     }
   }, [router]);
 
+  const fetchDoctors = useCallback(async () => {
+    try {
+      console.log('[ClinicProvider] Fetching doctors...');
+      const res = await fetch('/api/doctors');
+      if (res.ok) {
+        const data = await res.json();
+        setDoctors(data);
+        console.log('[ClinicProvider] Doctors loaded:', data.length);
+      }
+    } catch (error) {
+      console.error('[ClinicProvider] Error fetching doctors:', error);
+    }
+  }, []);
+
   useEffect(() => {
-    fetchClinic();
-  }, [fetchClinic]);
+    const init = async () => {
+      await Promise.all([fetchClinic(), fetchDoctors()]);
+    };
+    init();
+  }, [fetchClinic, fetchDoctors]);
 
   return (
-    <ClinicContext.Provider value={{ clinic, loading, refreshClinic: fetchClinic }}>
+    <ClinicContext.Provider value={{ 
+      clinic, 
+      doctors, 
+      loading, 
+      refreshClinic: fetchClinic,
+      refreshDoctors: fetchDoctors 
+    }}>
       {children}
     </ClinicContext.Provider>
   );

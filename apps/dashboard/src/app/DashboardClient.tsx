@@ -14,37 +14,13 @@ export default function DashboardClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuth();
-  const { clinic: clinicInfo } = useClinic();
+  const { clinic: clinicInfo, doctors } = useClinic();
   const [patients, setPatients] = useState<Patient[]>([]);
-  const [doctors, setDoctors] = useState<any[] | null>(null);
   const [view, setView] = useState<'list' | 'add'>('list');
   const [loadingPatients, setLoadingPatients] = useState(true);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '');
 
-  // Batched data fetch for better performance
-  const fetchDashboardData = useCallback(async () => {
-    try {
-      const res = await fetch('/api/dashboard-data');
-      if (res.status === 401) {
-        router.push('/sign-in');
-        return;
-      }
-      if (res.ok) {
-        const data = await res.json();
-        setPatients(data.patients || []);
-        setDoctors(data.doctors || []);
-      }
-    } catch (error) {
-      console.error('Error fetching dashboard data:', error);
-      setPatients([]);
-      setDoctors([]);
-    } finally {
-      setLoadingPatients(false);
-    }
-  }, [router]);
-
-  // Fallback: individual fetch for patients only (used after add/delete)
   const fetchPatients = useCallback(async () => {
     try {
       const res = await fetch('/api/patients');
@@ -57,19 +33,22 @@ export default function DashboardClient() {
         setPatients(data);
       }
     } catch (error) {
-      console.error(error);
+      console.error('Error fetching patients:', error);
+      setPatients([]);
+    } finally {
+      setLoadingPatients(false);
     }
   }, [router]);
 
   useEffect(() => {
     const init = async () => {
       if (user?.id) {
-        await fetchDashboardData();
+        await fetchPatients();
         setIsInitialLoad(false);
       }
     };
     init();
-  }, [user?.id, fetchDashboardData]);
+  }, [user?.id, fetchPatients]);
 
   const filteredPatients = useMemo(() => {
     return (patients || []).filter(p => 

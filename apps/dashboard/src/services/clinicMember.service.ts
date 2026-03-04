@@ -17,16 +17,15 @@ export async function getClinicMembers(clinicId: string): Promise<ClinicMember[]
   return members as ClinicMember[];
 }
 
-export async function addClinicMember(clinicId: string, email: string): Promise<ClinicMember> {
+export async function addClinicMember(clinicId: string, email: string, role: string = 'DOCTOR'): Promise<ClinicMember> {
   if (!clinicId) throw new Error('Clinic ID is required');
   if (!email) throw new Error('User email is required');
 
   const sql = getDb();
   const cId = parseInt(clinicId);
-  // Default role is DOCTOR for now
   const result = await sql`
     INSERT INTO clinic_members (clinic_id, user_email, role, status)
-    VALUES (${cId}, ${email}, 'DOCTOR', 'ACTIVE')
+    VALUES (${cId}, ${email}, ${role}, 'ACTIVE')
     ON CONFLICT (clinic_id, user_email) DO NOTHING
     RETURNING *
   `;

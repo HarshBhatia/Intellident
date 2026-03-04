@@ -54,8 +54,10 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
     dentition_type: 'Adult',
     cost: 0,
     paid: 0,
-    xrays: '[]'
+    xrays: '[]',
+    billing_items: []
   });
+  const [selectedDoctors, setSelectedDoctors] = useState<string[]>([]);
 
   // Navigation Guard
   const isFormDirty = useMemo(() => {
@@ -201,15 +203,19 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
         return;
     }
 
+    // Combine selected doctors into comma-separated string
+    const doctorString = selectedDoctors.join(', ');
+
     const optimisticVisit: Visit = {
         ...newVisit,
         id: editingVisitId || Math.random() * -1,
         clinic_id: patient.clinic_id || 0,
         patient_id: patient.id,
         date: newVisit.date || new Date().toISOString().split('T')[0],
+        doctor: doctorString,
         cost: Number(newVisit.cost) || 0,
         paid: Number(newVisit.paid) || 0,
-        billing_items: [],
+        billing_items: newVisit.billing_items || [],
         created_at: new Date().toISOString()
     } as Visit;
 
@@ -233,13 +239,20 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
         const res = await fetch('/api/visits', {
             method,
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ...newVisit, patient_id: patient.id, id: editingVisitId })
+            body: JSON.stringify({ 
+                ...newVisit, 
+                doctor: doctorString,
+                patient_id: patient.id, 
+                id: editingVisitId,
+                billing_items: JSON.stringify(newVisit.billing_items || [])
+            })
         });
         if (res.ok) {
             const savedVisit = await res.json();
             showToast('Visit saved!', 'success');
             setEditingVisitId(null);
             setActiveVisitId(savedVisit.id);
+            setSelectedDoctors([]);
             fetchPatient();
         } else {
             setPatient(previousPatient);
@@ -257,6 +270,11 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
     if (!visit.id) return;
     setEditingVisitId(visit.id);
     setShowManualFields(true);
+    
+    // Parse doctors from comma-separated string
+    const doctorsList = visit.doctor ? visit.doctor.split(',').map(d => d.trim()).filter(Boolean) : [];
+    setSelectedDoctors(doctorsList);
+    
     setNewVisit({
         date: visit.date,
         doctor: visit.doctor,
@@ -268,7 +286,8 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
         dentition_type: visit.dentition_type || 'Adult',
         cost: Number(visit.cost),
         paid: Number(visit.paid || 0),
-        xrays: visit.xrays || '[]'
+        xrays: visit.xrays || '[]',
+        billing_items: visit.billing_items || []
     });
     setShowVisitForm(true);
   };
@@ -505,22 +524,76 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
 
             <div className="min-h-[400px]">
                 {showVisitForm && (
-                    <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-blue-200 dark:border-blue-900 p-6 animate-in slide-in-from-top-4 duration-300">
-                        <div className="flex justify-between items-center mb-6">
-                            <h3 className="text-lg font-bold">{editingVisitId ? 'Edit Visit' : 'New Visit'}</h3>
-                            <button onClick={handleCloseVisitForm} className="text-gray-400 hover:text-gray-600">✕</button>
+                    <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-800 overflow-hidden animate-in slide-in-from-top-4 duration-300">
+                        {/* Header */}
+                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border-b border-gray-200 dark:border-gray-800 px-8 py-6">
+                            <div className="flex justify-between items-center">
+                                <div>
+                                    <h3 className="text-2xl font-black tracking-tight">{editingVisitId ? 'Edit Visit Record' : 'New Visit Record'}</h3>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Document patient consultation and treatment details</p>
+                                </div>
+                                <button onClick={handleCloseVisitForm} className="p-2 hover:bg-white/50 dark:hover:bg-gray-800/50 rounded-lg transition-colors">
+                                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
                         </div>
 
-                        {!editingVisitId && (
-                            <div className="mb-8 p-5 bg-blue-50 dark:bg-blue-900/10 rounded-2xl border border-blue-100 dark:border-blue-900/30">
-                                <label className="block text-[10px] font-black text-blue-600 uppercase mb-2">Smart AI Entry</label>
-                                <textarea value={smartNote} onChange={(e) => setSmartNote(e.target.value)} placeholder="Describe the visit in simple words..." className="w-full p-4 rounded-xl border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-800 text-sm focus:ring-2 focus:ring-blue-500 outline-none min-h-[100px]" />
-                                <div className="flex justify-between mt-3">
-                                    <button onClick={() => setShowManualFields(!showManualFields)} className="text-[10px] font-bold text-blue-600 uppercase">{showManualFields ? 'Hide Manual Fields' : 'Show Manual Fields'}</button>
-                                    <button onClick={handleAIGenerate} disabled={isGenerating || !smartNote.trim()} className="bg-blue-600 text-white px-6 py-2 rounded-lg text-xs font-bold disabled:opacity-50">{isGenerating ? 'Parsing...' : 'Parse with AI'}</button>
+                        <div className="p-8 space-y-8">
+                            {/* AI Smart Entry Section */}
+                            {!editingVisitId && (
+                                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-blue-950/20 dark:via-indigo-950/20 dark:to-purple-950/20 border border-blue-200 dark:border-blue-900/50 p-6">
+                                    <div className="absolute top-0 right-0 w-64 h-64 bg-blue-400/10 dark:bg-blue-400/5 rounded-full blur-3xl -mr-32 -mt-32"></div>
+                                    <div className="relative">
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                            </svg>
+                                            <label className="text-xs font-black text-blue-700 dark:text-blue-300 uppercase tracking-wider">AI Smart Entry</label>
+                                        </div>
+                                        <textarea 
+                                            value={smartNote} 
+                                            onChange={(e) => setSmartNote(e.target.value)} 
+                                            placeholder="Describe the visit naturally... e.g., 'Patient came for tooth pain on upper right molar, prescribed amoxicillin 500mg, charged 2000 rupees'"
+                                            className="w-full p-4 rounded-xl border-2 border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-400 outline-none min-h-[120px] transition-all shadow-sm" 
+                                        />
+                                        <div className="flex justify-between items-center mt-4">
+                                            <button 
+                                                onClick={() => setShowManualFields(!showManualFields)} 
+                                                className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors flex items-center gap-1"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={showManualFields ? "M19 9l-7 7-7-7" : "M9 5l7 7-7 7"} />
+                                                </svg>
+                                                {showManualFields ? 'Hide Manual Entry' : 'Show Manual Entry'}
+                                            </button>
+                                            <button 
+                                                onClick={handleAIGenerate} 
+                                                disabled={isGenerating || !smartNote.trim()} 
+                                                className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-8 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider shadow-lg shadow-blue-500/30 disabled:shadow-none transition-all active:scale-95 disabled:cursor-not-allowed flex items-center gap-2"
+                                            >
+                                                {isGenerating ? (
+                                                    <>
+                                                        <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                        </svg>
+                                                        Parsing...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                                        </svg>
+                                                        Parse with AI
+                                                    </>
+                                                )}
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                        )}
+                            )}
 
                         {(showManualFields || editingVisitId) && (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in duration-500">
@@ -531,12 +604,47 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                                             <input type="date" value={newVisit.date} onChange={e => setNewVisit(prev => ({...prev, date: e.target.value}))} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm" />
                                         </div>
                                         <div>
-                                            <label className="block text-[10px] font-black text-gray-400 uppercase mb-1.5">Doctor</label>
-                                            <select value={newVisit.doctor} onChange={e => setNewVisit(prev => ({...prev, doctor: e.target.value}))} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm">
-                                                <option value="">Select Doctor</option>
-                                                {doctors.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
+                                            <label className="block text-[10px] font-black text-gray-400 uppercase mb-1.5">Visit Type</label>
+                                            <select value={newVisit.visit_type} onChange={e => setNewVisit(prev => ({...prev, visit_type: e.target.value}))} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm">
+                                                <option value="Consultation">Consultation</option>
+                                                <option value="Procedure">Procedure</option>
+                                                <option value="Follow-up">Follow-up</option>
                                             </select>
                                         </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-black text-gray-400 uppercase mb-1.5">Attending Doctors</label>
+                                        <div className="flex flex-wrap gap-2 mb-2">
+                                            {selectedDoctors.map((doc, idx) => (
+                                                <div key={idx} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-lg text-sm font-medium">
+                                                    <span>{doc}</span>
+                                                    <button 
+                                                        type="button"
+                                                        onClick={() => setSelectedDoctors(prev => prev.filter((_, i) => i !== idx))}
+                                                        className="hover:text-blue-900 dark:hover:text-blue-100 transition"
+                                                    >
+                                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <select 
+                                            value="" 
+                                            onChange={e => {
+                                                const doctor = e.target.value;
+                                                if (doctor && !selectedDoctors.includes(doctor)) {
+                                                    setSelectedDoctors(prev => [...prev, doctor]);
+                                                }
+                                            }}
+                                            className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm"
+                                        >
+                                            <option value="">+ Add Doctor</option>
+                                            {doctors.filter(d => !selectedDoctors.includes(d.name)).map(d => (
+                                                <option key={d.id} value={d.name}>{d.name}</option>
+                                            ))}
+                                        </select>
                                     </div>
                                     <div>
                                         <label className="block text-[10px] font-black text-gray-400 uppercase mb-1.5">Clinical Assessment</label>
@@ -545,74 +653,107 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                                 </div>
                                 <div className="space-y-4">
                                     <div>
-                                        <label className="block text-[10px] font-black text-gray-400 uppercase mb-1.5">Visit Type</label>
-                                        <select value={newVisit.visit_type} onChange={e => setNewVisit(prev => ({...prev, visit_type: e.target.value}))} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm">
-                                            <option value="Consultation">Consultation</option>
-                                            <option value="Procedure">Procedure</option>
-                                            <option value="Follow-up">Follow-up</option>
-                                        </select>
+                                        <label className="block text-[10px] font-black text-gray-400 uppercase mb-1.5">Procedure & Notes</label>
+                                        <textarea value={newVisit.procedure_notes} onChange={e => setNewVisit(prev => ({...prev, procedure_notes: e.target.value}))} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm h-32" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-black text-gray-400 uppercase mb-1.5">Medicine Prescribed</label>
+                                        <textarea value={newVisit.medicine_prescribed} onChange={e => setNewVisit(prev => ({...prev, medicine_prescribed: e.target.value}))} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm h-20" placeholder="Medications and dosage instructions..." />
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
                                             <label className="block text-[10px] font-black text-gray-400 uppercase mb-1.5">Total Cost (₹)</label>
-                                            <input 
-                                                type="number" 
-                                                value={newVisit.cost} 
-                                                onChange={e => {
-                                                    const cost = Number(e.target.value);
-                                                    setNewVisit(prev => ({
-                                                        ...prev, 
-                                                        cost,
-                                                        // Auto-set paid to cost if paid is 0 or not set
-                                                        paid: prev.paid === 0 || !prev.paid ? cost : prev.paid
-                                                    }));
-                                                }} 
-                                                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm" 
-                                                placeholder="0"
-                                            />
+                                            <div className="relative">
+                                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none">₹</span>
+                                                <input 
+                                                    type="number" 
+                                                    value={newVisit.cost || ''} 
+                                                    onChange={e => {
+                                                        const value = e.target.value;
+                                                        const cost = value === '' ? 0 : Number(value);
+                                                        setNewVisit(prev => ({
+                                                            ...prev, 
+                                                            cost,
+                                                            // Auto-set paid to cost if paid is 0 or not set
+                                                            paid: (prev.paid === 0 || !prev.paid) && cost > 0 ? cost : prev.paid
+                                                        }));
+                                                    }} 
+                                                    className="w-full pl-8 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all" 
+                                                    placeholder="Enter amount"
+                                                    min="0"
+                                                    step="1"
+                                                />
+                                            </div>
                                         </div>
                                         <div>
                                             <label className="block text-[10px] font-black text-gray-400 uppercase mb-1.5">Paid Amount (₹)</label>
-                                            <input 
-                                                type="number" 
-                                                value={newVisit.paid} 
-                                                onChange={e => setNewVisit(prev => ({...prev, paid: Number(e.target.value)}))} 
-                                                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm" 
-                                                placeholder="0"
-                                            />
+                                            <div className="relative">
+                                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none">₹</span>
+                                                <input 
+                                                    type="number" 
+                                                    value={newVisit.paid || ''} 
+                                                    onChange={e => {
+                                                        const value = e.target.value;
+                                                        const paid = value === '' ? 0 : Number(value);
+                                                        setNewVisit(prev => ({...prev, paid}));
+                                                    }} 
+                                                    className="w-full pl-8 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all" 
+                                                    placeholder="Enter amount"
+                                                    min="0"
+                                                    step="1"
+                                                />
+                                            </div>
                                         </div>
                                     </div>
-                                    {newVisit.cost && newVisit.paid !== undefined && newVisit.cost > newVisit.paid && (
-                                        <div className="flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 rounded-lg">
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                            </svg>
-                                            <span className="font-semibold">Balance Due: ₹{(newVisit.cost - newVisit.paid).toLocaleString()}</span>
+                                    {newVisit.cost && newVisit.paid !== undefined && newVisit.cost > 0 && (
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="col-span-2">
+                                                {newVisit.cost > newVisit.paid ? (
+                                                    <div className="flex items-center justify-between p-3 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-800">
+                                                        <div className="flex items-center gap-2">
+                                                            <svg className="w-5 h-5 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                                            </svg>
+                                                            <span className="text-xs font-bold text-amber-700 dark:text-amber-300 uppercase tracking-wider">Balance Due</span>
+                                                        </div>
+                                                        <span className="text-lg font-black text-amber-700 dark:text-amber-300">₹{(newVisit.cost - newVisit.paid).toLocaleString()}</span>
+                                                    </div>
+                                                ) : newVisit.cost === newVisit.paid ? (
+                                                    <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-200 dark:border-green-800">
+                                                        <div className="flex items-center gap-2">
+                                                            <svg className="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                            </svg>
+                                                            <span className="text-xs font-bold text-green-700 dark:text-green-300 uppercase tracking-wider">Fully Paid</span>
+                                                        </div>
+                                                        <span className="text-lg font-black text-green-700 dark:text-green-300">₹{newVisit.cost.toLocaleString()}</span>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
+                                                        <div className="flex items-center gap-2">
+                                                            <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                                                            </svg>
+                                                            <span className="text-xs font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider">Overpaid</span>
+                                                        </div>
+                                                        <span className="text-lg font-black text-blue-700 dark:text-blue-300">+₹{(newVisit.paid - newVisit.cost).toLocaleString()}</span>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                     )}
-                                    {newVisit.cost && newVisit.paid !== undefined && newVisit.cost === newVisit.paid && newVisit.cost > 0 && (
-                                        <div className="flex items-center gap-2 text-xs text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-3 py-2 rounded-lg">
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                                            </svg>
-                                            <span className="font-semibold">Fully Paid</span>
-                                        </div>
-                                    )}
-                                    <div>
-                                        <label className="block text-[10px] font-black text-gray-400 uppercase mb-1.5">Procedure & Notes</label>
-                                        <textarea value={newVisit.procedure_notes} onChange={e => setNewVisit(prev => ({...prev, procedure_notes: e.target.value}))} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm h-32" />
-                                    </div>
                                 </div>
                                 <div className="md:col-span-2">
                                     <label className="block text-[10px] font-black text-gray-400 uppercase mb-3">Teeth Involved (Odontogram)</label>
                                     <div className="p-4 bg-gray-50 dark:bg-gray-950/50 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-x-auto">
-                                        <ToothSelector 
-                                            value={newVisit.tooth_number || ''} 
-                                            dentitionType={newVisit.dentition_type || 'Adult'}
-                                            onDentitionTypeChange={(type) => setNewVisit(prev => ({...prev, dentition_type: type}))}
-                                            onChange={(val) => setNewVisit(prev => ({...prev, tooth_number: val}))} 
-                                            className="w-max mx-auto"
-                                        />
+                                        <div className="w-max">
+                                            <ToothSelector 
+                                                value={newVisit.tooth_number || ''} 
+                                                dentitionType={newVisit.dentition_type || 'Adult'}
+                                                onDentitionTypeChange={(type) => setNewVisit(prev => ({...prev, dentition_type: type}))}
+                                                onChange={(val) => setNewVisit(prev => ({...prev, tooth_number: val}))} 
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -628,17 +769,29 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                 {!showVisitForm && activeVisit && (
                     <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden border-l-4 border-blue-500 animate-in fade-in duration-500">
                         <div className="p-8">
-                            <div className="flex justify-between items-start mb-10">
-                                <div>
-                                    <div className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] mb-2">{activeVisit.doctor}</div>
-                                    <h3 className="text-3xl font-black tracking-tight">{activeVisit.visit_type}</h3>
+                            <div className="flex justify-between items-start mb-6">
+                                <div className="flex-1">
+                                    <h3 className="text-3xl font-black tracking-tight mb-3">{activeVisit.visit_type}</h3>
+                                    {activeVisit.doctor && (
+                                        <div className="flex flex-wrap gap-2">
+                                            {activeVisit.doctor.split(',').map((doc, idx) => (
+                                                <div key={idx} className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-lg text-xs font-semibold">
+                                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                                    </svg>
+                                                    <span>{doc.trim()}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="flex gap-2">
                                     <button onClick={() => handleEditVisit(activeVisit)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg></button>
                                     <button onClick={() => activeVisit.id && handleDeleteVisit(activeVisit.id)} className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-400 hover:text-red-600 rounded-lg transition-colors"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
                                 </div>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-8">
                                 <div>
                                     <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Clinical Assessment</h4>
                                     <p className="text-sm leading-relaxed whitespace-pre-wrap">{activeVisit.clinical_findings}</p>
@@ -647,15 +800,71 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                                     <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Procedure Details</h4>
                                     <p className="text-sm leading-relaxed whitespace-pre-wrap">{activeVisit.procedure_notes || 'No notes'}</p>
                                 </div>
+                                {activeVisit.medicine_prescribed && (
+                                    <div className="md:col-span-2">
+                                        <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Prescribed Medication</h4>
+                                        <p className="text-sm leading-relaxed whitespace-pre-wrap">{activeVisit.medicine_prescribed}</p>
+                                    </div>
+                                )}
                                 {activeVisit.tooth_number && (
                                     <div className="md:col-span-2">
                                     <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Treatment Area</h4>
-                                    <div className="p-4 bg-gray-50 dark:bg-gray-950/50 rounded-2xl border border-gray-100 dark:border-gray-800 overflow-x-auto w-max mx-auto md:mx-0 min-h-[300px]">
-                                        <ToothSelector value={activeVisit.tooth_number} dentitionType={activeVisit.dentition_type} readOnly />
+                                    <div className="p-4 bg-gray-50 dark:bg-gray-950/50 rounded-2xl border border-gray-100 dark:border-gray-800 overflow-x-auto">
+                                        <div className="w-max">
+                                            <ToothSelector value={activeVisit.tooth_number} dentitionType={activeVisit.dentition_type} readOnly />
+                                        </div>
                                     </div>
                                 </div>
                                 )}
                             </div>
+
+                            {/* Financial Summary - Moved to end */}
+                            {(activeVisit.cost || activeVisit.paid) && (
+                                <div className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-gray-200 dark:border-gray-800">
+                                    <div className="flex items-center justify-between text-sm">
+                                        <div className="flex items-center gap-6">
+                                            <div>
+                                                <span className="text-gray-500 dark:text-gray-400 text-xs">Cost</span>
+                                                <span className="ml-2 font-semibold text-gray-900 dark:text-gray-100">₹{Number(activeVisit.cost || 0).toLocaleString()}</span>
+                                            </div>
+                                            <div className="h-4 w-px bg-gray-300 dark:bg-gray-700"></div>
+                                            <div>
+                                                <span className="text-gray-500 dark:text-gray-400 text-xs">Collected</span>
+                                                <span className="ml-2 font-semibold text-gray-900 dark:text-gray-100">₹{Number(activeVisit.paid || 0).toLocaleString()}</span>
+                                            </div>
+                                            {Number(activeVisit.cost || 0) !== Number(activeVisit.paid || 0) && (
+                                                <>
+                                                    <div className="h-4 w-px bg-gray-300 dark:bg-gray-700"></div>
+                                                    <div>
+                                                        <span className={`text-xs ${
+                                                            Number(activeVisit.cost || 0) > Number(activeVisit.paid || 0)
+                                                                ? 'text-amber-600 dark:text-amber-400'
+                                                                : 'text-blue-600 dark:text-blue-400'
+                                                        }`}>
+                                                            {Number(activeVisit.cost || 0) > Number(activeVisit.paid || 0) ? 'Balance' : 'Overpaid'}
+                                                        </span>
+                                                        <span className={`ml-2 font-semibold ${
+                                                            Number(activeVisit.cost || 0) > Number(activeVisit.paid || 0)
+                                                                ? 'text-amber-700 dark:text-amber-300'
+                                                                : 'text-blue-700 dark:text-blue-300'
+                                                        }`}>
+                                                            ₹{Math.abs(Number(activeVisit.cost || 0) - Number(activeVisit.paid || 0)).toLocaleString()}
+                                                        </span>
+                                                    </div>
+                                                </>
+                                            )}
+                                        </div>
+                                        {Number(activeVisit.cost || 0) === Number(activeVisit.paid || 0) && Number(activeVisit.cost || 0) > 0 && (
+                                            <div className="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400">
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                                </svg>
+                                                <span className="font-medium">Settled</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}

@@ -195,6 +195,7 @@ const DataExport = () => {
 };
 
 const ClinicProfile = () => {
+    const router = useRouter();
     const { showToast } = useToast();
     const { clinic, loading, refreshClinic } = useClinic();
     const [saving, setSaving] = useState(false);
@@ -206,6 +207,12 @@ const ClinicProfile = () => {
         email: '',
         google_maps_link: ''
     });
+
+    const handleSwitchClinic = async () => {
+        if (!confirm('Switch to a different clinic? You will need to select a clinic again.')) return;
+        await fetch('/api/auth/logout', { method: 'POST' });
+        router.push('/select-clinic');
+    };
 
     useEffect(() => {
         if (clinic) {
@@ -241,7 +248,18 @@ const ClinicProfile = () => {
 
     return (
         <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-8">Clinic Profile</h2>
+            <div className="flex justify-between items-center mb-8">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Clinic Profile</h2>
+                <button 
+                    onClick={handleSwitchClinic}
+                    className="text-xs font-semibold text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 bg-gray-50 dark:bg-gray-800 px-4 py-2 rounded-lg transition border border-gray-200 dark:border-gray-700 hover:border-blue-200 dark:hover:border-blue-900 flex items-center gap-2"
+                >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                    </svg>
+                    Switch Clinic
+                </button>
+            </div>
             <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-900 p-8 rounded-lg border border-gray-200 dark:border-gray-800 shadow-sm space-y-6 transition-colors">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-gray-900 dark:text-gray-100">
                     <div>

@@ -16,6 +16,7 @@ export default function ManageMembers() {
   const [myRole, setMyRole] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [newEmail, setNewEmail] = useState('');
+  const [newRole, setNewRole] = useState<'DOCTOR' | 'STAFF' | 'ADMIN'>('DOCTOR');
   const [inviting, setInviting] = useState(false);
 
   const fetchMembers = async () => {
@@ -45,12 +46,13 @@ export default function ManageMembers() {
       const res = await fetch('/api/members', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: newEmail })
+        body: JSON.stringify({ email: newEmail, role: newRole })
       });
       
       if (res.ok) {
         showToast('Member invited successfully', 'success');
         setNewEmail('');
+        setNewRole('DOCTOR');
         fetchMembers();
       } else {
         showToast('Failed to invite member', 'error');
@@ -85,23 +87,39 @@ export default function ManageMembers() {
       </div>
 
       {isOwner && (
-        <form onSubmit={handleInvite} className="flex gap-3 mb-10 bg-white dark:bg-gray-900 p-2 rounded-lg border border-gray-200 dark:border-gray-800 shadow-sm transition-colors">
-          <input 
-            type="email" 
-            value={newEmail}
-            onChange={(e) => setNewEmail(e.target.value)}
-            placeholder="colleague@example.com"
-            className="flex-1 p-2 bg-transparent outline-none text-gray-900 dark:text-gray-100 text-sm font-medium"
-          />
-          <button 
-            type="submit" 
-            disabled={inviting}
-            className="bg-blue-600 text-white px-6 py-2 rounded-md font-bold text-xs uppercase tracking-widest hover:bg-blue-700 transition shadow-sm disabled:opacity-50"
-          >
-            {inviting ? 'Inviting...' : 'Invite'}
-          </button>
+        <form onSubmit={handleInvite} className="bg-white dark:bg-gray-900 p-4 rounded-lg border border-gray-200 dark:border-gray-800 shadow-sm transition-colors space-y-3">
+          <div className="flex gap-3">
+            <input 
+              type="email" 
+              value={newEmail}
+              onChange={(e) => setNewEmail(e.target.value)}
+              placeholder="colleague@example.com"
+              className="flex-1 p-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg outline-none text-gray-900 dark:text-gray-100 text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+            />
+            <select
+              value={newRole}
+              onChange={(e) => setNewRole(e.target.value as 'DOCTOR' | 'STAFF' | 'ADMIN')}
+              className="p-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg outline-none text-gray-900 dark:text-gray-100 text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+            >
+              <option value="DOCTOR">Doctor</option>
+              <option value="STAFF">Staff</option>
+              <option value="ADMIN">Admin</option>
+            </select>
+            <button 
+              type="submit" 
+              disabled={inviting}
+              className="bg-blue-600 text-white px-6 py-2.5 rounded-lg font-bold text-xs uppercase tracking-widest hover:bg-blue-700 transition shadow-sm disabled:opacity-50 whitespace-nowrap"
+            >
+              {inviting ? 'Inviting...' : 'Invite'}
+            </button>
+          </div>
+          <div className="text-xs text-gray-500 dark:text-gray-400 pl-1">
+            <span className="font-semibold">Roles:</span> Doctor (full access), Staff (limited access), Admin (manage settings)
+          </div>
         </form>
       )}
+
+      <div className="mt-10">
 
       {loading ? (
         <div className="space-y-3">

@@ -46,10 +46,10 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { email } = body;
+    const { email, role = 'DOCTOR' } = body;
     if (!email) return NextResponse.json({ error: 'Email is required' }, { status: 400 });
 
-    const newMember = await addClinicMember(clinicId, email);
+    const newMember = await addClinicMember(clinicId, email, role);
     
     return NextResponse.json(newMember);
   } catch (error: any) {
