@@ -8,8 +8,8 @@ const nextConfig: NextConfig = {
       bodySizeLimit: '2mb',
     },
   },
-  // Ensure middleware is properly handled on Netlify
-  skipMiddlewareUrlNormalize: false,
+  // Updated config for Next.js 16
+  skipProxyUrlNormalize: false,
   skipTrailingSlashRedirect: false,
 };
 
