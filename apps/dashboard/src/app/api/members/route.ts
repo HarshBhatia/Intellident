@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { getClinicMembers, addClinicMember, removeClinicMember } from '@/services/clinicMember.service';
+import { getClinicMembers, addClinicMember, removeClinicMember } from '@/services/clinic.service';
 import { getAuthContext, verifyMembership, getMemberRole } from '@/lib/auth';
 
 export async function GET() {

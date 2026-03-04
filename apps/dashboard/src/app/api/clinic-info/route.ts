@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { getClinicInfo, updateClinicInfo } from '@/services/clinicInfo.service';
+import { getClinicInfo, updateClinicInfo } from '@/services/clinic.service';
 import { getAuthContext, verifyMembership } from '@/lib/auth';
 
 // Cache clinic info for 60 seconds (rarely changes)

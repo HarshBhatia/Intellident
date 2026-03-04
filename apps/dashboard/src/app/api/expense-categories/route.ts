@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { getExpenseCategories, createExpenseCategory, deleteExpenseCategory } from '@/services/expenseCategory.service';
+import { getExpenseCategories, createExpenseCategory, deleteExpenseCategory } from '@/services/expense.service';
 import { getAuthContext, verifyMembership } from '@/lib/auth';
 
 export async function GET() {
