@@ -30,7 +30,7 @@ export async function GET() {
 
     // Batch all queries using Promise.all for parallel execution
     const [clinicResult, patientsResult, doctorsResult] = await Promise.all([
-      sql`SELECT name as clinic_name, owner_name, phone, address, email, google_maps_link 
+      sql`SELECT name as clinic_name, owner_email, phone, address, google_maps_link 
           FROM clinics WHERE id = ${cId}`,
       sql`SELECT 
             p.id, 
@@ -53,8 +53,16 @@ export async function GET() {
           WHERE clinic_id = ${cId}`,
     ]);
 
+    const clinic = clinicResult[0];
     return NextResponse.json({
-      clinic: clinicResult[0] || null,
+      clinic: clinic ? {
+        clinic_name: clinic.clinic_name,
+        owner_name: clinic.owner_email || '',
+        phone: clinic.phone || '',
+        address: clinic.address || '',
+        email: clinic.owner_email || '',
+        google_maps_link: clinic.google_maps_link || ''
+      } : null,
       patients: patientsResult || [],
       doctors: doctorsResult || [],
     }, {
