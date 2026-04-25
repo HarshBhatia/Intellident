@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-
-type DentitionType = 'Adult' | 'Child';
+import type { DentitionType } from '@/types';
 
 interface ToothSelectorProps {
   value: string;

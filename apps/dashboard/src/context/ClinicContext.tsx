@@ -2,22 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-
-export interface ClinicInfo {
-  clinic_name: string;
-  owner_name: string;
-  phone: string;
-  address: string;
-  email: string;
-  google_maps_link: string;
-}
-
-export interface Doctor {
-  id: number;
-  name: string;
-  clinic_id: number;
-  user_email: string | null;
-}
+import type { ClinicInfo, Doctor } from '@intellident/api';
 
 interface ClinicContextType {
   clinic: ClinicInfo | null;
@@ -38,7 +23,7 @@ export function ClinicProvider({ children }: { children: React.ReactNode }) {
   const fetchClinic = useCallback(async () => {
     try {
       console.log('[ClinicProvider] Fetching clinic info...');
-      const res = await fetch('/api/clinic-info');
+      const res = await fetch('/api/clinic?id=current');
       if (res.ok) {
         const data = await res.json();
         setClinic(data);
@@ -59,11 +44,11 @@ export function ClinicProvider({ children }: { children: React.ReactNode }) {
   const fetchDoctors = useCallback(async () => {
     try {
       console.log('[ClinicProvider] Fetching doctors...');
-      const res = await fetch('/api/doctors');
+      const res = await fetch('/api/clinic/members?role=DOCTOR');
       if (res.ok) {
         const data = await res.json();
-        setDoctors(data);
-        console.log('[ClinicProvider] Doctors loaded:', data.length);
+        setDoctors(data.members || []);
+        console.log('[ClinicProvider] Doctors loaded:', (data.members || []).length);
       }
     } catch (error) {
       console.error('[ClinicProvider] Error fetching doctors:', error);

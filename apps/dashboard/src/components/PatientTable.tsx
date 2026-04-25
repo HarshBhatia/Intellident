@@ -234,7 +234,7 @@ export default function PatientTable({ patients, onAddClick, onDeleteSuccess }: 
               <tr 
                 key={patient.id} 
                 className="hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition duration-150 cursor-pointer group"
-                onClick={() => router.push(`/patients/${patient.patient_id}/`)}
+                onClick={() => router.push(`/patients/${patient.patient_id}`)}
               >
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>

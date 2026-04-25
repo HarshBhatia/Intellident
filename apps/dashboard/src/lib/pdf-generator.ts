@@ -1,14 +1,6 @@
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import { Patient, Visit } from '@/types';
-
-interface ClinicInfo {
-  clinic_name: string;
-  owner_name: string;
-  phone: string;
-  address: string;
-  email: string;
-}
+import type { Patient, Visit, ClinicInfo } from '@/types';
 
 export const generatePrescriptionPDF = (patient: Patient, clinic: ClinicInfo, visit?: Visit) => {
   const doc = new jsPDF();

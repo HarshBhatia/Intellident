@@ -1,23 +1,5 @@
 import { getDb } from '@intellident/api';
-
-// ============================================================================
-// Types
-// ============================================================================
-
-export interface Expense {
-  id: number;
-  date: string;
-  amount: number;
-  category: string;
-  description: string;
-  clinic_id: string;
-}
-
-export interface ExpenseCategory {
-  id: number;
-  name: string;
-  clinic_id: string;
-}
+import type { Expense, ExpenseCategory } from '@intellident/api';
 
 // ============================================================================
 // Expenses

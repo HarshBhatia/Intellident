@@ -1,10 +1,5 @@
 import { getDb } from '@intellident/api';
-
-export interface Treatment {
-  id: number;
-  name: string;
-  clinic_id: string;
-}
+import type { Treatment } from '@intellident/api';
 
 export async function getTreatments(clinicId: string): Promise<Treatment[]> {
   if (!clinicId) throw new Error('Clinic ID is required');

@@ -68,7 +68,7 @@ npm run lint             # Lint all workspaces
 npm run format           # Format code with Prettier
 
 # Database
-# Visit http://localhost:3000/api/init to initialize local schema
+# Database schema auto-initializes on first request via middleware
 ```
 
 ## Environment Variables

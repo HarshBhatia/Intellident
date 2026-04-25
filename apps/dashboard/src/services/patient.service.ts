@@ -7,7 +7,7 @@ const parseBillingItems = (billingItemsJson?: string | null): BillingItem[] => {
     const parsed = JSON.parse(billingItemsJson);
     return Array.isArray(parsed) ? parsed : [];
   } catch (e) {
-    console.error('Error parsing billing_items JSON:', e);
+    // Skip invalid billing items
     return [];
   }
 };
@@ -59,7 +59,13 @@ export async function getPatientByIdWithVisits(clinicId: string, patientId: stri
     ORDER BY date DESC, created_at DESC
   `;
 
-  const doctorsPromise = sql`SELECT id, name FROM doctors WHERE clinic_id = ${cId}`;
+  const doctorsPromise = sql`
+    SELECT id, user_email, display_name, role 
+    FROM clinic_members 
+    WHERE clinic_id = ${cId} 
+    AND (role = 'DOCTOR' OR role = 'OWNER')
+    AND status = 'ACTIVE'
+  `;
 
   const [visits, doctors] = await Promise.all([visitsPromise, doctorsPromise]);
   

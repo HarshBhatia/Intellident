@@ -102,15 +102,19 @@ export default function RootLayout({
           </ClinicProvider>
         </ClerkProvider>
         
-        {/* Optimized Analytics Loading */}
-        <Script 
-          src="https://scripts.simpleanalyticscdn.com/latest.js" 
-          strategy="lazyOnload" 
+        {/* Google Analytics */}
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-1BJ5E2NT8X"
+          strategy="afterInteractive"
         />
-        <Script 
-          src="https://scripts.simpleanalyticscdn.com/auto-events.js" 
-          strategy="lazyOnload" 
-        />
+        <Script id="ga4-init" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-1BJ5E2NT8X');
+          `}
+        </Script>
       </body>
     </html>
   );

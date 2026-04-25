@@ -12,6 +12,7 @@ import { uploadImage } from '@/lib/image-utils';
 import { useAuth } from '@/hooks/useAuth';
 import ToothSelector from '@/components/ToothSelector';
 import { useClinic } from '@/context/ClinicContext';
+import { Analytics } from '@/lib/analytics';
 
 interface XRay {
   url: string;
@@ -145,6 +146,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                 dentition_type: detectedDentition,
                 cost: data.cost || prev.cost
             }));
+            Analytics.notesGenerated();
             setShowManualFields(true);
             showToast('Note parsed successfully!', 'success');
             setSmartNote('');
@@ -249,6 +251,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
         });
         if (res.ok) {
             const savedVisit = await res.json();
+            if (!editingVisitId) Analytics.visitRecorded({ visitType: newVisit.visit_type });
             showToast('Visit saved!', 'success');
             setEditingVisitId(null);
             setActiveVisitId(savedVisit.id);

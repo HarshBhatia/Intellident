@@ -14,6 +14,7 @@ export default function Navbar() {
   const activePage = useMemo(() => {
     if (pathname === '/') return 'Dashboard';
     if (pathname.startsWith('/patients/')) return 'Patient Details';
+    if (pathname.startsWith('/scheduler')) return 'Scheduler';
     if (pathname.startsWith('/earnings')) return 'Financials';
     if (pathname.startsWith('/expenses')) return 'Expense Tracker';
     if (pathname.startsWith('/settings')) return 'Settings';
@@ -62,8 +63,16 @@ export default function Navbar() {
                 <div className="w-5 h-5" /> // Placeholder to prevent mismatch
               )}
             </button>
-            <button 
-              onClick={() => router.push('/earnings')} 
+            <button
+              onClick={() => router.push('/scheduler')}
+              className="text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 text-sm font-medium transition flex items-center gap-1"
+              title="Scheduler"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+              <span className="hidden md:inline">Scheduler</span>
+            </button>
+            <button
+              onClick={() => router.push('/earnings')}
               className="text-gray-500 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 text-sm font-medium transition flex items-center gap-1"
               title="Earnings"
             >

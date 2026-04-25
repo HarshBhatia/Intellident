@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Patient } from '@/types';
 import { useToast } from '@/components/ToastProvider';
+import { Analytics } from '@/lib/analytics';
 
 interface AddPatientFormProps {
   onSuccess: () => void;
@@ -45,6 +46,7 @@ export default function AddPatientForm({ onSuccess, onCancel }: AddPatientFormPr
 
       if (res.ok) {
         const data = await res.json();
+        Analytics.patientCreated();
         showToast('Patient added successfully!', 'success');
         router.push(`/patients/${data.patient_id}`);
       } else {

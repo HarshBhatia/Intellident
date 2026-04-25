@@ -12,10 +12,9 @@ export interface AuthenticatedContext {
 }
 
 type ApiHandler<T = any> = (
-  context: AuthenticatedContext,
   request: Request,
-  params?: any
-) => Promise<NextResponse<T>>;
+  context: AuthenticatedContext
+) => Promise<NextResponse<T> | NextResponse>;
 
 // ============================================================================
 // API Handler Wrapper
@@ -33,8 +32,7 @@ type ApiHandler<T = any> = (
  * @returns A wrapped handler with auth checks
  * 
  * @example
- * export const GET = withAuth(async (context, request) => {
- *   const { clinicId } = context;
+ * export const GET = withAuth(async (request, { clinicId }) => {
  *   const data = await getData(clinicId);
  *   return NextResponse.json(data);
  * });
@@ -61,9 +59,8 @@ export function withAuth<T = any>(handler: ApiHandler<T>) {
 
       // 4. Call the actual handler with authenticated context
       const context: AuthenticatedContext = { userId, userEmail, clinicId };
-      return await handler(context, request, routeParams);
+      return await handler(request, context);
     } catch (error: any) {
-      console.error('API Handler Error:', error);
       return NextResponse.json(
         { error: error.message || 'Internal server error' },
         { status: 500 }
@@ -86,7 +83,7 @@ export function withAuth<T = any>(handler: ApiHandler<T>) {
  * });
  */
 export function withAuthOnly<T = any>(
-  handler: (userId: string, userEmail: string, request: Request, params?: any) => Promise<NextResponse<T>>
+  handler: (userId: string, userEmail: string, request: Request, params?: any) => Promise<NextResponse<T> | NextResponse>
 ) {
   return async (request: Request, routeParams?: any) => {
     try {
@@ -102,7 +99,6 @@ export function withAuthOnly<T = any>(
       // Call the actual handler
       return await handler(userId, userEmail, request, routeParams);
     } catch (error: any) {
-      console.error('API Handler Error:', error);
       return NextResponse.json(
         { error: error.message || 'Internal server error' },
         { status: 500 }

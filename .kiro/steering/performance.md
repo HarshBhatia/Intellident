@@ -39,7 +39,7 @@ GROUP BY p.id
 
 ### Use Composite Indexes for Common Queries
 
-Required indexes are defined in `/api/init/route.ts`:
+Required indexes are defined in `packages/api/src/init-db.ts`:
 - `idx_visits_clinic_patient` - For patient visit lookups
 - `idx_visits_clinic_date` - For date-range queries
 - `idx_patients_clinic_active` - For active patient lists
@@ -78,30 +78,22 @@ For read-heavy endpoints, consider:
 
 ### Implemented Caching
 
-1. **Clinic Info Endpoint** (`/api/clinic-info`)
+1. **Clinic Endpoint** (`/api/clinic`)
    - Revalidation: 60 seconds
    - Cache-Control: `public, s-maxage=60, stale-while-revalidate=120`
    - Rationale: Clinic information rarely changes
 
-2. **Dashboard Data Endpoint** (`/api/dashboard-data`)
-   - Revalidation: 30 seconds
-   - Cache-Control: `public, s-maxage=30, stale-while-revalidate=60`
-   - Batches: clinic info, patients, doctors in single request
-   - Uses Promise.all for parallel query execution
-
-3. **Patients List Endpoint** (`/api/patients`)
+2. **Patients List Endpoint** (`/api/patients`)
    - Revalidation: 30 seconds
    - Cache-Control: `public, s-maxage=30, stale-while-revalidate=60`
    - Optimized query with LEFT JOIN instead of correlated subquery
    - Performance logging enabled for monitoring
 
-### API Batching
-
-The `/api/dashboard-data` endpoint combines three separate API calls into one:
-- Reduces network overhead from 3 requests to 1
-- Parallel database queries using Promise.all
-- Shared database connection for all queries
-- Reduces total latency by ~60%
+3. **Clinic Members Endpoint** (`/api/clinic/members`)
+   - Revalidation: 60 seconds
+   - Cache-Control: `public, s-maxage=60, stale-while-revalidate=120`
+   - Supports `?role=DOCTOR` query parameter for filtering
+   - Returns both DOCTOR and OWNER roles when filtered
 
 ## Common Anti-Patterns to Avoid
 
@@ -128,8 +120,8 @@ Local (PGlite) is always faster because:
 - Persistent connections
 - No cold starts
 
-Production (Neon on Netlify) requires:
+Production (Neon on Vercel) requires:
 - Connection pooling (enabled)
-- Proper indexes (defined in init route)
+- Proper indexes (defined in packages/api/src/init-db.ts)
 - SQL-level filtering (not JavaScript)
 - Optimized query patterns (JOINs over subqueries)

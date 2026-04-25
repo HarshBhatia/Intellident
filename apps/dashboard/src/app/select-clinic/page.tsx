@@ -5,12 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useClerk } from '@clerk/nextjs';
 import Skeleton from '@/components/Skeleton';
 import { useAuth } from '@/hooks/useAuth';
-
-interface Clinic {
-  id: number;
-  name: string;
-  role: string;
-}
+import type { Clinic } from '@/types';
 
 export default function SelectClinicPage() {
   const router = useRouter();
@@ -23,7 +18,7 @@ export default function SelectClinicPage() {
 
   useEffect(() => {
     if (!isLoaded || !user) return;
-    fetch('/api/clinics')
+    fetch('/api/clinic')
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) setClinics(data);
@@ -50,7 +45,7 @@ export default function SelectClinicPage() {
     if (!newClinicName.trim()) return;
     setCreating(true);
     try {
-      const res = await fetch('/api/clinics', {
+      const res = await fetch('/api/clinic', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: newClinicName })

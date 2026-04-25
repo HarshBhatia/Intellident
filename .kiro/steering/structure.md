@@ -51,7 +51,7 @@ packages/api/
 - **API Routes**: Place in `apps/dashboard/src/app/api/[route]/route.ts`
 - **Components**: Organize by feature or shared in `apps/dashboard/src/components/`
 - **Database Logic**: Centralize in `packages/api/src/`
-- **Types**: Define in `apps/dashboard/src/types/` or co-locate with features
+- **Types**: All types centralized in `packages/api/src/types.ts` and re-exported via `apps/dashboard/src/types.ts`
 
 ### Naming Conventions
 
@@ -68,9 +68,9 @@ packages/api/
 
 ### Database Schema Management
 
-- **Source of Truth**: `apps/dashboard/src/app/api/init/route.ts`
-- **Schema Updates**: Add SQL to init route and run endpoint
-- **Local Setup**: Visit `http://localhost:3000/api/init` after installation
+- **Source of Truth**: `packages/api/src/init-db.ts`
+- **Auto-initialization**: Database schema is automatically initialized on first request via middleware
+- **Manual initialization**: Run `initializeDatabase()` from `packages/api` if needed
 
 ## Multi-Tenant Data Isolation
 
@@ -93,8 +93,11 @@ const result = await db.query(
 ## Testing Structure
 
 - **Unit Tests**: Co-locate with source files or in `__tests__/` directories
-- **E2E Tests**: Place in `apps/dashboard/tests/` or `e2e/`
-- **Test Data**: Use `E2E_TEST_SECRET` for E2E authentication bypass
+- **E2E Tests**: Playwright tests in `apps/dashboard/test/e2e/` covering authentication, patient management, visits, expenses, and treatments
+  - Test user must be created manually before running tests
+  - Use `signIn()` helper from `test/e2e/helpers/auth.ts` for authentication
+  - Run with `npm run test:e2e -w dashboard`
+- **Manual Testing**: Use development environment with test clinics
 
 ## Configuration Files
 

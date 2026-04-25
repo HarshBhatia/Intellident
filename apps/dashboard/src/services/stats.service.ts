@@ -1,13 +1,5 @@
 import { getDb } from '@intellident/api';
-import { BillingItem } from '@intellident/api/src/types';
-
-export interface StatsResult {
-  totalRevenue: number;
-  totalExpenses: number;
-  profit: number;
-  pieData: { name: string; value: number }[];
-  monthlyTrend: { month: string; revenue: number }[];
-}
+import type { StatsResult, BillingItem } from '@intellident/api';
 
 const normalizeCategory = (raw: string) => {
     const s = raw.toLowerCase().trim();
@@ -80,7 +72,7 @@ export async function getClinicStats(clinicId: string, startDate: Date, endDate:
           items = JSON.parse(visit.billing_items);
         }
       } catch (e) {
-        console.error('Error parsing billing_items in stats:', e);
+        // Skip invalid billing items
       }
 
       if (items.length > 0) {

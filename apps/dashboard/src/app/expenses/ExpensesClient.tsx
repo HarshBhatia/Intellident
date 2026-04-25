@@ -6,14 +6,8 @@ import { useToast } from '@/components/ToastProvider';
 import Skeleton from '@/components/Skeleton';
 import Navbar from '@/components/Navbar';
 import { useAuth } from '@/hooks/useAuth';
-
-interface Expense {
-    id: number;
-    date: string;
-    amount: number;
-    category: string;
-    description: string;
-}
+import { Analytics } from '@/lib/analytics';
+import type { Expense } from '@/types';
 
 export default function ExpensesClient() {
   const router = useRouter();
@@ -90,6 +84,7 @@ export default function ExpensesClient() {
         body: JSON.stringify(form)
       });
       if (res.ok) {
+        Analytics.expenseAdded({ category: form.category });
         showToast('Expense added', 'success');
         setForm({ ...form, amount: '', description: '' });
         fetchData();
