@@ -20,6 +20,7 @@ export default function AddPatientForm({ onSuccess, onCancel }: AddPatientFormPr
     gender: 'Male',
     phone_number: '',
     age: 0,
+    referral_source: '',
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -128,6 +129,30 @@ export default function AddPatientForm({ onSuccess, onCancel }: AddPatientFormPr
                     </div>
                 </div>
             </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5 ml-1">
+            How did they hear about us? <span className="text-gray-400 font-normal">(optional)</span>
+          </label>
+          <div className="relative">
+            <select
+              name="referral_source"
+              value={formData.referral_source}
+              onChange={handleChange}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-800 focus:bg-white dark:focus:bg-gray-700 appearance-none cursor-pointer h-[42px]"
+            >
+              <option value="">Select source</option>
+              <option value="Google Ads">Google Ads</option>
+              <option value="Instagram / Social Media">Instagram / Social Media</option>
+              <option value="Referred by friend or patient">Referred by friend or patient</option>
+              <option value="Walk-in">Walk-in</option>
+              <option value="Other">Other</option>
+            </select>
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 dark:text-gray-400">
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+            </div>
+          </div>
         </div>
       </div>
 

@@ -46,6 +46,7 @@ export interface Patient {
   clinic_id: number;
   is_active?: boolean;
   xrays?: string;
+  referral_source?: string;
   created_at?: string;
   last_visit?: string;
   visits?: Visit[];

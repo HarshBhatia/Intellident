@@ -110,7 +110,8 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
             age: patient.age,
             gender: patient.gender,
             phone_number: patient.phone_number,
-            patient_type: patient.patient_type
+            patient_type: patient.patient_type,
+            referral_source: patient.referral_source
         });
     }
   }, [patient]);
@@ -420,14 +421,30 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
 
                         <div>
                             <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Patient Type</label>
-                            <select 
-                                value={editPatient.patient_type || ''} 
+                            <select
+                                value={editPatient.patient_type || ''}
                                 onChange={e => setEditPatient(prev => ({...prev, patient_type: e.target.value}))}
                                 className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                             >
                                 <option value="">Select Type</option>
                                 <option value="New">New</option>
                                 <option value="Returning">Returning</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">How did they hear about us?</label>
+                            <select
+                                value={editPatient.referral_source || ''}
+                                onChange={e => setEditPatient(prev => ({...prev, referral_source: e.target.value}))}
+                                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                            >
+                                <option value="">Select source</option>
+                                <option value="Google Ads">Google Ads</option>
+                                <option value="Instagram / Social Media">Instagram / Social Media</option>
+                                <option value="Referred by friend or patient">Referred by friend or patient</option>
+                                <option value="Walk-in">Walk-in</option>
+                                <option value="Other">Other</option>
                             </select>
                         </div>
                     </div>
@@ -458,6 +475,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                     <div className="flex justify-between"><span className="text-gray-500">Phone</span><span className="font-medium">{patient.phone_number || '-'}</span></div>
                     <div className="flex justify-between"><span className="text-gray-500">Age</span><span className="font-medium">{patient.age}</span></div>
                     <div className="flex justify-between"><span className="text-gray-500">Gender</span><span className="font-medium">{patient.gender}</span></div>
+                    {patient.referral_source && <div className="flex justify-between"><span className="text-gray-500">Source</span><span className="font-medium">{patient.referral_source}</span></div>}
                 </div>
             </div>
             <div className="bg-white dark:bg-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-800 shadow-sm">

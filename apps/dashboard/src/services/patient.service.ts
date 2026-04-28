@@ -111,13 +111,13 @@ export async function createPatient(clinicId: string, patientData: Omit<Patient,
     nextId = `PID-${parseInt(countResult[0].count) + 1}`;
   }
 
-  const { name, age, gender, phone_number, patient_type } = patientData;
+  const { name, age, gender, phone_number, patient_type, referral_source } = patientData;
 
   const result = await sql`
     INSERT INTO patients (
-      patient_id, name, age, gender, phone_number, patient_type, clinic_id
+      patient_id, name, age, gender, phone_number, patient_type, clinic_id, referral_source
     ) VALUES (
-      ${nextId}, ${name}, ${age}, ${gender}, ${phone_number}, ${patient_type}, ${cId}
+      ${nextId}, ${name}, ${age}, ${gender}, ${phone_number}, ${patient_type}, ${cId}, ${referral_source ?? null}
     )
     RETURNING *
   `;
@@ -130,7 +130,7 @@ export async function updatePatient(clinicId: string, patientId: string, patient
 
   const sql = getDb();
   const cId = parseInt(clinicId);
-  const { name, age, gender, phone_number, patient_type } = patientData;
+  const { name, age, gender, phone_number, patient_type, referral_source } = patientData;
 
   const result = await sql`
     UPDATE patients SET
@@ -138,7 +138,8 @@ export async function updatePatient(clinicId: string, patientId: string, patient
       age = ${age},
       gender = ${gender},
       phone_number = ${phone_number},
-      patient_type = ${patient_type}
+      patient_type = ${patient_type},
+      referral_source = ${referral_source ?? null}
     WHERE patient_id = ${patientId} AND clinic_id = ${cId}
     RETURNING *
   `;

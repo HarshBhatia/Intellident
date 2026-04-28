@@ -53,17 +53,6 @@ export default clerkMiddleware(async (auth, request) => {
   }
 
   return NextResponse.next();
-}, {
-  publicRoutes: [
-    '/sign-in(.*)',
-    '/sign-up(.*)',
-    '/terms',
-    '/privacy',
-    '/select-clinic(.*)',
-    '/manifest.webmanifest',
-    '/favicon.ico',
-    '/tooth-icon.jpg',
-  ]
 });
 
 export const config = {

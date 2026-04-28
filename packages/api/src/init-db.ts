@@ -42,6 +42,7 @@ export async function initializeDatabase() {
     await sql`ALTER TABLE patients ADD COLUMN IF NOT EXISTS patient_type TEXT`;
     await sql`ALTER TABLE patients ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE`;
     await sql`ALTER TABLE patients ADD COLUMN IF NOT EXISTS xrays TEXT`;
+    await sql`ALTER TABLE patients ADD COLUMN IF NOT EXISTS referral_source TEXT`;
 
     // 2. Create/Update Other Tables (removed doctors table)
     const tables = ['treatments', 'expense_categories'];
