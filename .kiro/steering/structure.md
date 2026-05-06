@@ -24,12 +24,28 @@ apps/dashboard/
 ├── src/
 │   ├── app/                # Next.js App Router
 │   │   ├── api/            # API routes
-│   │   │   └── init/       # Database schema initialization
-│   │   ├── (routes)/       # Page routes
+│   │   │   ├── appointments/  # Appointment management
+│   │   │   ├── auth/          # Authentication endpoints
+│   │   │   ├── clinic/        # Clinic info and members
+│   │   │   ├── expenses/      # Expense tracking
+│   │   │   ├── generate-notes/ # AI note generation
+│   │   │   ├── health/        # Health check
+│   │   │   ├── patients/      # Patient management
+│   │   │   └── visits/        # Visit records
+│   │   ├── earnings/       # Earnings page
+│   │   ├── expenses/       # Expenses page
+│   │   ├── patients/       # Patient management pages
+│   │   ├── scheduler/      # Appointment scheduler
+│   │   ├── select-clinic/  # Clinic selection
+│   │   ├── settings/       # Settings page
 │   │   └── layout.tsx      # Root layout
 │   ├── components/         # React components
+│   ├── context/            # React context providers
+│   ├── hooks/              # Custom React hooks
 │   ├── lib/                # Utility functions
-│   └── types/              # TypeScript type definitions
+│   ├── services/           # Business logic layer
+│   ├── middleware.ts       # Next.js middleware (auth)
+│   └── types.ts            # TypeScript type definitions
 ├── public/                 # Static assets
 ├── .env.local              # Local environment variables
 └── package.json            # Dashboard dependencies
@@ -40,7 +56,11 @@ apps/dashboard/
 ```
 packages/api/
 ├── src/
-│   └── index.ts            # Exports getDb() and database utilities
+│   ├── db.ts               # Database connection (getDb)
+│   ├── image-utils.ts      # Image processing utilities
+│   ├── index.ts            # Package exports
+│   ├── init-db.ts          # Database schema initialization
+│   └── types.ts            # Shared TypeScript types
 └── package.json
 ```
 
@@ -50,8 +70,11 @@ packages/api/
 
 - **API Routes**: Place in `apps/dashboard/src/app/api/[route]/route.ts`
 - **Components**: Organize by feature or shared in `apps/dashboard/src/components/`
-- **Database Logic**: Centralize in `packages/api/src/`
+- **Business Logic**: Service layer in `apps/dashboard/src/services/`
+- **Database Logic**: Connection and initialization in `packages/api/src/`
 - **Types**: All types centralized in `packages/api/src/types.ts` and re-exported via `apps/dashboard/src/types.ts`
+- **Context**: React context providers in `apps/dashboard/src/context/`
+- **Hooks**: Custom React hooks in `apps/dashboard/src/hooks/`
 
 ### Naming Conventions
 
@@ -71,6 +94,20 @@ packages/api/
 - **Source of Truth**: `packages/api/src/init-db.ts`
 - **Auto-initialization**: Database schema is automatically initialized on first request via middleware
 - **Manual initialization**: Run `initializeDatabase()` from `packages/api` if needed
+
+### Service Layer Pattern
+
+Business logic is organized in service modules in `apps/dashboard/src/services/`:
+- `appointment.service.ts` - Appointment scheduling and management
+- `clinic.service.ts` - Clinic information and member management
+- `expense.service.ts` - Expense tracking and categories
+- `import.service.ts` - Data import functionality
+- `patient.service.ts` - Patient CRUD operations
+- `stats.service.ts` - Dashboard statistics and analytics
+- `treatment.service.ts` - Treatment catalog management
+- `visit.service.ts` - Visit records and history
+
+API routes should delegate to service functions for consistency and testability.
 
 ## Multi-Tenant Data Isolation
 

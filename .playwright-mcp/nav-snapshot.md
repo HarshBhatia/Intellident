@@ -1,0 +1,50 @@
+- generic [ref=e4]:
+  - banner [ref=e7]:
+    - generic [ref=e8]:
+      - generic [ref=e12]: Analytics
+      - button "Open the universal picker." [ref=e15] [cursor=pointer]:
+        - generic [ref=e16]:
+          - generic [ref=e17]
+          - generic [ref=e21]
+      - search [ref=e28]:
+        - img [ref=e29]: search
+        - textbox "Search" [ref=e31]:
+          - /placeholder: Try searching "Admin"
+      - button "Switch products" [ref=e33] [cursor=pointer]:
+        - img [ref=e34]
+      - button "Ask Analytics advisor" [ref=e38] [cursor=pointer]:
+        - img [ref=e39]: button_magic
+      - button "Help entry menu" [ref=e43] [cursor=pointer]:
+        - img [ref=e44]: help
+      - button "Open the user account switcher panel." [ref=e48] [cursor=pointer]
+  - generic [ref=e51]:
+    - generic [ref=e55]:
+      - navigation "Main pages" [ref=e56]:
+        - link "Home" [ref=e58] [cursor=pointer]:
+          - img [ref=e59]
+          - generic [ref=e63]: Home
+        - link "Reports" [ref=e66] [cursor=pointer]:
+          - img [ref=e67]: insert_chart_filled
+          - generic [ref=e68]: Reports
+        - link "Explore" [ref=e70] [cursor=pointer]:
+          - img [ref=e71]: data_exploration
+          - generic [ref=e72]: Explore
+        - link "Advertising" [ref=e74] [cursor=pointer]:
+          - img [ref=e75]: ads_click
+          - generic [ref=e76]: Advertising
+      - navigation "Settings pages" [ref=e77]:
+        - link "Tasks" [ref=e79] [cursor=pointer]:
+          - img [ref=e80]: task_alt
+          - generic [ref=e81]: Tasks
+        - link "Admin" [ref=e83] [cursor=pointer]:
+          - img [ref=e84]: settings_filled
+          - generic [ref=e85]: Admin
+    - generic [ref=e89]:
+      - main [ref=e90]:
+        - generic [ref=e91]:
+          - generic [ref=e94]
+          - generic [ref=e1382]
+      - generic:
+        - complementary
+    - generic:
+      - button "Open context menu"

@@ -39,11 +39,17 @@ GROUP BY p.id
 
 ### Use Composite Indexes for Common Queries
 
-Required indexes are defined in `packages/api/src/init-db.ts`:
+### Required indexes are defined in `packages/api/src/init-db.ts`:
 - `idx_visits_clinic_patient` - For patient visit lookups
 - `idx_visits_clinic_date` - For date-range queries
+- `idx_visits_clinic_doctor` - For doctor-specific visit queries
 - `idx_patients_clinic_active` - For active patient lists
 - `idx_expenses_clinic_date` - For expense reports
+- `idx_appointments_clinic_date` - For appointment calendar views
+- `idx_appointments_clinic_doctor_date` - For doctor-specific schedules
+- `idx_clinic_members_user_id` - For user membership lookups
+- `idx_clinic_members_clinic_user` - For active membership verification
+- `idx_clinic_members_role` - For role-based queries
 
 When adding new query patterns, add corresponding indexes.
 
@@ -95,6 +101,10 @@ For read-heavy endpoints, consider:
    - Supports `?role=DOCTOR` query parameter for filtering
    - Returns both DOCTOR and OWNER roles when filtered
 
+4. **Appointments Endpoint** (`/api/appointments`)
+   - Dynamic data, no static caching
+   - Optimized queries with indexes on clinic_id, date, and doctor_email
+
 ## Common Anti-Patterns to Avoid
 
 1. **Fetching all records then filtering** - Always push filters to SQL
@@ -125,3 +135,16 @@ Production (Neon on Vercel) requires:
 - Proper indexes (defined in packages/api/src/init-db.ts)
 - SQL-level filtering (not JavaScript)
 - Optimized query patterns (JOINs over subqueries)
+
+## Database Schema
+
+Key tables and their indexes:
+- `patients` - Patient records with clinic_id index
+- `visits` - Visit records with composite indexes on (clinic_id, patient_id) and (clinic_id, date)
+- `appointments` - Appointment scheduling with indexes on (clinic_id, date) and (clinic_id, doctor_email, date)
+- `expenses` - Expense tracking with index on (clinic_id, date)
+- `clinics` - Clinic information
+- `clinic_members` - Multi-tenant membership with role-based access (OWNER, DOCTOR)
+- `treatments` - Treatment catalog per clinic
+- `expense_categories` - Expense categories per clinic
+- `usage_logs` - Feature usage tracking

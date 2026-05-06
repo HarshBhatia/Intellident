@@ -9,7 +9,7 @@
 ## Frontend Stack
 
 - **Framework**: Next.js 16.1.6 (App Router)
-- **React**: 19.1.0 (overridden at root level)
+- **React**: 19.2.4 (overridden at root level)
 - **Styling**: Tailwind CSS v4 with @tailwindcss/postcss
 - **Theming**: next-themes for dark/light mode
 - **UI Components**: Lucide Icons for iconography
@@ -77,87 +77,61 @@ Required in `apps/dashboard/.env.local`:
 - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
 - `CLERK_SECRET_KEY`
 - `GEMINI_API_KEY`
-- `DATABASE_URL` (Neon for production)
-- `NETLIFY_DATABASE_URL` (deployment)
+- `DATABASE_URL` (Neon for production, auto-configured for local PGlite)
 - `NEXT_PUBLIC_APP_URL`
+- `E2E_TEST_SECRET` (optional, for E2E test bypass)
 
 ## Deployment
 
-### Platform: Netlify
+### Platform: Vercel
 
-- **Site**: https://zintellident.netlify.app
-- **Admin**: https://app.netlify.com/projects/zintellident
-- **Configuration**: `netlify.toml` at root
+- **Configuration**: `vercel.json` at root
 - **Build Base**: `apps/dashboard`
-- **Build Command**: `npm run build`
-- **Publish Directory**: `.next`
+- **Build Command**: `npm run build --workspace=dashboard`
+- **Output Directory**: `apps/dashboard/.next`
+- **Region**: Mumbai (bom1)
 
 ### Deployment Workflow
 
 1. **Automatic Deployment**
    - Push to `main` branch triggers automatic deployment
-   - Netlify builds and deploys via Git integration
-   - Build logs available in Netlify dashboard
+   - Vercel builds and deploys via Git integration
+   - Build logs available in Vercel dashboard
 
 2. **Manual Deployment**
    ```bash
-   cd apps/dashboard
-   netlify deploy --prod
+   vercel --prod
    ```
 
 3. **Preview Deployments**
    ```bash
-   netlify deploy  # Creates preview URL
+   vercel  # Creates preview URL
    ```
 
 ### Environment Variables
 
-Set in Netlify dashboard (Site settings > Environment variables):
+Set in Vercel dashboard (Project Settings > Environment Variables):
 - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` - Clerk public key
 - `CLERK_SECRET_KEY` - Clerk secret key
 - `GEMINI_API_KEY` - Google Gemini API key
-- `NETLIFY_DATABASE_URL` - Neon database connection (auto-configured via Netlify integration)
+- `DATABASE_URL` - Neon database connection
 - `NEXT_PUBLIC_APP_URL` - Production URL
 - `E2E_TEST_SECRET` - Secret for E2E test bypass (optional)
 
 ### Database Initialization
 
-After deployment, initialize database indexes:
-```bash
-curl "https://zintellident.netlify.app/api/init?secret=e2e-secret-key"
-```
+Database schema auto-initializes on first request via middleware. No manual initialization required.
 
-### Netlify Configuration
+### Vercel Configuration
 
-Key settings in `netlify.toml`:
-- Node.js 20
-- Next.js plugin enabled
-- Turbopack disabled for stability
-- Skew protection enabled
-- Static asset caching (1 year)
+Key settings in `vercel.json`:
+- Framework: Next.js
+- Region: Mumbai (bom1)
+- Build command: `npm run build --workspace=dashboard`
+- Install command: `npm install`
 
 ### Monitoring & Debugging
 
-- **Function Logs**: https://app.netlify.com/projects/zintellident/logs/functions
-- **Deploy Logs**: https://app.netlify.com/projects/zintellident/deploys
-- **Performance**: Lighthouse runs automatically on each deploy
-
-### Known Issues
-
-**Clerk Middleware on Netlify**
-- Next.js 16 + Clerk middleware has compatibility issues with Netlify's serverless runtime
-- Middleware properly configured in `src/middleware.ts`
-- Auth redirects work correctly (307 to sign-in)
-- Protected routes require authentication as expected
-
-### Performance Testing
-
-Run performance checks:
-```bash
-./performance-test.sh
-```
-
-Or use Node.js script:
-```bash
-node check-performance.js
-```
+- **Function Logs**: Available in Vercel dashboard
+- **Deploy Logs**: Available in Vercel dashboard
+- **Performance**: Monitor via Vercel Analytics

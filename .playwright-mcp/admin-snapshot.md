@@ -1,0 +1,22 @@
+- generic [ref=e1]:
+  - generic [ref=e4]:
+    - banner [ref=e7]:
+      - generic [ref=e8]:
+        - generic [ref=e12]: Analytics
+        - button "Open the universal picker." [active] [ref=e15] [cursor=pointer]
+        - search [ref=e28]
+        - button "Switch products" [ref=e33] [cursor=pointer]
+        - button "Ask Analytics advisor" [ref=e38] [cursor=pointer]
+        - button "Help entry menu" [ref=e43] [cursor=pointer]
+        - button "Open the user account switcher panel." [ref=e48] [cursor=pointer]
+    - generic [ref=e51]:
+      - generic [ref=e54]:
+        - generic [ref=e55]
+        - generic [ref=e1423]
+        - button "Nav toggle" [expanded] [ref=e1522] [cursor=pointer]
+      - generic [ref=e1526]:
+        - main [ref=e1527]
+        - contentinfo [ref=e2037]
+      - generic:
+        - button "Open context menu"
+  - generic [ref=e2177]: Dr. Zaheen Eqbal Dental Clinic
