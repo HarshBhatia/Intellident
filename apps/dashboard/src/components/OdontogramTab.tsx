@@ -22,6 +22,25 @@ interface ToothState {
 
 type OdontogramMap = { [toothNum: number]: ToothState };
 
+// FDI → Universal (ADA) mapping
+const FDI_TO_UNIVERSAL: Record<number, number> = {
+  18:1, 17:2, 16:3, 15:4, 14:5, 13:6, 12:7, 11:8,
+  21:9, 22:10, 23:11, 24:12, 25:13, 26:14, 27:15, 28:16,
+  38:17, 37:18, 36:19, 35:20, 34:21, 33:22, 32:23, 31:24,
+  41:25, 42:26, 43:27, 44:28, 45:29, 46:30, 47:31, 48:32,
+};
+// Palmer: number within quadrant (1=central, 8=wisdom) + symbol
+const PALMER_SYMBOL: Record<number, string> = { 1:'┘', 2:'└', 3:'┐', 4:'┌' };
+function toothLabel(fdi: number, notation: 'FDI' | 'Universal' | 'Palmer'): string {
+  if (notation === 'Universal') return String(FDI_TO_UNIVERSAL[fdi] ?? fdi);
+  if (notation === 'Palmer') {
+    const q = Math.floor(fdi / 10);
+    const n = fdi % 10;
+    return `${n}${PALMER_SYMBOL[q] ?? ''}`;
+  }
+  return String(fdi);
+}
+
 interface PopoverInfo {
   tooth: number;
   surface: string | null;
@@ -447,7 +466,7 @@ export default function OdontogramTab({ patientId, visits }: OdontogramTabProps)
       {/* tooth numbers */}
       <div style={{ display: 'flex', flexDirection: flip ? 'row-reverse' : 'row', gap: 4, justifyContent: 'center' }}>
         {teeth.map(t => (
-          <div key={t} style={{ width: 36, textAlign: 'center', fontSize: 10, fontWeight: 700, color: visitTeeth.has(t) ? '#2563eb' : '#9ca3af', letterSpacing: '0.04em' }}>{t}</div>
+          <div key={t} style={{ width: 36, textAlign: 'center', fontSize: 10, fontWeight: 700, color: visitTeeth.has(t) ? '#2563eb' : '#9ca3af', letterSpacing: '0.04em' }}>{toothLabel(t, notation)}</div>
         ))}
       </div>
       {/* teeth */}
