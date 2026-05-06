@@ -20,10 +20,11 @@ export async function createVisit(clinicId: string, data: any): Promise<Visit> {
   }
   const sql = getDb();
   const cId = parseInt(clinicId);
-  const cost = data.billing_items?.reduce((s: number, i: any) => s + i.amount, 0) || data.cost || 0;
+  const billingItemsArray = typeof data.billing_items === 'string' ? parseBillingItems(data.billing_items) : (data.billing_items || []);
+  const cost = billingItemsArray.reduce((s: number, i: any) => s + Number(i.amount), 0) || data.cost || 0;
   const result = await sql`
     INSERT INTO visits (clinic_id, patient_id, date, doctor, visit_type, clinical_findings, procedure_notes, tooth_number, medicine_prescribed, cost, paid, xrays, billing_items, dentition_type)
-    VALUES (${cId}, ${data.patient_id}, ${data.date}, ${data.doctor}, ${data.visit_type}, ${data.clinical_findings}, ${data.procedure_notes}, ${data.tooth_number}, ${data.medicine_prescribed}, ${cost}, ${data.paid || 0}, ${data.xrays}, ${JSON.stringify(data.billing_items || [])}, ${data.dentition_type || 'Adult'})
+    VALUES (${cId}, ${data.patient_id}, ${data.date}, ${data.doctor}, ${data.visit_type}, ${data.clinical_findings}, ${data.procedure_notes}, ${data.tooth_number}, ${data.medicine_prescribed}, ${cost}, ${data.paid || 0}, ${data.xrays}, ${JSON.stringify(billingItemsArray)}, ${data.dentition_type || 'Adult'})
     RETURNING *
   `;
   return { ...result[0], billing_items: parseBillingItems(result[0].billing_items) } as Visit;
@@ -35,9 +36,10 @@ export async function updateVisit(clinicId: string, data: Visit): Promise<Visit>
   }
   const sql = getDb();
   const cId = parseInt(clinicId);
-  const cost = data.billing_items?.reduce((s, i) => s + i.amount, 0) || data.cost || 0;
+  const billingItemsArray = typeof data.billing_items === 'string' ? parseBillingItems(data.billing_items) : (data.billing_items || []);
+  const cost = billingItemsArray.reduce((s: number, i: any) => s + Number(i.amount), 0) || data.cost || 0;
   const result = await sql`
-    UPDATE visits SET date=${data.date}, doctor=${data.doctor}, visit_type=${data.visit_type}, clinical_findings=${data.clinical_findings}, procedure_notes=${data.procedure_notes}, tooth_number=${data.tooth_number}, medicine_prescribed=${data.medicine_prescribed}, cost=${cost}, paid=${data.paid}, xrays=${data.xrays}, billing_items=${JSON.stringify(data.billing_items || [])}, dentition_type=${data.dentition_type || 'Adult'}
+    UPDATE visits SET date=${data.date}, doctor=${data.doctor}, visit_type=${data.visit_type}, clinical_findings=${data.clinical_findings}, procedure_notes=${data.procedure_notes}, tooth_number=${data.tooth_number}, medicine_prescribed=${data.medicine_prescribed}, cost=${cost}, paid=${data.paid}, xrays=${data.xrays}, billing_items=${JSON.stringify(billingItemsArray)}, dentition_type=${data.dentition_type || 'Adult'}
     WHERE id=${data.id} AND clinic_id=${cId} RETURNING *
   `;
   return { ...result[0], billing_items: parseBillingItems(result[0].billing_items) } as Visit;

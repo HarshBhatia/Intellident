@@ -115,7 +115,7 @@ export default function ManageMembers() {
               type="text"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
-              placeholder="Dr. Name"
+              placeholder="Full Name"
               className="w-40 p-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg outline-none text-gray-900 dark:text-gray-100 text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
             />
             <input
@@ -177,7 +177,7 @@ export default function ManageMembers() {
                     <span className="text-gray-800 dark:text-gray-200 font-semibold">
                       {m.display_name || m.user_email}
                     </span>
-                    {isOwner && m.role !== 'OWNER' && (
+                    {isOwner && (
                       <button
                         onClick={() => { setEditingId(m.id); setEditName(m.display_name || ''); }}
                         className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-blue-500 transition-opacity"

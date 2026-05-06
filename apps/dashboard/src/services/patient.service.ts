@@ -60,7 +60,7 @@ export async function getPatientByIdWithVisits(clinicId: string, patientId: stri
   `;
 
   const doctorsPromise = sql`
-    SELECT id, user_email, display_name, role 
+    SELECT id, user_email, display_name as name, role 
     FROM clinic_members 
     WHERE clinic_id = ${cId} 
     AND (role = 'DOCTOR' OR role = 'OWNER')
