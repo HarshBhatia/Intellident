@@ -20,3 +20,4 @@ coverage/
 
 # Clerk
 .clerk/
+.kiro
