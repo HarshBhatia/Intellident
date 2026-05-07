@@ -182,7 +182,7 @@ function ToothSVG({
           <text x="18" y="32" textAnchor="middle" fontSize="14" fontWeight="700" fill={wholeColor!}>M</text>
         )}
         {whole === 'sensitive' && !state?.surfaces && (
-          <text x="18" y="32" textAnchor="middle" fontSize="12" fill={wholeColor!}>⚡</text>
+          <text x="18" y="32" textAnchor="middle" fontSize="11" fontWeight="700" fill={wholeColor!}>S</text>
         )}
       </g>
       <path

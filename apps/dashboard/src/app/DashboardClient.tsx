@@ -13,7 +13,7 @@ import { Appointment } from '@intellident/api';
 // ─── Earnings Chart ───────────────────────────────────────────────────────────
 
 function EarningsChart({ visits }: { visits: Visit[] }) {
-  const W = 600, H = 200, P = { t: 16, r: 12, b: 28, l: 44 };
+  const W = 960, H = 200, P = { t: 16, r: 12, b: 28, l: 44 };
   const maxY = 20000;
 
   // Build last 30 days of collected earnings from visits
@@ -55,7 +55,7 @@ function EarningsChart({ visits }: { visits: Visit[] }) {
         const y = P.t + (H - P.t - P.b) * (1 - t);
         return (
           <g key={t}>
-            <line x1={P.l} y1={y} x2={W - P.r} y2={y} stroke="#f3f4f6" strokeWidth="1" />
+            <line x1={P.l} y1={y} x2={W - P.r} y2={y} stroke="currentColor" strokeWidth="1" className="text-gray-100 dark:text-gray-800" />
             <text x={P.l - 6} y={y + 3} textAnchor="end" fontSize="9" fill="#9ca3af" fontWeight="600">
               ₹{Math.round(maxY * t / 1000)}k
             </text>
@@ -94,18 +94,26 @@ function DonutChart({ visits }: { visits: Visit[] }) {
     .map(([name, cnt], i) => ({ name, pct: Math.round(cnt / total * 100), color: TREATMENT_COLORS[i] }));
 
   const R = 52, r = 34, cx = 64, cy = 64;
-  let acc = 0;
-  const arcs = items.map(t => {
-    const start = acc / 100 * Math.PI * 2 - Math.PI / 2;
-    const end = (acc + t.pct) / 100 * Math.PI * 2 - Math.PI / 2;
-    acc += t.pct;
-    const large = end - start > Math.PI ? 1 : 0;
-    const x1 = cx + R * Math.cos(start), y1 = cy + R * Math.sin(start);
-    const x2 = cx + R * Math.cos(end), y2 = cy + R * Math.sin(end);
-    const x3 = cx + r * Math.cos(end), y3 = cy + r * Math.sin(end);
-    const x4 = cx + r * Math.cos(start), y4 = cy + r * Math.sin(start);
-    return <path key={t.name} d={`M ${x1} ${y1} A ${R} ${R} 0 ${large} 1 ${x2} ${y2} L ${x3} ${y3} A ${r} ${r} 0 ${large} 0 ${x4} ${y4} Z`} fill={t.color} />;
-  });
+  // Single segment = full ring (SVG arc can't go start→same point)
+  const arcs = items.length === 1
+    ? [<g key={items[0].name}>
+        <circle cx={cx} cy={cy} r={R} fill={items[0].color} />
+        <circle cx={cx} cy={cy} r={r} className="fill-white dark:fill-gray-900" />
+      </g>]
+    : (() => {
+        let acc = 0;
+        return items.map(t => {
+          const start = acc / 100 * Math.PI * 2 - Math.PI / 2;
+          const end = (acc + t.pct) / 100 * Math.PI * 2 - Math.PI / 2;
+          acc += t.pct;
+          const large = end - start > Math.PI ? 1 : 0;
+          const x1 = cx + R * Math.cos(start), y1 = cy + R * Math.sin(start);
+          const x2 = cx + R * Math.cos(end), y2 = cy + R * Math.sin(end);
+          const x3 = cx + r * Math.cos(end), y3 = cy + r * Math.sin(end);
+          const x4 = cx + r * Math.cos(start), y4 = cy + r * Math.sin(start);
+          return <path key={t.name} d={`M ${x1} ${y1} A ${R} ${R} 0 ${large} 1 ${x2} ${y2} L ${x3} ${y3} A ${r} ${r} 0 ${large} 0 ${x4} ${y4} Z`} fill={t.color} />;
+        });
+      })();
 
   if (total === 0) return <div className="text-sm text-gray-400 py-4">No visits yet</div>;
 
@@ -283,7 +291,7 @@ export default function DashboardClient() {
         <div className="flex items-end justify-between mb-6 flex-wrap gap-4">
           <div>
             <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight mb-1">
-              Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening'}, {userName} 👋
+              Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening'}, {userName}
             </h1>
             <p className="text-sm text-gray-500">
               Here&apos;s what&apos;s happening at{' '}
