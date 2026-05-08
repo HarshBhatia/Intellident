@@ -32,7 +32,8 @@ export default function SelectClinicPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ clinicId })
     });
-    router.push('/');
+    // Full navigation forces ClinicProvider to re-initialize with new clinic context
+    window.location.href = '/';
   };
 
   const handleSignOut = async () => {

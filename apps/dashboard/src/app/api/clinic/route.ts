@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getClinicInfo, updateClinicInfo, getClinics, createClinic } from '@/services/clinic.service';
 import { withAuth, withAuthOnly } from '@/lib/api-handler';
 
-export const revalidate = 60;
+export const dynamic = 'force-dynamic';
 
 // GET /api/clinic - List all clinics for user (no clinic context)
 // GET /api/clinic?id=123 - Get specific clinic info (with clinic context)
@@ -15,10 +15,10 @@ export async function GET(request: Request) {
     return withAuth(async (req: Request, { clinicId: cId }) => {
       const clinicInfo = await getClinicInfo(cId);
       if (!clinicInfo) return NextResponse.json({ error: 'Clinic not found' }, { status: 404 });
-      
+
       return NextResponse.json(clinicInfo, {
         headers: {
-          'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120',
+          'Cache-Control': 'private, no-cache',
         },
       });
     })(request);
