@@ -720,12 +720,14 @@ export default function SettingsClient() {
           <p className="text-sm text-gray-400 mt-1">Configure how your clinic shows up to patients, staff and the system.</p>
         </div>
 
-        <div className="grid gap-6" style={{ gridTemplateColumns: '220px 1fr' }}>
+        <div className="grid gap-6" style={{ gridTemplateColumns: '200px 1fr' }}>
           {/* Sidebar */}
-          <SideNav active={active} setActive={setActive} clinicName={clinic?.clinic_name} />
+          <div className="min-w-0 w-[200px] flex-shrink-0">
+            <SideNav active={active} setActive={setActive} clinicName={clinic?.clinic_name} />
+          </div>
 
           {/* Content card */}
-          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden">
+          <div className="min-w-0 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden">
             {active === 'profile' && <ClinicProfile />}
             {active === 'members' && <ManageMembers />}
             {active === 'treatments' && <Manager title="Treatments" apiEndpoint="/api/clinic/treatments" />}
