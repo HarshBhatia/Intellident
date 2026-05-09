@@ -44,10 +44,15 @@ export function getDb() {
   const getPglite = async () => {
     if (globalForPglite.pglite) return globalForPglite.pglite;
     if (!globalForPglite.pglitePromise) {
-      globalForPglite.pglitePromise = init().then(inst => {
+      globalForPglite.pglitePromise = (async () => {
+        const inst = await init();
+        // Cache instance BEFORE schema init so getDb() calls inside
+        // initializeDatabase() resolve immediately without deadlock
         globalForPglite.pglite = inst;
+        const { initializeDatabase } = await import('./init-db');
+        await initializeDatabase();
         return inst;
-      });
+      })();
     }
     return globalForPglite.pglitePromise;
   };
