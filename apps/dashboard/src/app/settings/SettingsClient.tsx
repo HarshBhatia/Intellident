@@ -3,7 +3,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useToast } from '@/components/ToastProvider';
-import Navbar from '@/components/Navbar';
 import { useClinic } from '@/context/ClinicContext';
 import ManageMembers from './ManageMembers';
 
@@ -707,7 +706,6 @@ export default function SettingsClient() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 transition-colors">
-      <Navbar />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-24">
         {/* Page header */}
         <div className="mb-6">
