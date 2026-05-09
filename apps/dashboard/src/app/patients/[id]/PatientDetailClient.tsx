@@ -84,7 +84,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
   const fetchPatient = useCallback(async () => {
     if (!patientId) return;
     try {
-      const res = await fetch(`/api/patients/${patientId}/`);
+      const res = await fetch(`/api/patients/${patientId}`);
       if (!res.ok) throw new Error('Failed to fetch patient');
       const data = await res.json();
       setPatient(data);
@@ -101,7 +101,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
   const handleUpdatePatient = async () => {
     if (!patientId) return;
     try {
-      const res = await fetch(`/api/patients/${patientId}/`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(editPatient) });
+      const res = await fetch(`/api/patients/${patientId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(editPatient) });
       if (res.ok) { showToast('Patient updated!', 'success'); setShowEditPatient(false); fetchPatient(); }
     } catch { showToast('Error updating patient', 'error'); }
   };
@@ -165,7 +165,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
   const handleDeleteVisit = async (visitId: number) => {
     if (!confirm('Delete this visit?')) return;
     try {
-      const res = await fetch(`/api/visits/?id=${visitId}`, { method: 'DELETE' });
+      const res = await fetch(`/api/visits?id=${visitId}`, { method: 'DELETE' });
       if (res.ok) { showToast('Visit deleted', 'success'); fetchPatient(); }
     } catch { showToast('Error', 'error'); }
   };

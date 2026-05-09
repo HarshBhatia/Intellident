@@ -27,7 +27,7 @@ export default function SelectClinicPage() {
   }, [isLoaded, user?.id]);
 
   const handleSelect = async (clinicId: number) => {
-    await fetch('/api/auth/session/', {
+    await fetch('/api/auth/session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ clinicId })
@@ -37,7 +37,7 @@ export default function SelectClinicPage() {
   };
 
   const handleSignOut = async () => {
-    await fetch('/api/auth/logout/', { method: 'POST' });
+    await fetch('/api/auth/logout', { method: 'POST' });
     await signOut({ redirectUrl: '/sign-in' });
   };
 
