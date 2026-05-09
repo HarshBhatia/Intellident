@@ -26,16 +26,6 @@ function formatDate(dateStr: string) {
   }
 }
 
-function Waveform({ count = 32 }: { count?: number }) {
-  const heights = useMemo(() => Array.from({ length: count }, () => 4 + Math.random() * 12), [count]);
-  return (
-    <div className="flex items-center gap-px h-4">
-      {heights.map((h, i) => (
-        <span key={i} style={{ width: 2, height: h, background: i < count * 0.3 ? '#2563eb' : '#cbd5e1', borderRadius: 1, display: 'inline-block' }} />
-      ))}
-    </div>
-  );
-}
 
 function VisitCard({
   visit, expanded, onToggle, onEdit, onDelete,
@@ -170,20 +160,6 @@ function VisitCard({
                 </div>
               )}
 
-              {/* Voice note (decorative waveform) */}
-              <div>
-                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Voice recording</div>
-                <div className="flex items-center gap-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3.5 py-2.5">
-                  <button className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center flex-shrink-0">
-                    <svg width="12" height="12" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
-                  </button>
-                  <Waveform />
-                  <div className="text-right ml-auto">
-                    <div className="text-[11px] font-semibold text-gray-700 dark:text-gray-300">Voice note</div>
-                    <div className="text-[10px] text-gray-400">{date.full}</div>
-                  </div>
-                </div>
-              </div>
 
               {/* Procedures */}
               {billingItems.length > 0 && (
