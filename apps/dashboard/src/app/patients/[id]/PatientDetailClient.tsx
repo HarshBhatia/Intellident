@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useMemo, use } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { Patient, Visit } from '@/types';
 import { useToast } from '@/components/ToastProvider';
 import Skeleton from '@/components/Skeleton';
@@ -20,13 +20,27 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
   const { showToast } = useToast();
   const { clinic: clinicInfo } = useClinic();
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const isDebug = searchParams.get('debug') === 'true';
+
+  const VALID_TABS: TabKey[] = ['overview', 'visits', 'odontogram', 'financials', 'files'];
+  const tabFromUrl = searchParams.get('tab') as TabKey | null;
 
   const [patientId, setPatientId] = useState<string | null>(null);
   const [patient, setPatient] = useState<(Patient & { doctors: { id: number; name: string }[] }) | null>(null);
   const doctors = patient?.doctors || [];
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<TabKey>('visits');
+  const [activeTab, setActiveTab] = useState<TabKey>(
+    tabFromUrl && VALID_TABS.includes(tabFromUrl) ? tabFromUrl : 'visits'
+  );
+
+  const setTab = useCallback((tab: TabKey) => {
+    setActiveTab(tab);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('tab', tab);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }, [router, pathname, searchParams]);
 
   // Visit form state
   const [showVisitForm, setShowVisitForm] = useState(false);
@@ -159,7 +173,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
     setSelectedDoctors(visit.doctor ? visit.doctor.split(',').map(d => d.trim()).filter(Boolean) : []);
     setNewVisit({ date: visit.date, doctor: visit.doctor, visit_type: visit.visit_type || 'Consultation', clinical_findings: visit.clinical_findings || '', procedure_notes: visit.procedure_notes || '', tooth_number: visit.tooth_number || '', medicine_prescribed: visit.medicine_prescribed || '', dentition_type: visit.dentition_type || 'Adult', cost: Number(visit.cost), paid: Number(visit.paid || 0), xrays: visit.xrays || '[]', billing_items: visit.billing_items || [] });
     setShowVisitForm(true);
-    setActiveTab('visits');
+    setTab('visits');
   };
 
   const handleDeleteVisit = async (visitId: number) => {
@@ -282,7 +296,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
               Edit profile
             </button>
             <button
-              onClick={() => { setShowVisitForm(true); setEditingVisitId(null); setShowManualFields(true); setSmartNote(''); setNewVisit({ date: new Date().toISOString().split('T')[0], doctor: '', visit_type: 'Consultation', clinical_findings: '', procedure_notes: '', tooth_number: '', dentition_type: 'Adult', cost: 0, paid: 0, xrays: '[]', billing_items: [] }); setSelectedDoctors([]); setActiveTab('visits'); }}
+              onClick={() => { setShowVisitForm(true); setEditingVisitId(null); setShowManualFields(true); setSmartNote(''); setNewVisit({ date: new Date().toISOString().split('T')[0], doctor: '', visit_type: 'Consultation', clinical_findings: '', procedure_notes: '', tooth_number: '', dentition_type: 'Adult', cost: 0, paid: 0, xrays: '[]', billing_items: [] }); setSelectedDoctors([]); setTab('visits'); }}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow transition-colors">
               <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
               New visit
@@ -293,7 +307,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
         {/* Tabs */}
         <div className="flex bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 border-b-0 rounded-t-xl px-3 gap-0">
           {TABS.map(({ key, label, count }) => (
-            <button key={key} onClick={() => setActiveTab(key)}
+            <button key={key} onClick={() => setTab(key)}
               className={`px-4 py-3.5 text-sm font-semibold border-b-2 -mb-px transition-all flex items-center gap-2 ${
                 activeTab === key
                   ? 'text-blue-600 dark:text-blue-400 border-blue-600 dark:border-blue-400'
