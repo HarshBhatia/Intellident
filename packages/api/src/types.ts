@@ -69,6 +69,10 @@ export interface ClinicInfo {
   address: string;
   email: string;
   google_maps_link: string;
+  tagline?: string;
+  website?: string;
+  currency?: string;
+  timezone?: string;
 }
 
 export interface ClinicMember {

@@ -60,11 +60,15 @@ export async function getClinicInfo(clinicId: string): Promise<ClinicInfo | null
   const c = rows[0];
   return {
       clinic_name: c.name,
-      owner_name: c.owner_email || '', 
+      owner_name: c.owner_email || '',
       phone: c.phone || '',
       address: c.address || '',
-      email: c.owner_email || '',
-      google_maps_link: c.google_maps_link || ''
+      email: c.email || c.owner_email || '',
+      google_maps_link: c.google_maps_link || '',
+      tagline: c.tagline || '',
+      website: c.website || '',
+      currency: c.currency || 'INR',
+      timezone: c.timezone || 'Asia/Kolkata',
   };
 }
 
@@ -72,18 +76,23 @@ export async function updateClinicInfo(clinicId: string, clinicData: Partial<Cli
   if (!clinicId) throw new Error('Clinic ID is required');
   const sql = getDb();
   
-  const { clinic_name, phone, address, google_maps_link } = clinicData;
+  const { clinic_name, phone, address, google_maps_link, tagline, website, email, currency, timezone } = clinicData;
 
   const result = await sql`
     UPDATE clinics SET
       name = ${clinic_name},
       phone = ${phone},
       address = ${address},
-      google_maps_link = ${google_maps_link}
+      google_maps_link = ${google_maps_link},
+      tagline = ${tagline ?? null},
+      website = ${website ?? null},
+      email = ${email ?? null},
+      currency = ${currency ?? 'INR'},
+      timezone = ${timezone ?? 'Asia/Kolkata'}
     WHERE id = ${clinicId}
     RETURNING *
   `;
-  
+
   if (result.length === 0) {
     throw new Error('Clinic not found');
   }
@@ -94,8 +103,12 @@ export async function updateClinicInfo(clinicId: string, clinicData: Partial<Cli
       owner_name: c.owner_email || '',
       phone: c.phone || '',
       address: c.address || '',
-      email: c.owner_email || '',
-      google_maps_link: c.google_maps_link || ''
+      email: c.email || c.owner_email || '',
+      google_maps_link: c.google_maps_link || '',
+      tagline: c.tagline || '',
+      website: c.website || '',
+      currency: c.currency || 'INR',
+      timezone: c.timezone || 'Asia/Kolkata',
   };
 }
 

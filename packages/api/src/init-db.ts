@@ -87,6 +87,11 @@ export async function initializeDatabase() {
       );
     `;
     await sql`ALTER TABLE clinics ADD COLUMN IF NOT EXISTS owner_id TEXT`;
+    await sql`ALTER TABLE clinics ADD COLUMN IF NOT EXISTS tagline TEXT`;
+    await sql`ALTER TABLE clinics ADD COLUMN IF NOT EXISTS website TEXT`;
+    await sql`ALTER TABLE clinics ADD COLUMN IF NOT EXISTS email TEXT`;
+    await sql`ALTER TABLE clinics ADD COLUMN IF NOT EXISTS currency TEXT DEFAULT 'INR'`;
+    await sql`ALTER TABLE clinics ADD COLUMN IF NOT EXISTS timezone TEXT DEFAULT 'Asia/Kolkata'`;
     
     await sql`
       CREATE TABLE IF NOT EXISTS clinic_members (
