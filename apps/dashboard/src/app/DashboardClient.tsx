@@ -10,15 +10,13 @@ import { Appointment } from '@intellident/api';
 
 // ─── Earnings Chart ───────────────────────────────────────────────────────────
 
-function EarningsChart({ visits }: { visits: Visit[] }) {
+function EarningsChart({ visits, numDays }: { visits: Visit[]; numDays: number }) {
   const W = 960, H = 200, P = { t: 16, r: 12, b: 28, l: 44 };
-  const maxY = 20000;
 
-  // Build last 30 days of collected earnings from visits
   const today = new Date();
-  const days = Array.from({ length: 30 }, (_, i) => {
+  const days = Array.from({ length: numDays }, (_, i) => {
     const d = new Date(today);
-    d.setDate(today.getDate() - 29 + i);
+    d.setDate(today.getDate() - (numDays - 1) + i);
     return d.toISOString().split('T')[0];
   });
 
@@ -31,9 +29,13 @@ function EarningsChart({ visits }: { visits: Visit[] }) {
     return map;
   }, [visits]);
 
+  const vals = days.map(d => byDay[d] || 0);
+  const maxRaw = Math.max(...vals, 1);
+  const maxY = Math.ceil(maxRaw / 1000) * 1000 || 1000;
+
   const points = days.map((d, i) => {
     const val = byDay[d] || 0;
-    const x = P.l + i * ((W - P.l - P.r) / 29);
+    const x = P.l + i * ((W - P.l - P.r) / Math.max(numDays - 1, 1));
     const y = P.t + (H - P.t - P.b) * (1 - Math.min(val, maxY) / maxY);
     return { x, y, val, d };
   });
@@ -51,18 +53,19 @@ function EarningsChart({ visits }: { visits: Visit[] }) {
       </defs>
       {[0, 0.25, 0.5, 0.75, 1].map(t => {
         const y = P.t + (H - P.t - P.b) * (1 - t);
+        const label = maxY >= 1000 ? `₹${Math.round(maxY * t / 1000)}k` : `₹${Math.round(maxY * t)}`;
         return (
           <g key={t}>
             <line x1={P.l} y1={y} x2={W - P.r} y2={y} stroke="currentColor" strokeWidth="1" className="text-gray-100 dark:text-gray-800" />
             <text x={P.l - 6} y={y + 3} textAnchor="end" fontSize="9" fill="#9ca3af" fontWeight="600">
-              ₹{Math.round(maxY * t / 1000)}k
+              {label}
             </text>
           </g>
         );
       })}
-      {[0, 7, 14, 21, 29].map(i => (
-        <text key={i} x={points[i].x} y={H - 8} textAnchor="middle" fontSize="9" fill="#9ca3af" fontWeight="600">
-          {i === 29 ? 'Today' : days[i].slice(5).replace('-', '/')}
+      {[0, Math.floor((numDays - 1) / 3), Math.floor((numDays - 1) * 2 / 3), numDays - 1].map(i => (
+        <text key={i} x={points[i]?.x} y={H - 8} textAnchor="middle" fontSize="9" fill="#9ca3af" fontWeight="600">
+          {i === numDays - 1 ? 'Today' : days[i]?.slice(5).replace('-', '/')}
         </text>
       ))}
       <path d={fillPath} fill="url(#grad-earn)" />
@@ -333,7 +336,7 @@ export default function DashboardClient() {
                 ))}
               </div>
             </div>
-            {loadingVisits ? <Skeleton className="h-48 w-full" /> : <EarningsChart visits={chartVisits} />}
+            {loadingVisits ? <Skeleton className="h-48 w-full" /> : <EarningsChart visits={chartVisits} numDays={chartSeg === '7D' ? 7 : chartSeg === '3M' ? 90 : 30} />}
             <div className="grid grid-cols-3 gap-3 mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
               <div>
                 <div className="text-base font-black text-green-600 dark:text-green-400 tracking-tight">{fmt(stats.revenueMonth)}</div>

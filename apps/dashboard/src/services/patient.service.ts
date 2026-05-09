@@ -45,7 +45,7 @@ export async function getPatientByIdWithVisits(clinicId: string, patientId: stri
 
   const sql = getDb();
   const cId = parseInt(clinicId);
-  const patientRows = await sql`SELECT id, patient_id, name, age, gender, phone_number, patient_type, created_at, clinic_id FROM patients WHERE patient_id = ${patientId} AND clinic_id = ${cId} AND is_active = TRUE`;
+  const patientRows = await sql`SELECT id, patient_id, name, age, gender, phone_number, patient_type, referral_source, created_at, clinic_id FROM patients WHERE patient_id = ${patientId} AND clinic_id = ${cId} AND is_active = TRUE`;
   
   if (patientRows.length === 0) return null;
   

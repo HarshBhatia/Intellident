@@ -28,7 +28,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
   const tabFromUrl = searchParams.get('tab') as TabKey | null;
 
   const [patientId, setPatientId] = useState<string | null>(null);
-  const [patient, setPatient] = useState<(Patient & { doctors: { id: number; name: string }[] }) | null>(null);
+  const [patient, setPatient] = useState<(Patient & { doctors: { id: number; name: string; user_email: string }[] }) | null>(null);
   const doctors = patient?.doctors || [];
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabKey>(
@@ -66,6 +66,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
     billing_items: [],
   });
   const [selectedDoctors, setSelectedDoctors] = useState<string[]>([]);
+  const [doctorDropdownOpen, setDoctorDropdownOpen] = useState(false);
   const [editPatient, setEditPatient] = useState<Partial<Patient>>({});
 
   const isFormDirty = useMemo(() => {
@@ -285,6 +286,11 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
               <span className="bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
                 {patient.patient_type || 'Patient'}
               </span>
+              {patient.referral_source && (
+                <span className="bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                  {patient.referral_source}
+                </span>
+              )}
             </div>
           </div>
 
@@ -443,10 +449,35 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                                 </span>
                               ))}
                             </div>
-                            <select value="" onChange={e => { const d = e.target.value; if (d && !selectedDoctors.includes(d)) setSelectedDoctors(p => [...p, d]); }} className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm">
-                              <option value="">+ Add doctor</option>
-                              {doctors.filter(d => !selectedDoctors.includes(d.name)).map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
-                            </select>
+                            <div className="relative">
+                              <button
+                                type="button"
+                                onClick={() => setDoctorDropdownOpen(o => !o)}
+                                className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-left flex items-center justify-between"
+                              >
+                                <span className="text-gray-400 dark:text-gray-500">+ Add doctor</span>
+                                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                              </button>
+                              {doctorDropdownOpen && (
+                                <div className="absolute z-20 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg overflow-hidden">
+                                  {doctors.filter(d => !selectedDoctors.includes(d.name)).length === 0 ? (
+                                    <div className="px-3 py-2 text-sm text-gray-400">No more doctors</div>
+                                  ) : (
+                                    doctors.filter(d => !selectedDoctors.includes(d.name)).map(d => (
+                                      <button
+                                        key={d.id}
+                                        type="button"
+                                        onClick={() => { setSelectedDoctors(p => [...p, d.name]); setDoctorDropdownOpen(false); }}
+                                        className="w-full px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-700 flex flex-col"
+                                      >
+                                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{d.name}</span>
+                                        <span className="text-xs text-gray-400">{d.user_email}</span>
+                                      </button>
+                                    ))
+                                  )}
+                                </div>
+                              )}
+                            </div>
                           </div>
                           <div>
                             <label className="block text-[10px] font-black text-gray-400 uppercase mb-1">Clinical findings</label>
