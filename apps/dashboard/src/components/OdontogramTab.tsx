@@ -184,6 +184,13 @@ function ToothSVG({
         {whole === 'sensitive' && !state?.surfaces && (
           <text x="18" y="32" textAnchor="middle" fontSize="11" fontWeight="700" fill={wholeColor!}>S</text>
         )}
+        {whole === 'bridge' && (
+          <g fill={wholeColor!} opacity="0.85">
+            <rect x="0" y={isUpper ? 0 : 44} width="36" height="12" />
+            <rect x="0" y="22" width="36" height="12" rx="2" opacity="0.5" />
+            <line x1="0" y1={isUpper ? 6 : 50} x2="36" y2={isUpper ? 6 : 50} stroke="rgba(255,255,255,0.4)" strokeWidth="1.5" />
+          </g>
+        )}
       </g>
       <path
         d="M8 4 Q4 4 4 12 L4 38 Q4 46 8 50 Q12 54 18 54 Q24 54 28 50 Q32 46 32 38 L32 12 Q32 4 28 4 Q24 2 18 2 Q12 2 8 4 Z"
@@ -422,13 +429,12 @@ export default function OdontogramTab({ patientId, visits }: OdontogramTabProps)
     if (el && chartRef.current) {
       const elRect = el.getBoundingClientRect();
       const containerRect = chartRef.current.getBoundingClientRect();
-      const scrollY = window.scrollY;
       setPopover({
         tooth: toothNum,
         surface,
         position: {
           x: Math.max(0, Math.min(elRect.left - containerRect.left + elRect.width / 2 - 130, containerRect.width - 270)),
-          y: elRect.bottom - containerRect.top + scrollY + 6,
+          y: elRect.bottom - containerRect.top + 6,
         },
       });
     }
@@ -553,14 +559,14 @@ export default function OdontogramTab({ patientId, visits }: OdontogramTabProps)
           <div className="bg-gradient-to-b from-gray-50/80 to-gray-50 dark:from-gray-800/50 dark:to-gray-800/30 border border-gray-100 dark:border-gray-700/50 rounded-xl p-5 my-3 relative">
             {/* Upper jaw */}
             <div className="grid gap-6" style={{ gridTemplateColumns: '1fr 1fr' }}>
-              {renderQuadrant('Q1', FDI_TEETH.Q1, true)}
+              {renderQuadrant('Q1', FDI_TEETH.Q1, false)}
               {renderQuadrant('Q2', FDI_TEETH.Q2, false)}
             </div>
             {/* Midline divider */}
             <div className="my-5 border-t border-dashed border-gray-200 dark:border-gray-700" />
             {/* Lower jaw */}
             <div className="grid gap-6" style={{ gridTemplateColumns: '1fr 1fr' }}>
-              {renderQuadrant('Q4', FDI_TEETH.Q4, true)}
+              {renderQuadrant('Q4', FDI_TEETH.Q4, false)}
               {renderQuadrant('Q3', FDI_TEETH.Q3, false)}
             </div>
           </div>
