@@ -18,7 +18,7 @@ export default function PatientsClient() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [view, setView] = useState<'list' | 'add'>(searchParams.get('add') === 'true' ? 'add' : 'list');
+  const [view, setView] = useState<'list' | 'add'>(searchParams.get('add') === 'true' || searchParams.get('new') === '1' ? 'add' : 'list');
 
   const fetchPatients = useCallback(async () => {
     try {

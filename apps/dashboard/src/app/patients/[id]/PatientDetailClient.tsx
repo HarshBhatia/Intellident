@@ -67,6 +67,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
   });
   const [selectedDoctors, setSelectedDoctors] = useState<string[]>([]);
   const [doctorDropdownOpen, setDoctorDropdownOpen] = useState(false);
+  const [paidTouched, setPaidTouched] = useState(false);
   const [editPatient, setEditPatient] = useState<Partial<Patient>>({});
 
   const isFormDirty = useMemo(() => {
@@ -161,6 +162,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
         showToast('Visit saved!', 'success');
         setEditingVisitId(null);
         setSelectedDoctors([]);
+        setPaidTouched(false);
         fetchPatient();
       } else { setPatient(prev); setShowVisitForm(true); }
     } catch { setPatient(prev); setShowVisitForm(true); }
@@ -172,6 +174,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
     setEditingVisitId(visit.id);
     setShowManualFields(true);
     setSelectedDoctors(visit.doctor ? visit.doctor.split(',').map(d => d.trim()).filter(Boolean) : []);
+    setPaidTouched(true);
     setNewVisit({ date: visit.date, doctor: visit.doctor, visit_type: visit.visit_type || 'Consultation', clinical_findings: visit.clinical_findings || '', procedure_notes: visit.procedure_notes || '', tooth_number: visit.tooth_number || '', medicine_prescribed: visit.medicine_prescribed || '', dentition_type: visit.dentition_type || 'Adult', cost: Number(visit.cost), paid: Number(visit.paid || 0), xrays: visit.xrays || '[]', billing_items: visit.billing_items || [] });
     setShowVisitForm(true);
     setTab('visits');
@@ -302,7 +305,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
               Edit profile
             </button>
             <button
-              onClick={() => { setShowVisitForm(true); setEditingVisitId(null); setShowManualFields(true); setSmartNote(''); setNewVisit({ date: new Date().toISOString().split('T')[0], doctor: '', visit_type: 'Consultation', clinical_findings: '', procedure_notes: '', tooth_number: '', dentition_type: 'Adult', cost: 0, paid: 0, xrays: '[]', billing_items: [] }); setSelectedDoctors([]); setTab('visits'); }}
+              onClick={() => { setShowVisitForm(true); setEditingVisitId(null); setShowManualFields(true); setSmartNote(''); setPaidTouched(false); setNewVisit({ date: new Date().toISOString().split('T')[0], doctor: '', visit_type: 'Consultation', clinical_findings: '', procedure_notes: '', tooth_number: '', dentition_type: 'Adult', cost: 0, paid: 0, xrays: '[]', billing_items: [] }); setSelectedDoctors([]); setTab('visits'); }}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow transition-colors">
               <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
               New visit
@@ -492,14 +495,14 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                               <label className="block text-[10px] font-black text-gray-400 uppercase mb-1">Total cost (₹)</label>
                               <div className="relative">
                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">₹</span>
-                                <input type="number" value={newVisit.cost || ''} onChange={e => { const cost = e.target.value === '' ? 0 : Number(e.target.value); setNewVisit(p => ({ ...p, cost, paid: (p.paid === 0 || !p.paid) && cost > 0 ? cost : p.paid })); }} className="w-full pl-7 pr-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="0" min="0" />
+                                <input type="number" value={newVisit.cost || ''} onChange={e => { const cost = e.target.value === '' ? 0 : Number(e.target.value); setNewVisit(p => ({ ...p, cost, paid: paidTouched ? p.paid : cost })); }} className="w-full pl-7 pr-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="0" min="0" />
                               </div>
                             </div>
                             <div>
                               <label className="block text-[10px] font-black text-gray-400 uppercase mb-1">Paid (₹)</label>
                               <div className="relative">
                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">₹</span>
-                                <input type="number" value={newVisit.paid || ''} onChange={e => setNewVisit(p => ({ ...p, paid: e.target.value === '' ? 0 : Number(e.target.value) }))} className="w-full pl-7 pr-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="0" min="0" />
+                                <input type="number" value={newVisit.paid || ''} onChange={e => { setPaidTouched(true); setNewVisit(p => ({ ...p, paid: e.target.value === '' ? 0 : Number(e.target.value) })); }} className="w-full pl-7 pr-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="0" min="0" />
                               </div>
                             </div>
                           </div>
@@ -519,7 +522,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
 
               <VisitsTab
                 visits={patient.visits || []}
-                onNewVisit={() => { setShowVisitForm(true); setEditingVisitId(null); setShowManualFields(true); setSmartNote(''); setNewVisit({ date: new Date().toISOString().split('T')[0], doctor: '', visit_type: 'Consultation', clinical_findings: '', procedure_notes: '', tooth_number: '', dentition_type: 'Adult', cost: 0, paid: 0, xrays: '[]', billing_items: [] }); setSelectedDoctors([]); }}
+                onNewVisit={() => { setShowVisitForm(true); setEditingVisitId(null); setShowManualFields(true); setSmartNote(''); setPaidTouched(false); setNewVisit({ date: new Date().toISOString().split('T')[0], doctor: '', visit_type: 'Consultation', clinical_findings: '', procedure_notes: '', tooth_number: '', dentition_type: 'Adult', cost: 0, paid: 0, xrays: '[]', billing_items: [] }); setSelectedDoctors([]); }}
                 onEditVisit={handleEditVisit}
                 onDeleteVisit={handleDeleteVisit}
               />
