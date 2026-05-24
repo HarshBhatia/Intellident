@@ -87,7 +87,7 @@ export default function PatientsClient() {
 
   // Stats
   const stats = useMemo(() => {
-    const totalDues = patients.reduce((s, p) => s + (p.balance ?? 0), 0);
+    const totalDues = patients.reduce((s, p) => s + Math.max(0, Number(p.balance) || 0), 0);
     const upcoming = patients.filter(p => p.next_visit).length;
     const inactive = patients.filter(p => p.last_visit && (Date.now() - new Date(p.last_visit).getTime()) > 180 * 86400000).length;
     return { total: patients.length, upcoming, totalDues, inactive };
@@ -129,7 +129,7 @@ export default function PatientsClient() {
             {[
               { label: 'Total patients', val: stats.total, sub: null, color: 'blue', icon: <IcUsers /> },
               { label: 'Upcoming appointments', val: stats.upcoming, sub: null, color: 'green', icon: <IcCal /> },
-              { label: 'Total outstanding', val: `₹${stats.totalDues.toLocaleString('en-IN')}`, sub: null, color: 'red', icon: <IcRupee /> },
+              { label: 'Total outstanding', val: `₹${Math.round(stats.totalDues).toLocaleString('en-IN')}`, sub: null, color: 'red', icon: <IcRupee /> },
               { label: 'Inactive 6+ months', val: stats.inactive, sub: null, color: 'amber', icon: <IcAlert /> },
             ].map(s => (
               <div key={s.label} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl px-4 py-3.5 flex items-center gap-3 cursor-default hover:-translate-y-0.5 hover:shadow-md transition-all">
@@ -139,9 +139,9 @@ export default function PatientsClient() {
                   ${s.color === 'red' ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400' : ''}
                   ${s.color === 'amber' ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400' : ''}
                 `}>{s.icon}</div>
-                <div>
-                  <div className="text-[19px] font-black text-gray-900 dark:text-white tracking-tight leading-none">{s.val}</div>
-                  <div className="text-[11px] text-gray-400 font-semibold mt-1">{s.label}</div>
+                <div className="min-w-0">
+                  <div className="text-[19px] font-black text-gray-900 dark:text-white tracking-tight leading-none truncate">{s.val}</div>
+                  <div className="text-[11px] text-gray-400 font-semibold mt-1 truncate">{s.label}</div>
                 </div>
               </div>
             ))}
