@@ -18,6 +18,7 @@ interface Condition {
 interface ToothState {
   surfaces?: { [surface: string]: ConditionKey };
   whole?: ConditionKey;
+  notes?: string;
 }
 
 type OdontogramMap = { [toothNum: number]: ToothState };
@@ -283,14 +284,45 @@ function SurfacePopover({
   );
 }
 
+// ─── NoteEditor ───────────────────────────────────────────────────────────────
+
+function NoteEditor({ tooth, note, onSave }: { tooth: number; note: string; onSave: (tooth: number, note: string) => void }) {
+  const [draft, setDraft] = useState(note);
+  const saved = draft === note;
+
+  // Reset draft when tooth changes
+  useEffect(() => { setDraft(note); }, [tooth, note]);
+
+  return (
+    <div>
+      <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Notes</div>
+      <textarea
+        className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg text-xs text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-800 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+        rows={3}
+        placeholder="Add a note for this tooth..."
+        value={draft}
+        onChange={e => setDraft(e.target.value)}
+      />
+      <button
+        onClick={() => onSave(tooth, draft)}
+        disabled={saved}
+        className="mt-2 w-full py-1.5 text-xs font-semibold rounded-lg transition-colors disabled:opacity-40 disabled:cursor-default bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 dark:disabled:bg-gray-700 text-white disabled:text-gray-400"
+      >
+        {saved ? 'Saved' : 'Save note'}
+      </button>
+    </div>
+  );
+}
+
 // ─── SidePanel ────────────────────────────────────────────────────────────────
 
 function SidePanel({
-  selectedTooth, state, highlightedVisit,
+  selectedTooth, state, highlightedVisit, onSaveNote,
 }: {
   selectedTooth: number | null;
   state?: ToothState;
   highlightedVisit: Visit | null;
+  onSaveNote: (tooth: number, note: string) => void;
 }) {
   if (!selectedTooth) {
     return (
@@ -361,14 +393,7 @@ function SidePanel({
         </div>
 
         {/* Notes */}
-        <div>
-          <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Notes</div>
-          <textarea
-            className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg text-xs text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-800 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-            rows={3}
-            placeholder="Add a note for this tooth..."
-          />
-        </div>
+        <NoteEditor tooth={selectedTooth!} note={state?.notes || ''} onSave={onSaveNote} />
       </div>
     </div>
   );
@@ -438,6 +463,13 @@ export default function OdontogramTab({ patientId, visits }: OdontogramTabProps)
         },
       });
     }
+  };
+
+  const handleSaveNote = (tooth: number, note: string) => {
+    setOdonState(prev => ({
+      ...prev,
+      [tooth]: { ...(prev[tooth] ?? {}), notes: note || undefined },
+    }));
   };
 
   const handlePick = ({ scope, value }: { scope: 'surface' | 'whole' | 'clear'; value?: ConditionKey }) => {
@@ -674,6 +706,7 @@ export default function OdontogramTab({ patientId, visits }: OdontogramTabProps)
           selectedTooth={selectedTooth}
           state={selectedTooth ? odonState[selectedTooth] : undefined}
           highlightedVisit={highlightedVisit}
+          onSaveNote={handleSaveNote}
         />
       </div>
     </div>

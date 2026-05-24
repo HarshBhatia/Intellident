@@ -17,24 +17,27 @@ export async function getPatients(clinicId: string): Promise<Patient[]> {
   const sql = getDb();
   const cId = parseInt(clinicId);
   
-  // Optimized: Use LEFT JOIN with GROUP BY instead of correlated subquery
   const rows = await sql`
-    SELECT 
-      p.id, 
-      p.patient_id, 
-      p.name, 
-      p.age, 
-      p.gender, 
-      p.phone_number, 
-      p.patient_type, 
-      p.created_at, 
+    SELECT
+      p.id,
+      p.patient_id,
+      p.name,
+      p.age,
+      p.gender,
+      p.phone_number,
+      p.patient_type,
+      p.created_at,
       p.clinic_id,
-      MAX(v.date) as last_visit
+      MAX(v.date) as last_visit,
+      COUNT(v.id) as visit_count,
+      COALESCE(SUM(v.cost), 0) - COALESCE(SUM(v.paid), 0) as balance,
+      COALESCE(SUM(v.paid), 0) as lifetime_value,
+      (SELECT a.date FROM appointments a WHERE a.patient_id = p.id AND a.clinic_id = ${cId} AND a.status IN ('SCHEDULED', 'CONFIRMED') AND a.date >= TO_CHAR(CURRENT_DATE, 'YYYY-MM-DD') ORDER BY a.date ASC, a.start_time ASC LIMIT 1) as next_visit
     FROM patients p
     LEFT JOIN visits v ON v.patient_id = p.id AND v.clinic_id = ${cId}
     WHERE p.clinic_id = ${cId} AND p.is_active = TRUE
     GROUP BY p.id, p.patient_id, p.name, p.age, p.gender, p.phone_number, p.patient_type, p.created_at, p.clinic_id
-    ORDER BY p.created_at DESC
+    ORDER BY last_visit DESC NULLS LAST, p.created_at DESC
   `;
   return rows as Patient[];
 }

@@ -1,14 +1,16 @@
 import { NextResponse } from 'next/server';
-import { getAuthContext, getClinicId, verifyMembership } from './auth';
-
-// ============================================================================
-// Types
-// ============================================================================
+import { getAuthContext, getClinicId, verifyMembership, getMemberRole } from './auth';
+import { type Permission, type Role, hasPermission } from './permissions';
 
 export interface AuthenticatedContext {
   userId: string;
   userEmail: string;
   clinicId: string;
+  userRole: Role | null;
+}
+
+export interface AuthOptions {
+  requiredPermission?: Permission;
 }
 
 type ApiHandler<T = any> = (
@@ -16,49 +18,32 @@ type ApiHandler<T = any> = (
   context: AuthenticatedContext
 ) => Promise<NextResponse<T> | NextResponse>;
 
-// ============================================================================
-// API Handler Wrapper
-// ============================================================================
-
-/**
- * Wraps an API route handler with authentication and authorization checks.
- * Automatically handles:
- * - User authentication (Clerk)
- * - Clinic context validation
- * - Clinic membership verification
- * - Error handling
- * 
- * @param handler - The actual API route logic
- * @returns A wrapped handler with auth checks
- * 
- * @example
- * export const GET = withAuth(async (request, { clinicId }) => {
- *   const data = await getData(clinicId);
- *   return NextResponse.json(data);
- * });
- */
-export function withAuth<T = any>(handler: ApiHandler<T>) {
+export function withAuth<T = any>(handler: ApiHandler<T>, options?: AuthOptions) {
   return async (request: Request, routeParams?: any) => {
     try {
-      // 1. Authenticate user
       const { userId, userEmail } = await getAuthContext();
       if (!userId) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
       }
 
-      // 2. Get clinic context
       const clinicId = await getClinicId();
       if (!clinicId) {
         return NextResponse.json({ error: 'No clinic selected' }, { status: 400 });
       }
 
-      // 3. Verify clinic membership
       if (!userEmail || !(await verifyMembership(clinicId, userEmail, userId))) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       }
 
-      // 4. Call the actual handler with authenticated context
-      const context: AuthenticatedContext = { userId, userEmail, clinicId };
+      let userRole: Role | null = null;
+      if (options?.requiredPermission) {
+        userRole = (await getMemberRole(clinicId, userEmail, userId)) as Role | null;
+        if (!hasPermission(userRole, options.requiredPermission)) {
+          return NextResponse.json({ error: 'Forbidden: insufficient permissions' }, { status: 403 });
+        }
+      }
+
+      const context: AuthenticatedContext = { userId, userEmail, clinicId, userRole };
       return await handler(request, context);
     } catch (error: any) {
       return NextResponse.json(
@@ -69,25 +54,11 @@ export function withAuth<T = any>(handler: ApiHandler<T>) {
   };
 }
 
-/**
- * Wraps an API route handler with only authentication (no clinic context required).
- * Useful for routes like /api/clinics that don't require a clinic to be selected.
- * 
- * @param handler - The actual API route logic
- * @returns A wrapped handler with auth checks
- * 
- * @example
- * export const GET = withAuthOnly(async (userId, userEmail, request) => {
- *   const clinics = await getClinics(userEmail);
- *   return NextResponse.json(clinics);
- * });
- */
 export function withAuthOnly<T = any>(
   handler: (userId: string, userEmail: string, request: Request, params?: any) => Promise<NextResponse<T> | NextResponse>
 ) {
   return async (request: Request, routeParams?: any) => {
     try {
-      // Authenticate user
       const { userId, userEmail } = await getAuthContext();
       if (!userId) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -96,7 +67,6 @@ export function withAuthOnly<T = any>(
         return NextResponse.json({ error: 'User email not found' }, { status: 400 });
       }
 
-      // Call the actual handler
       return await handler(userId, userEmail, request, routeParams);
     } catch (error: any) {
       return NextResponse.json(

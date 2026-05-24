@@ -69,14 +69,18 @@ export async function getClinicInfo(clinicId: string): Promise<ClinicInfo | null
       website: c.website || '',
       currency: c.currency || 'INR',
       timezone: c.timezone || 'Asia/Kolkata',
+      gstin: c.gstin || '',
+      pan: c.pan || '',
+      gst_rate: c.gst_rate != null ? Number(c.gst_rate) : 18,
+      state_code: c.state_code || '',
   };
 }
 
 export async function updateClinicInfo(clinicId: string, clinicData: Partial<ClinicInfo>): Promise<ClinicInfo> {
   if (!clinicId) throw new Error('Clinic ID is required');
   const sql = getDb();
-  
-  const { clinic_name, phone, address, google_maps_link, tagline, website, email, currency, timezone } = clinicData;
+
+  const { clinic_name, phone, address, google_maps_link, tagline, website, email, currency, timezone, gstin, pan, gst_rate, state_code } = clinicData;
 
   const result = await sql`
     UPDATE clinics SET
@@ -88,7 +92,11 @@ export async function updateClinicInfo(clinicId: string, clinicData: Partial<Cli
       website = ${website ?? null},
       email = ${email ?? null},
       currency = ${currency ?? 'INR'},
-      timezone = ${timezone ?? 'Asia/Kolkata'}
+      timezone = ${timezone ?? 'Asia/Kolkata'},
+      gstin = ${gstin ?? null},
+      pan = ${pan ?? null},
+      gst_rate = ${gst_rate ?? 18},
+      state_code = ${state_code ?? null}
     WHERE id = ${clinicId}
     RETURNING *
   `;
@@ -109,7 +117,24 @@ export async function updateClinicInfo(clinicId: string, clinicData: Partial<Cli
       website: c.website || '',
       currency: c.currency || 'INR',
       timezone: c.timezone || 'Asia/Kolkata',
+      gstin: c.gstin || '',
+      pan: c.pan || '',
+      gst_rate: c.gst_rate != null ? Number(c.gst_rate) : 18,
+      state_code: c.state_code || '',
   };
+}
+
+export async function incrementInvoiceCounter(clinicId: string): Promise<number> {
+  if (!clinicId) throw new Error('Clinic ID is required');
+  const sql = getDb();
+  const result = await sql`
+    UPDATE clinics
+    SET invoice_counter = invoice_counter + 1
+    WHERE id = ${clinicId}
+    RETURNING invoice_counter
+  `;
+  if (result.length === 0) throw new Error('Clinic not found');
+  return result[0].invoice_counter as number;
 }
 
 // ============================================================================

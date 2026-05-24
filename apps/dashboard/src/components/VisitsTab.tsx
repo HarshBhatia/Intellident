@@ -8,6 +8,9 @@ interface VisitsTabProps {
   onNewVisit: () => void;
   onEditVisit: (visit: Visit) => void;
   onDeleteVisit: (id: number) => void;
+  onCollect?: (visit: Visit, amount: number) => void;
+  canEdit?: boolean;
+  canDelete?: boolean;
 }
 
 type FilterKey = 'all' | 'completed' | 'pending' | 'unpaid';
@@ -28,13 +31,16 @@ function formatDate(dateStr: string) {
 
 
 function VisitCard({
-  visit, expanded, onToggle, onEdit, onDelete,
+  visit, expanded, onToggle, onEdit, onDelete, onCollect, canEdit, canDelete,
 }: {
   visit: Visit;
   expanded: boolean;
   onToggle: () => void;
   onEdit: (v: Visit) => void;
   onDelete: (id: number) => void;
+  onCollect?: (visit: Visit, amount: number) => void;
+  canEdit: boolean;
+  canDelete: boolean;
 }) {
   const date = formatDate(visit.date);
   const cost = Number(visit.cost || 0);
@@ -238,8 +244,10 @@ function VisitCard({
                     ₹{Math.max(0, due).toLocaleString('en-IN')}
                   </span>
                 </div>
-                {due > 0 && (
-                  <button className="w-full mt-2 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition-colors">
+                {due > 0 && onCollect && (
+                  <button
+                    onClick={() => { if (confirm(`Collect ₹${due.toLocaleString('en-IN')} for this visit?`)) onCollect(visit, due); }}
+                    className="w-full mt-2 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition-colors">
                     Collect ₹{due.toLocaleString('en-IN')}
                   </button>
                 )}
@@ -265,7 +273,7 @@ function VisitCard({
   );
 }
 
-export default function VisitsTab({ visits, onNewVisit, onEditVisit, onDeleteVisit }: VisitsTabProps) {
+export default function VisitsTab({ visits, onNewVisit, onEditVisit, onDeleteVisit, onCollect }: VisitsTabProps) {
   const [expanded, setExpanded] = useState<number | null>(visits[0]?.id ?? null);
   const [filter, setFilter] = useState<FilterKey>('all');
   const [search, setSearch] = useState('');
@@ -354,6 +362,9 @@ export default function VisitsTab({ visits, onNewVisit, onEditVisit, onDeleteVis
               onToggle={() => setExpanded(expanded === v.id ? null : (v.id ?? null))}
               onEdit={onEditVisit}
               onDelete={onDeleteVisit}
+              onCollect={onCollect}
+              canEdit={true}
+              canDelete={true}
             />
           ))
         )}

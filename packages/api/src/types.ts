@@ -5,6 +5,9 @@
 export interface BillingItem {
   description: string;
   amount: number;
+  qty?: number;
+  unit_price?: number;
+  hsn_code?: string;
 }
 
 export interface XRay {
@@ -49,6 +52,10 @@ export interface Patient {
   referral_source?: string;
   created_at?: string;
   last_visit?: string;
+  next_visit?: string;
+  visit_count?: number;
+  balance?: number;
+  lifetime_value?: number;
   visits?: Visit[];
 }
 
@@ -73,6 +80,10 @@ export interface ClinicInfo {
   website?: string;
   currency?: string;
   timezone?: string;
+  gstin?: string;
+  pan?: string;
+  gst_rate?: number;
+  state_code?: string;
 }
 
 export interface ClinicMember {

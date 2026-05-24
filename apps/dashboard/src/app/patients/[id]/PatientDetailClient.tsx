@@ -180,6 +180,38 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
     setTab('visits');
   };
 
+  const handleDeletePatient = async () => {
+    if (!patientId) return;
+    if (!confirm(`Are you sure you want to delete ${patient?.name || 'this patient'}? This can be undone by an admin.`)) return;
+    try {
+      const res = await fetch(`/api/patients/${patientId}`, { method: 'DELETE' });
+      if (res.ok) {
+        showToast('Patient deleted', 'success');
+        router.push('/patients');
+      } else {
+        const data = await res.json().catch(() => ({}));
+        showToast(data.error || 'Error deleting patient', 'error');
+      }
+    } catch { showToast('Error deleting patient', 'error'); }
+  };
+
+  const handleCollect = async (visit: Visit, amount: number) => {
+    try {
+      const newPaid = Number(visit.paid || 0) + amount;
+      const res = await fetch('/api/visits', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...visit, paid: newPaid, billing_items: JSON.stringify(visit.billing_items || []) }),
+      });
+      if (res.ok) {
+        showToast(`₹${amount.toLocaleString('en-IN')} collected!`, 'success');
+        fetchPatient();
+      } else {
+        showToast('Error collecting payment', 'error');
+      }
+    } catch { showToast('Error collecting payment', 'error'); }
+  };
+
   const handleDeleteVisit = async (visitId: number) => {
     if (!confirm('Delete this visit?')) return;
     try {
@@ -201,7 +233,13 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
     } finally { setUploadingXRay(false); }
   };
 
-  const initials = patient?.name?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || '?';
+  const initials = patient?.name?.split(' ').filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('') || '?';
+  const AVATAR_COLORS = ['#0ea5e9','#6366f1','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#0d9488','#f43f5e','#3b82f6'];
+  const avatarColor = (() => {
+    const id = patient?.patient_id || '';
+    let h = 0; for (const c of id) h = (h * 31 + c.charCodeAt(0)) & 0xffffffff;
+    return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
+  })();
   const totalCost = patient?.visits?.reduce((s, v) => s + Number(v.cost || 0), 0) || 0;
   const totalPaid = patient?.visits?.reduce((s, v) => s + Number(v.paid || 0), 0) || 0;
   const totalDue  = totalCost - totalPaid;
@@ -261,7 +299,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
 
         {/* Breadcrumb */}
         <div className="flex items-center gap-1.5 text-xs text-gray-500 mb-4">
-          <Link href="/" className="hover:text-blue-600 transition-colors">Patients</Link>
+          <Link href="/patients" className="hover:text-blue-600 transition-colors">Patients</Link>
           <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
           <span className="text-gray-800 dark:text-gray-200 font-medium">{patient.name}</span>
         </div>
@@ -269,7 +307,8 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
         {/* Patient header card */}
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl px-6 py-5 mb-4 flex items-center gap-5">
           {/* Avatar */}
-          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-pink-400 to-orange-400 flex items-center justify-center text-white text-xl font-black flex-shrink-0 shadow-sm">
+          <div className="w-14 h-14 rounded-full flex items-center justify-center text-white text-xl font-black flex-shrink-0 shadow-sm"
+            style={{ background: avatarColor }}>
             {initials}
           </div>
 
@@ -299,6 +338,12 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
 
           {/* Actions */}
           <div className="flex items-center gap-2 ml-auto">
+            <button onClick={handleDeletePatient}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-red-500 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors"
+              title="Delete patient">
+              <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+              Delete
+            </button>
             <button onClick={() => setShowEditPatient(true)}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 hover:bg-gray-50 transition-colors">
               <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
@@ -525,6 +570,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                 onNewVisit={() => { setShowVisitForm(true); setEditingVisitId(null); setShowManualFields(true); setSmartNote(''); setPaidTouched(false); setNewVisit({ date: new Date().toISOString().split('T')[0], doctor: '', visit_type: 'Consultation', clinical_findings: '', procedure_notes: '', tooth_number: '', dentition_type: 'Adult', cost: 0, paid: 0, xrays: '[]', billing_items: [] }); setSelectedDoctors([]); }}
                 onEditVisit={handleEditVisit}
                 onDeleteVisit={handleDeleteVisit}
+                onCollect={handleCollect}
               />
             </>
           )}

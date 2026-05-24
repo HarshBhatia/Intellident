@@ -140,9 +140,10 @@ function DonutChart({ visits }: { visits: Visit[] }) {
 
 // ─── KPI Card ─────────────────────────────────────────────────────────────────
 
-function KPICard({ icon, value, label, trend, trendUp, accent }: {
+function KPICard({ icon, value, label, trend, trendUp, accent, onClick }: {
   icon: React.ReactNode; value: string; label: string;
   trend?: string; trendUp?: boolean; accent: 'blue' | 'green' | 'amber' | 'purple';
+  onClick?: () => void;
 }) {
   const accentMap = {
     blue:   { bg: 'bg-blue-50 dark:bg-blue-900/20',   text: 'text-blue-600 dark:text-blue-400' },
@@ -152,7 +153,7 @@ function KPICard({ icon, value, label, trend, trendUp, accent }: {
   };
   const { bg, text } = accentMap[accent];
   return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-4">
+    <div className={`bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 ${onClick ? 'cursor-pointer hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-md transition-all' : ''}`} onClick={onClick}>
       <div className="flex items-center justify-between mb-3">
         <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${bg} ${text}`}>{icon}</div>
         {trend && (
@@ -310,11 +311,12 @@ export default function DashboardClient() {
           <KPICard accent="green" value={isInitialLoad ? '—' : fmt(stats.revenueMonth)} label="Revenue this month"
             icon={<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>}
           />
-          <KPICard accent="amber" value={isInitialLoad ? '—' : String(todayAppts.length || stats.todayVisits)} label="Appointments today"
+          <KPICard accent="amber" value={isInitialLoad ? '—' : String(todayAppts.length)} label="Appointments today"
             icon={<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>}
           />
           <KPICard accent="purple" value={isInitialLoad ? '—' : fmt(stats.outstanding)} label="Outstanding dues"
             trend={stats.outstanding > 0 ? `${fmt(stats.outstanding)} due` : undefined} trendUp={false}
+            onClick={() => router.push('/patients?segment=dues')}
             icon={<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>}
           />
         </div>
@@ -418,8 +420,11 @@ export default function DashboardClient() {
             {loadingPatients ? <Skeleton className="h-40 w-full" /> : stats.recentPatients.length === 0 ? (
               <div className="text-sm text-gray-400 py-4">No patients yet</div>
             ) : stats.recentPatients.map(p => {
-              const avatarColor = `hsl(${[...p.name].reduce((h, c) => h + c.charCodeAt(0), 0) % 360}, 60%, 55%)`;
-              const initials = p.name.split(' ').map(s => s[0]).join('').slice(0, 2).toUpperCase();
+              const AVATAR_COLORS = ['#0ea5e9','#6366f1','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#0d9488','#f43f5e','#3b82f6'];
+              const pid = p.patient_id || '';
+              let h = 0; for (const c of pid) h = (h * 31 + c.charCodeAt(0)) & 0xffffffff;
+              const avatarColor = AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
+              const initials = p.name.split(' ').filter(Boolean).slice(0, 2).map(s => s[0].toUpperCase()).join('');
               const due = (p as Patient & { outstanding?: number }).outstanding;
               return (
                 <div key={p.patient_id} className="flex items-center gap-2.5 py-2.5 border-b border-gray-50 dark:border-gray-800 last:border-0 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/30 rounded-lg px-1 -mx-1 transition"

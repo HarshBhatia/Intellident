@@ -114,7 +114,7 @@ const NAV_CLINIC = [
   { id: 'profile' as SectionId, label: 'Clinic Profile', Icon: BuildingIcon },
   { id: 'members' as SectionId, label: 'Clinic Members', Icon: UsersIcon },
   { id: 'treatments' as SectionId, label: 'Treatments', Icon: ClipboardIcon },
-  { id: 'expenses' as SectionId, label: 'Expense Categories', Icon: MinusCircleIcon },
+  { id: 'expenses' as SectionId, label: 'Expenses', Icon: MinusCircleIcon },
 ];
 const NAV_ACCOUNT = [
   { id: 'preferences' as SectionId, label: 'Preferences', Icon: BellIcon },
@@ -488,7 +488,7 @@ function ClinicProfile() {
       </div>
 
       {/* Sticky save bar */}
-      <div className={`fixed left-0 right-0 bottom-0 z-50 px-6 pb-4 transition-all duration-300 pointer-events-none ${dirty ? 'translate-y-0 opacity-100 pointer-events-auto' : 'translate-y-full opacity-0'}`}>
+      <div className={`fixed left-0 right-0 bottom-0 z-50 px-6 pb-4 transition-all duration-300 ${dirty ? 'translate-y-0 opacity-100 pointer-events-auto' : 'translate-y-full opacity-0 pointer-events-none'}`}>
         <div className="max-w-7xl mx-auto">
           <div className="bg-gray-900 dark:bg-gray-950 text-white rounded-2xl px-5 py-3.5 flex items-center gap-4 shadow-2xl shadow-gray-900/40 border border-white/5">
             <span className="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_0_3px_rgba(251,191,36,0.25)]" />
@@ -720,9 +720,9 @@ export default function SettingsClient() {
           <p className="text-sm text-gray-400 mt-1">Configure how your clinic shows up to patients, staff and the system.</p>
         </div>
 
-        <div className="grid gap-6" style={{ gridTemplateColumns: '200px 1fr' }}>
+        <div className="grid gap-6" style={{ gridTemplateColumns: '220px 1fr' }}>
           {/* Sidebar */}
-          <div className="min-w-0 w-[200px] flex-shrink-0">
+          <div className="min-w-0 w-[220px] flex-shrink-0">
             <SideNav active={active} setActive={setActive} clinicName={clinic?.clinic_name} />
           </div>
 

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getClinicId, getAuthContext, verifyMembership } from '@/lib/auth';
+import { getClinicId, getAuthContext, verifyMembership, getMemberRole } from '@/lib/auth';
+import { hasPermission, type Role } from '@/lib/permissions';
 import { getPatientByIdWithVisits, updatePatient, deletePatient, softDeletePatient } from '@/services/patient.service';
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -69,6 +70,11 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
 
     if (!userEmail || !(await verifyMembership(clinicId, userEmail))) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const role = (await getMemberRole(clinicId, userEmail, userId)) as Role | null;
+    if (!hasPermission(role, 'patients.delete')) {
+      return NextResponse.json({ error: 'Forbidden: insufficient permissions' }, { status: 403 });
     }
 
     const { searchParams } = new URL(request.url);

@@ -21,10 +21,10 @@ export const DELETE = withAuth(async (request: Request, { clinicId }) => {
   if (!id) return NextResponse.json({ error: 'Visit ID is required' }, { status: 400 });
   await deleteVisit(clinicId, id);
   return NextResponse.json({ success: true });
-});
+}, { requiredPermission: 'visits.delete' });
 
 export const PUT = withAuth(async (request: Request, { clinicId }) => {
   const body = await request.json();
   const updatedVisit = await updateVisit(clinicId, body);
   return NextResponse.json(updatedVisit);
-});
+}, { requiredPermission: 'clinical_notes.edit' });

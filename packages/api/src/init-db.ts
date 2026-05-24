@@ -92,6 +92,11 @@ export async function initializeDatabase() {
     await sql`ALTER TABLE clinics ADD COLUMN IF NOT EXISTS email TEXT`;
     await sql`ALTER TABLE clinics ADD COLUMN IF NOT EXISTS currency TEXT DEFAULT 'INR'`;
     await sql`ALTER TABLE clinics ADD COLUMN IF NOT EXISTS timezone TEXT DEFAULT 'Asia/Kolkata'`;
+    await sql`ALTER TABLE clinics ADD COLUMN IF NOT EXISTS gstin TEXT`;
+    await sql`ALTER TABLE clinics ADD COLUMN IF NOT EXISTS pan TEXT`;
+    await sql`ALTER TABLE clinics ADD COLUMN IF NOT EXISTS gst_rate NUMERIC DEFAULT 18`;
+    await sql`ALTER TABLE clinics ADD COLUMN IF NOT EXISTS state_code TEXT`;
+    await sql`ALTER TABLE clinics ADD COLUMN IF NOT EXISTS invoice_counter INTEGER DEFAULT 0`;
     
     await sql`
       CREATE TABLE IF NOT EXISTS clinic_members (
