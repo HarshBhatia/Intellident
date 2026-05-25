@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import ReactMarkdown from 'react-markdown';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -124,7 +125,7 @@ export default function ChatBox() {
 
       {/* Chat panel */}
       {isOpen && (
-        <div className="fixed bottom-24 right-6 z-50 w-[360px] sm:w-[400px] h-[520px] bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-200">
+        <div className="fixed bottom-24 right-6 z-50 w-[440px] sm:w-[500px] h-[620px] bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-200">
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-blue-600 text-white">
             <div>
@@ -193,17 +194,52 @@ export default function ChatBox() {
                 key={i}
                 className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
-                <div
-                  className={`max-w-[85%] px-3 py-2 rounded-2xl text-sm leading-relaxed ${
-                    msg.role === 'user'
-                      ? 'bg-blue-600 text-white rounded-br-md'
-                      : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-bl-md'
-                  }`}
-                >
-                  <div className="whitespace-pre-wrap break-words">
-                    {msg.content}
+                {msg.role === 'user' ? (
+                  <div className="max-w-[85%] px-3 py-2 rounded-2xl rounded-br-md text-sm leading-relaxed bg-blue-600 text-white">
+                    <div className="whitespace-pre-wrap break-words">
+                      {msg.content}
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="max-w-[90%] px-3 py-2 rounded-2xl rounded-bl-md text-sm leading-relaxed bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+                    <div className="chat-markdown break-words">
+                      <ReactMarkdown
+                        components={{
+                          p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                          strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                          ul: ({ children }) => <ul className="list-disc list-inside mb-2 space-y-0.5">{children}</ul>,
+                          ol: ({ children }) => <ol className="list-decimal list-inside mb-2 space-y-0.5">{children}</ol>,
+                          li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+                          code: ({ children, className }) => {
+                            const isBlock = className?.includes('language-');
+                            return isBlock ? (
+                              <pre className="bg-gray-200 dark:bg-gray-700 rounded-lg p-2 my-2 overflow-x-auto text-xs">
+                                <code>{children}</code>
+                              </pre>
+                            ) : (
+                              <code className="bg-gray-200 dark:bg-gray-700 px-1 py-0.5 rounded text-xs">{children}</code>
+                            );
+                          },
+                          h1: ({ children }) => <h1 className="text-base font-bold mb-1">{children}</h1>,
+                          h2: ({ children }) => <h2 className="text-sm font-bold mb-1">{children}</h2>,
+                          h3: ({ children }) => <h3 className="text-sm font-semibold mb-1">{children}</h3>,
+                          table: ({ children }) => (
+                            <div className="overflow-x-auto my-2">
+                              <table className="w-full text-xs border-collapse">{children}</table>
+                            </div>
+                          ),
+                          thead: ({ children }) => <thead className="bg-gray-200 dark:bg-gray-700">{children}</thead>,
+                          th: ({ children }) => <th className="border border-gray-300 dark:border-gray-600 px-2 py-1 text-left font-semibold">{children}</th>,
+                          td: ({ children }) => <td className="border border-gray-300 dark:border-gray-600 px-2 py-1">{children}</td>,
+                          hr: () => <hr className="my-2 border-gray-300 dark:border-gray-600" />,
+                          blockquote: ({ children }) => <blockquote className="border-l-2 border-blue-400 pl-2 my-2 text-gray-600 dark:text-gray-400">{children}</blockquote>,
+                        }}
+                      >
+                        {msg.content}
+                      </ReactMarkdown>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
 
