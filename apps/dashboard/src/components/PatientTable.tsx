@@ -141,7 +141,7 @@ function Checkbox({ checked, indeterminate, onChange }: { checked: boolean; inde
 // ─── Patient cell ─────────────────────────────────────────────────────────────
 function PatientCell({ p }: { p: Patient }) {
   const color = avatarColor(p.patient_id);
-  const isMinor = p.age !== undefined && p.age < 18;
+  const isMinor = p.age != null && p.age > 0 && p.age < 18;
   const isMale = p.gender?.toLowerCase() === 'm' || p.gender?.toLowerCase() === 'male';
   const isFemale = p.gender?.toLowerCase() === 'f' || p.gender?.toLowerCase() === 'female';
   const isNew = !p.last_visit;

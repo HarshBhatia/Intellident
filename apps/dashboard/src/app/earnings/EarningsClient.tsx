@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import Skeleton from '@/components/Skeleton';
 import Navbar from '@/components/Navbar';
+import { useRefreshOnAiWrite } from '@/hooks/useRefreshOnAiWrite';
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'];
 
@@ -48,6 +49,11 @@ export default function EarningsClient() {
         fetchStats(`${selectedYear}-01-01`, `${selectedYear}-12-31`);
     }
   }, [activeTab, dateRange, selectedYear]);
+
+  useRefreshOnAiWrite(() => {
+    if (activeTab === 'categories') fetchStats(dateRange.start, dateRange.end);
+    else fetchStats(`${selectedYear}-01-01`, `${selectedYear}-12-31`);
+  });
 
   const handleDateChange = (field: 'start' | 'end', value: string) => {
     setDateRange(prev => ({ ...prev, [field]: value }));

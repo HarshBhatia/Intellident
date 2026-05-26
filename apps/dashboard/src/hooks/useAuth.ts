@@ -13,7 +13,7 @@ export function useAuth() {
       return acc;
     }, {} as Record<string, string>);
 
-    if (cookies['x-e2e-secret'] === 'e2e-secret-key') {
+    if (cookies['x-e2e-secret'] && cookies['x-e2e-mode'] === 'true') {
       setIsE2E(true);
       setMockUser({
         id: cookies['x-e2e-user-id'] || 'user_e2e_test',

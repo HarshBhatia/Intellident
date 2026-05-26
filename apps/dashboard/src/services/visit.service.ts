@@ -10,16 +10,26 @@ export async function getVisits(clinicId: string, patientId?: string): Promise<V
   const cId = parseInt(clinicId);
   const rows = patientId 
     ? await sql`SELECT *, dentition_type FROM visits WHERE clinic_id = ${cId} AND patient_id = ${patientId} ORDER BY date DESC`
-    : await sql`SELECT v.*, p.name as patient_name FROM visits v JOIN patients p ON v.patient_id = p.id WHERE v.clinic_id = ${cId} ORDER BY v.date DESC LIMIT 50`;
+    : await sql`SELECT v.*, p.name as patient_name FROM visits v JOIN patients p ON v.patient_id = p.id AND p.clinic_id = v.clinic_id WHERE v.clinic_id = ${cId} ORDER BY v.date DESC LIMIT 50`;
   return rows.map((r: any) => ({ ...r, billing_items: parseBillingItems(r.billing_items) })) as Visit[];
 }
 
 export async function createVisit(clinicId: string, data: any): Promise<Visit> {
+  if (!data.patient_id) throw new Error('patient_id is required');
+  if (!data.date) throw new Error('date is required');
+  if (!data.clinical_findings?.trim()) throw new Error('clinical_findings is required');
+  if (!data.doctor?.trim()) throw new Error('doctor is required');
   if (data.date && new Date(data.date) > new Date()) {
     throw new Error('Visit date cannot be in the future');
   }
   const sql = getDb();
   const cId = parseInt(clinicId);
+
+  // Verify patient belongs to this clinic
+  if (data.patient_id) {
+    const patient = await sql`SELECT id FROM patients WHERE id = ${data.patient_id} AND clinic_id = ${cId}`;
+    if (patient.length === 0) throw new Error('Patient not found in this clinic');
+  }
   const billingItemsArray = typeof data.billing_items === 'string' ? parseBillingItems(data.billing_items) : (data.billing_items || []);
   const cost = billingItemsArray.reduce((s: number, i: any) => s + Number(i.amount), 0) || data.cost || 0;
   const result = await sql`

@@ -14,14 +14,14 @@ export async function getAppointmentsByDate(
     ? await sql`
         SELECT a.*, p.name as patient_name
         FROM appointments a
-        LEFT JOIN patients p ON a.patient_id = p.id
+        LEFT JOIN patients p ON a.patient_id = p.id AND p.clinic_id = a.clinic_id
         WHERE a.clinic_id = ${cId} AND a.date = ${date} AND a.doctor_email = ${doctorEmail}
         ORDER BY a.start_time ASC
       `
     : await sql`
         SELECT a.*, p.name as patient_name
         FROM appointments a
-        LEFT JOIN patients p ON a.patient_id = p.id
+        LEFT JOIN patients p ON a.patient_id = p.id AND p.clinic_id = a.clinic_id
         WHERE a.clinic_id = ${cId} AND a.date = ${date}
         ORDER BY a.start_time ASC
       `;
@@ -38,6 +38,12 @@ export async function createAppointment(
 
   if (!data.date || !data.start_time || !data.end_time) {
     throw new Error('Date, start time, and end time are required');
+  }
+
+  // Verify patient belongs to this clinic
+  if (data.patient_id) {
+    const patient = await sql`SELECT id FROM patients WHERE id = ${data.patient_id} AND clinic_id = ${cId}`;
+    if (patient.length === 0) throw new Error('Patient not found in this clinic');
   }
 
   if (data.start_time >= data.end_time) {

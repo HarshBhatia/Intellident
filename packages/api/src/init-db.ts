@@ -208,6 +208,22 @@ export async function initializeDatabase() {
       // Table doesn't exist or can't be dropped
     }
 
+    // 9. Enforce NOT NULL on clinic_id and add FK constraints for tenant isolation
+    for (const table of ['patients', 'expenses']) {
+      try {
+        // Backfill: remove any orphaned rows with NULL clinic_id
+        await sql.unsafe(`DELETE FROM ${table} WHERE clinic_id IS NULL`);
+        await sql.unsafe(`ALTER TABLE ${table} ALTER COLUMN clinic_id SET NOT NULL`);
+      } catch (err) {
+        // Already NOT NULL
+      }
+      try {
+        await sql.unsafe(`ALTER TABLE ${table} ADD CONSTRAINT ${table}_clinic_fk FOREIGN KEY (clinic_id) REFERENCES clinics(id) ON DELETE CASCADE`);
+      } catch (err) {
+        // FK already exists
+      }
+    }
+
     return { success: true, message: 'Database initialized successfully' };
   } catch (error: any) {
     return { success: false, error: error.message };

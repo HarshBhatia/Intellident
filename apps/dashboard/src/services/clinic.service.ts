@@ -14,7 +14,7 @@ export async function getClinics(userEmail: string): Promise<Clinic[]> {
     SELECT c.id, c.name, cm.role 
     FROM clinics c
     JOIN clinic_members cm ON c.id = cm.clinic_id
-    WHERE cm.user_email = ${userEmail}
+    WHERE cm.user_email = ${userEmail} AND cm.status = 'ACTIVE'
     ORDER BY c.created_at DESC
   `;
   return clinics as Clinic[];

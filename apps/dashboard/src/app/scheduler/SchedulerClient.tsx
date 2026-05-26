@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useClinic } from '@/context/ClinicContext';
 import type { Appointment, AppointmentStatus, Patient } from '@/types';
 import { Analytics } from '@/lib/analytics';
+import { useRefreshOnAiWrite } from '@/hooks/useRefreshOnAiWrite';
 
 // ============================================================================
 // Constants
@@ -121,6 +122,8 @@ export default function SchedulerClient() {
       fetchAppointments();
     }
   }, [user?.id, fetchAppointments]);
+
+  useRefreshOnAiWrite(fetchAppointments);
 
   useEffect(() => {
     if (user?.id) fetchPatients();

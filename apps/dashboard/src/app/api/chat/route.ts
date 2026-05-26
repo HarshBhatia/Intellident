@@ -57,10 +57,18 @@ ${endpointDocs}
 - Be concise and clear. Use markdown tables for tabular data.
 - Format currency amounts with the appropriate symbol.
 - When asked about earnings or revenue, compute totals from the visits data (sum the "paid" field). For expenses, use the expenses endpoint.
-- When asked about a patient by name, first GET /api/patients to find them, then use their patient_id (e.g. PID-1) to GET /api/patients/PID-1 for details or PUT /api/patients/PID-1 to update.
+- When asked about a patient by name or PID string (e.g. PID-1), GET /api/patients/{patient_id} to retrieve their full record. The numeric \`id\` field in the response is the internal ID required for write operations like POST /api/visits. **Never ask the user for any internal numeric id (patient id, visit id, appointment id) — always look it up yourself via a GET call first.**
+- When you need a visit's id (e.g. to PUT /api/visits), GET /api/patients/{patient_id} and find the visit in the \`visits\` array. Use the most recently created visit if the context implies "the visit we just discussed".
 - Default to the current month when no date range is specified.
 - Never fabricate data — only report what the API returns.
-- For destructive operations (DELETE), confirm with the user before executing.`;
+
+## Rules for write operations (POST / PUT / DELETE)
+These are STRICT rules — never skip them:
+
+1. **Gather all required fields before calling the API.** Check the endpoint's required body fields and query params listed above. If any required field is missing from what the user has told you, ask for it explicitly before making the call. Do not guess or use placeholder values.
+2. **Confirm optional details you are unsure about.** If an optional field is important for correctness (e.g. doctor name on a visit, visit_type, cost), ask the user rather than omitting it silently.
+3. **Ask in one message.** If multiple fields are missing, ask for all of them together in a single message — do not ask one field at a time.
+4. **Never call a write endpoint until you have all required information.** Only call the API once the user has provided everything you need.`;
 }
 
 // ---------------------------------------------------------------------------
@@ -144,10 +152,33 @@ export const POST = withAuth(async (request: Request, { clinicId }) => {
   let response = await chat.sendMessage(lastMessage);
   let result = response.response;
 
+  // Capture patient data fetched during the loop for generative UI
+  let patientCardData: any = null;
+
   // Loop: execute tool calls until the model returns plain text (max 8 rounds)
   for (let i = 0; i < 8; i++) {
     const calls = result.functionCalls();
     if (!calls || calls.length === 0) break;
+
+    // Intercept any write call — pause and ask the user to confirm before executing
+    const writeCall = calls.find((c) => {
+      const method = ((c.args as any).method || 'GET').toUpperCase();
+      return ['POST', 'PUT', 'DELETE'].includes(method);
+    });
+
+    if (writeCall) {
+      const args = writeCall.args as Record<string, any>;
+      let message = '';
+      try { message = result.text(); } catch { /* no text part */ }
+      if (!message) {
+        const verb = { POST: 'create', PUT: 'update', DELETE: 'delete' }[args.method?.toUpperCase() as string] ?? 'modify';
+        message = `I need to ${verb} data at \`${args.path}\`. Please confirm before I proceed.`;
+      }
+      return NextResponse.json({
+        message,
+        pendingAction: { method: args.method, path: args.path, body: args.body ?? null },
+      });
+    }
 
     const functionResponses = [];
     for (const call of calls) {
@@ -163,6 +194,13 @@ export const POST = withAuth(async (request: Request, { clinicId }) => {
       } catch (err: any) {
         data = { error: err.message || 'API call failed' };
       }
+
+      // Capture patient detail fetches for generative UI
+      const isPatientDetail = (args.method || 'GET').toUpperCase() === 'GET'
+        && /\/api\/patients\/[^?]+/.test(args.path)
+        && data && data.patient_id;
+      if (isPatientDetail) patientCardData = data;
+
       functionResponses.push({
         functionResponse: { name: call.name, response: { result: data } },
       });
@@ -173,5 +211,8 @@ export const POST = withAuth(async (request: Request, { clinicId }) => {
   }
 
   const text = result.text();
-  return NextResponse.json({ message: text });
+  return NextResponse.json({
+    message: text,
+    ...(patientCardData ? { ui: { type: 'patient_card', data: patientCardData } } : {}),
+  });
 });

@@ -12,6 +12,7 @@ import { useClinic } from '@/context/ClinicContext';
 import { Analytics } from '@/lib/analytics';
 import VisitsTab from '@/components/VisitsTab';
 import OdontogramTab from '@/components/OdontogramTab';
+import { useRefreshOnAiWrite } from '@/hooks/useRefreshOnAiWrite';
 
 type TabKey = 'overview' | 'visits' | 'odontogram' | 'financials' | 'files';
 
@@ -113,6 +114,8 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
   }, [patientId, showToast]);
 
   useEffect(() => { if (user?.id && patientId) fetchPatient(); }, [user?.id, patientId, fetchPatient]);
+
+  useRefreshOnAiWrite(fetchPatient);
 
   const handleUpdatePatient = async () => {
     if (!patientId) return;

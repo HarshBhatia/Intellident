@@ -25,11 +25,13 @@ export default clerkMiddleware(async (auth, request) => {
     return NextResponse.next();
   }
 
-  // 2. E2E test bypass — skip Clerk auth entirely
-  const e2eSecret = request.cookies.get('x-e2e-secret')?.value || request.headers.get('x-e2e-secret');
-  const secret = process.env.E2E_TEST_SECRET || 'e2e-secret-key';
-  if (e2eSecret === secret) {
-    return NextResponse.next();
+  // 2. E2E test bypass — only enabled when E2E_TEST_SECRET is explicitly set (never in production)
+  const e2eTestSecret = process.env.E2E_TEST_SECRET;
+  if (e2eTestSecret) {
+    const e2eSecret = request.cookies.get('x-e2e-secret')?.value || request.headers.get('x-e2e-secret');
+    if (e2eSecret === e2eTestSecret) {
+      return NextResponse.next();
+    }
   }
 
   // 3. Handle Public Routes - skip auth

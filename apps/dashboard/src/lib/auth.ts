@@ -8,10 +8,11 @@ export const MOCK_E2E_USER = {
 };
 
 export async function isE2E() {
+  const secret = process.env.E2E_TEST_SECRET;
+  if (!secret) return false; // E2E disabled when env var is not set
   const headerList = await headers();
   const cookieStore = await cookies();
   const e2eSecret = headerList.get('x-e2e-secret') || cookieStore.get('x-e2e-secret')?.value;
-  const secret = process.env.E2E_TEST_SECRET || 'e2e-secret-key';
   return e2eSecret === secret;
 }
 

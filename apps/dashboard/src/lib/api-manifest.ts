@@ -99,9 +99,9 @@ export const apiManifest: Endpoint[] = [
     bodyFields: [
       { name: 'patient_id', type: 'number', required: true, description: 'Internal numeric patient id' },
       { name: 'date', type: 'string', required: true, description: 'Visit date YYYY-MM-DD (cannot be future)' },
-      { name: 'doctor', type: 'string', description: 'Doctor name' },
+      { name: 'doctor', type: 'string', required: true, description: 'Doctor name' },
       { name: 'visit_type', type: 'string', description: 'e.g. Consultation, Follow-up, Procedure' },
-      { name: 'clinical_findings', type: 'string', description: 'Clinical findings text' },
+      { name: 'clinical_findings', type: 'string', required: true, description: 'Clinical findings text' },
       { name: 'procedure_notes', type: 'string', description: 'Procedure notes text' },
       { name: 'tooth_number', type: 'string', description: 'Tooth numbers (1-8 adult, A-E child)' },
       { name: 'medicine_prescribed', type: 'string', description: 'Medicines prescribed' },

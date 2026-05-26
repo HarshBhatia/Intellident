@@ -8,6 +8,7 @@ import Navbar from '@/components/Navbar';
 import { useAuth } from '@/hooks/useAuth';
 import { Analytics } from '@/lib/analytics';
 import type { Expense } from '@/types';
+import { useRefreshOnAiWrite } from '@/hooks/useRefreshOnAiWrite';
 
 export default function ExpensesClient() {
   const router = useRouter();
@@ -60,6 +61,8 @@ export default function ExpensesClient() {
         setLoading(false);
     }
   }, [user, dateRange, fetchData]);
+
+  useRefreshOnAiWrite(fetchData);
 
   const filteredExpenses = useMemo(() => {
       return expenses.filter(e => 

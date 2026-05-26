@@ -91,7 +91,7 @@ export default function RootLayout({
           <ClinicProvider>
             <ThemeProvider defaultTheme="system">
               <ToastProvider>
-                <div className="flex flex-col min-h-screen">
+                <div id="layout-root" className="flex flex-col min-h-screen transition-[padding] duration-300 ease-in-out">
                   <Navbar />
                   <main className="flex-1">
                     {children}
