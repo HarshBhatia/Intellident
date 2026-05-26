@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI, SchemaType, type Tool } from '@google/generative-ai';
 import { withAuth } from '@/lib/api-handler';
+import { buildEndpointDocs } from '@/lib/api-manifest';
 
 // ---------------------------------------------------------------------------
 // Single flexible tool — the LLM can call any dashboard API endpoint
@@ -11,7 +12,7 @@ const chatTools: Tool[] = [
       {
         name: 'call_api',
         description:
-          'Make an authenticated HTTP request to the IntelliDent dashboard API. The request is made with the current user\'s session so all auth and clinic scoping is handled automatically. Use this to fetch any data visible in the dashboard.',
+          'Make an authenticated HTTP request to the IntelliDent dashboard API. The request is made with the current user\'s session so all auth and clinic scoping is handled automatically. Use this to fetch or modify any data visible in the dashboard.',
         parameters: {
           type: SchemaType.OBJECT,
           properties: {
@@ -38,10 +39,12 @@ const chatTools: Tool[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// System prompt — teaches the model about every available endpoint
+// System prompt — built dynamically from the API manifest
 // ---------------------------------------------------------------------------
 function buildSystemPrompt(): string {
   const today = new Date().toISOString().split('T')[0];
+  const endpointDocs = buildEndpointDocs();
+
   return `You are IntelliDent AI, a helpful assistant for a dental clinic management dashboard.
 You have a tool called "call_api" that lets you make authenticated requests to the dashboard's REST API on behalf of the current user. The request carries their session automatically, so all data is scoped to their clinic.
 
@@ -49,50 +52,15 @@ Today's date is ${today}.
 
 ## Available API Endpoints
 
-### Patients
-- GET /api/patients
-  Returns all active patients with computed fields: patient_id, name, age, gender, phone_number, last_visit, visit_count, balance (outstanding), lifetime_value, next_visit.
-- GET /api/patients/<patient_id>   (e.g. /api/patients/PID-1)
-  Returns full patient record plus their visits array and doctors list.
-
-### Visits
-- GET /api/visits
-  Returns the 50 most recent visits across all patients (includes patient_name).
-- GET /api/visits?patientId=<numeric_id>
-  Returns all visits for a specific patient (use the numeric id from the patient record, not PID-X).
-
-### Appointments
-- GET /api/appointments?date=YYYY-MM-DD
-  Returns all appointments for a given date. Optional: &doctor=<email>.
-- GET /api/appointments/dates?year=YYYY&month=M
-  Returns an array of dates that have appointments in the given month.
-
-### Expenses
-- GET /api/expenses
-  Returns all expenses (date, amount, category, description).
-- GET /api/expenses/categories
-  Returns expense category list.
-
-### Clinic
-- GET /api/clinic?id=current
-  Returns current clinic info (name, address, phone, currency, GST details, etc.).
-- GET /api/clinic/members
-  Returns all clinic members. Use ?role=DOCTOR to filter to doctors only.
-- GET /api/clinic/treatments
-  Returns the list of treatment types configured for this clinic.
-
-### Auth
-- GET /api/auth/role
-  Returns the current user's role in this clinic (OWNER, ADMIN, DOCTOR, RECEPTIONIST).
-
+${endpointDocs}
 ## Guidelines
 - Be concise and clear. Use markdown tables for tabular data.
 - Format currency amounts with the appropriate symbol.
 - When asked about earnings or revenue, compute totals from the visits data (sum the "paid" field). For expenses, use the expenses endpoint.
-- When asked about a patient by name, first GET /api/patients to find them, then GET /api/patients/<patient_id> for details.
+- When asked about a patient by name, first GET /api/patients to find them, then use their patient_id (e.g. PID-1) to GET /api/patients/PID-1 for details or PUT /api/patients/PID-1 to update.
 - Default to the current month when no date range is specified.
 - Never fabricate data — only report what the API returns.
-- For write operations (POST/PUT/DELETE), confirm with the user before executing.`;
+- For destructive operations (DELETE), confirm with the user before executing.`;
 }
 
 // ---------------------------------------------------------------------------
