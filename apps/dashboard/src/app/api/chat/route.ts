@@ -1,165 +1,141 @@
 import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI, SchemaType, type Tool } from '@google/generative-ai';
 import { withAuth } from '@/lib/api-handler';
-import { getPatients, getPatientByIdWithVisits } from '@/services/patient.service';
-import { getVisits } from '@/services/visit.service';
-import { getClinicStats } from '@/services/stats.service';
-import { getAppointmentsByDate } from '@/services/appointment.service';
 
+// ---------------------------------------------------------------------------
+// Single flexible tool — the LLM can call any dashboard API endpoint
+// ---------------------------------------------------------------------------
 const chatTools: Tool[] = [
   {
     functionDeclarations: [
       {
-        name: 'search_patients',
+        name: 'call_api',
         description:
-          'Search for patients by name or phone number. Returns matching patients with basic info, last visit, visit count, and outstanding balance.',
+          'Make an authenticated HTTP request to the IntelliDent dashboard API. The request is made with the current user\'s session so all auth and clinic scoping is handled automatically. Use this to fetch any data visible in the dashboard.',
         parameters: {
           type: SchemaType.OBJECT,
           properties: {
-            query: {
+            method: {
               type: SchemaType.STRING,
-              description: 'Patient name or phone number to search for',
+              description: 'HTTP method — GET, POST, PUT, or DELETE',
             },
-          },
-          required: ['query'],
-        },
-      },
-      {
-        name: 'get_patient_details',
-        description:
-          'Get detailed information about a specific patient including their full visit history, outstanding balance, and treatment records. Use the patient_id (e.g. PID-1, PID-23).',
-        parameters: {
-          type: SchemaType.OBJECT,
-          properties: {
-            patient_id: {
-              type: SchemaType.STRING,
-              description: 'The patient ID, e.g. PID-1 or PID-23',
-            },
-          },
-          required: ['patient_id'],
-        },
-      },
-      {
-        name: 'get_earnings_summary',
-        description:
-          'Get clinic financial summary: total revenue, total expenses, profit, revenue by treatment category, and monthly revenue trend. Provide a date range.',
-        parameters: {
-          type: SchemaType.OBJECT,
-          properties: {
-            start_date: {
-              type: SchemaType.STRING,
-              description: 'Start date in YYYY-MM-DD format',
-            },
-            end_date: {
-              type: SchemaType.STRING,
-              description: 'End date in YYYY-MM-DD format',
-            },
-          },
-          required: ['start_date', 'end_date'],
-        },
-      },
-      {
-        name: 'get_recent_visits',
-        description:
-          'Get the most recent visits across all patients. Returns visit details including patient name, date, doctor, type, cost, and payment status.',
-        parameters: {
-          type: SchemaType.OBJECT,
-          properties: {},
-        },
-      },
-      {
-        name: 'get_todays_appointments',
-        description:
-          "Get today's scheduled appointments with patient names, times, doctor, and status.",
-        parameters: {
-          type: SchemaType.OBJECT,
-          properties: {
-            date: {
+            path: {
               type: SchemaType.STRING,
               description:
-                'Date in YYYY-MM-DD format. Defaults to today if not provided.',
+                'API path including query parameters. Examples: /api/patients, /api/visits?patientId=5, /api/appointments?date=2025-05-25',
+            },
+            body: {
+              type: SchemaType.STRING,
+              description:
+                'JSON-encoded request body for POST/PUT requests. Omit for GET/DELETE.',
             },
           },
+          required: ['method', 'path'],
         },
       },
     ],
   },
 ];
 
-async function executeTool(
-  name: string,
-  args: Record<string, any>,
-  clinicId: string
+// ---------------------------------------------------------------------------
+// System prompt — teaches the model about every available endpoint
+// ---------------------------------------------------------------------------
+function buildSystemPrompt(): string {
+  const today = new Date().toISOString().split('T')[0];
+  return `You are IntelliDent AI, a helpful assistant for a dental clinic management dashboard.
+You have a tool called "call_api" that lets you make authenticated requests to the dashboard's REST API on behalf of the current user. The request carries their session automatically, so all data is scoped to their clinic.
+
+Today's date is ${today}.
+
+## Available API Endpoints
+
+### Patients
+- GET /api/patients
+  Returns all active patients with computed fields: patient_id, name, age, gender, phone_number, last_visit, visit_count, balance (outstanding), lifetime_value, next_visit.
+- GET /api/patients/<patient_id>   (e.g. /api/patients/PID-1)
+  Returns full patient record plus their visits array and doctors list.
+
+### Visits
+- GET /api/visits
+  Returns the 50 most recent visits across all patients (includes patient_name).
+- GET /api/visits?patientId=<numeric_id>
+  Returns all visits for a specific patient (use the numeric id from the patient record, not PID-X).
+
+### Appointments
+- GET /api/appointments?date=YYYY-MM-DD
+  Returns all appointments for a given date. Optional: &doctor=<email>.
+- GET /api/appointments/dates?year=YYYY&month=M
+  Returns an array of dates that have appointments in the given month.
+
+### Expenses
+- GET /api/expenses
+  Returns all expenses (date, amount, category, description).
+- GET /api/expenses/categories
+  Returns expense category list.
+
+### Clinic
+- GET /api/clinic?id=current
+  Returns current clinic info (name, address, phone, currency, GST details, etc.).
+- GET /api/clinic/members
+  Returns all clinic members. Use ?role=DOCTOR to filter to doctors only.
+- GET /api/clinic/treatments
+  Returns the list of treatment types configured for this clinic.
+
+### Auth
+- GET /api/auth/role
+  Returns the current user's role in this clinic (OWNER, ADMIN, DOCTOR, RECEPTIONIST).
+
+## Guidelines
+- Be concise and clear. Use markdown tables for tabular data.
+- Format currency amounts with the appropriate symbol.
+- When asked about earnings or revenue, compute totals from the visits data (sum the "paid" field). For expenses, use the expenses endpoint.
+- When asked about a patient by name, first GET /api/patients to find them, then GET /api/patients/<patient_id> for details.
+- Default to the current month when no date range is specified.
+- Never fabricate data — only report what the API returns.
+- For write operations (POST/PUT/DELETE), confirm with the user before executing.`;
+}
+
+// ---------------------------------------------------------------------------
+// Execute the call_api tool — internal fetch with forwarded auth cookies
+// ---------------------------------------------------------------------------
+async function executeApiCall(
+  originRequest: Request,
+  method: string,
+  path: string,
+  body?: string
 ): Promise<any> {
-  switch (name) {
-    case 'search_patients': {
-      const patients = await getPatients(clinicId);
-      const q = (args.query || '').toLowerCase();
-      return patients
-        .filter(
-          (p) =>
-            p.name.toLowerCase().includes(q) ||
-            (p.phone_number && p.phone_number.includes(q)) ||
-            (p.patient_id && p.patient_id.toLowerCase().includes(q))
-        )
-        .slice(0, 10)
-        .map((p) => ({
-          patient_id: p.patient_id,
-          name: p.name,
-          age: p.age,
-          gender: p.gender,
-          phone: p.phone_number,
-          last_visit: (p as any).last_visit,
-          visit_count: (p as any).visit_count,
-          balance: (p as any).balance,
-        }));
-    }
-    case 'get_patient_details': {
-      const data = await getPatientByIdWithVisits(clinicId, args.patient_id);
-      if (!data) return { error: 'Patient not found' };
-      // Trim visits to avoid token bloat
-      if (data.visits) {
-        data.visits = data.visits.slice(0, 15).map((v: any) => ({
-          date: v.date,
-          doctor: v.doctor,
-          visit_type: v.visit_type,
-          clinical_findings: v.clinical_findings,
-          procedure_notes: v.procedure_notes,
-          tooth_number: v.tooth_number,
-          medicine_prescribed: v.medicine_prescribed,
-          cost: v.cost,
-          paid: v.paid,
-        }));
-      }
-      return data;
-    }
-    case 'get_earnings_summary': {
-      const start = new Date(args.start_date);
-      const end = new Date(args.end_date);
-      return await getClinicStats(clinicId, start, end);
-    }
-    case 'get_recent_visits': {
-      const visits = await getVisits(clinicId);
-      return (visits as any[]).slice(0, 20).map((v) => ({
-        patient_name: v.patient_name,
-        date: v.date,
-        visit_type: v.visit_type,
-        doctor: v.doctor,
-        cost: v.cost,
-        paid: v.paid,
-        procedure_notes: v.procedure_notes,
-      }));
-    }
-    case 'get_todays_appointments': {
-      const date =
-        args.date || new Date().toISOString().split('T')[0];
-      return await getAppointmentsByDate(clinicId, date);
-    }
-    default:
-      return { error: `Unknown tool: ${name}` };
+  const origin = new URL(originRequest.url).origin;
+  const url = `${origin}${path.startsWith('/') ? path : '/' + path}`;
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  // Forward auth cookies so the internal request runs as the same user
+  const cookie = originRequest.headers.get('cookie');
+  if (cookie) headers['Cookie'] = cookie;
+
+  // Forward Clerk auth header if present
+  const auth = originRequest.headers.get('authorization');
+  if (auth) headers['Authorization'] = auth;
+
+  const res = await fetch(url, {
+    method,
+    headers,
+    body: method !== 'GET' && method !== 'DELETE' && body ? body : undefined,
+  });
+
+  const text = await res.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { status: res.status, body: text };
   }
 }
 
+// ---------------------------------------------------------------------------
+// Route handler
+// ---------------------------------------------------------------------------
 export const POST = withAuth(async (request: Request, { clinicId }) => {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -180,19 +156,10 @@ export const POST = withAuth(async (request: Request, { clinicId }) => {
   }
 
   const genAI = new GoogleGenerativeAI(apiKey);
-  const today = new Date().toISOString().split('T')[0];
 
   const model = genAI.getGenerativeModel({
     model: 'gemini-2.5-flash',
-    systemInstruction: [
-      'You are IntelliDent AI, a helpful assistant for a dental clinic management dashboard.',
-      'You can look up patient records, visit history, appointments, and financial data using the tools available.',
-      'Be concise and clear. Format currency amounts properly. Use tables or bullet points when listing data.',
-      'If the user asks about a patient, search for them first, then get details if needed.',
-      `Today's date is ${today}.`,
-      'When asked about earnings/revenue without a specific date range, default to the current month.',
-      'Never make up data — only use what the tools return.',
-    ].join(' '),
+    systemInstruction: buildSystemPrompt(),
     tools: chatTools,
   });
 
@@ -209,18 +176,24 @@ export const POST = withAuth(async (request: Request, { clinicId }) => {
   let response = await chat.sendMessage(lastMessage);
   let result = response.response;
 
-  // Loop: execute any function calls until the model returns plain text (max 6 rounds)
-  for (let i = 0; i < 6; i++) {
+  // Loop: execute tool calls until the model returns plain text (max 8 rounds)
+  for (let i = 0; i < 8; i++) {
     const calls = result.functionCalls();
     if (!calls || calls.length === 0) break;
 
     const functionResponses = [];
     for (const call of calls) {
+      const args = call.args as Record<string, any>;
       let data;
       try {
-        data = await executeTool(call.name, call.args as Record<string, any>, clinicId);
+        data = await executeApiCall(
+          request,
+          args.method || 'GET',
+          args.path || '/api/health',
+          args.body
+        );
       } catch (err: any) {
-        data = { error: err.message || 'Tool execution failed' };
+        data = { error: err.message || 'API call failed' };
       }
       functionResponses.push({
         functionResponse: { name: call.name, response: { result: data } },
