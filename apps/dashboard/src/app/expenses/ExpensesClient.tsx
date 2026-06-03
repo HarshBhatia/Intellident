@@ -42,7 +42,7 @@ export default function ExpensesClient() {
       // Fetch expenses based on current date range
       const [expRes, catRes] = await Promise.all([
           fetch(`/api/expenses?start=${dateRange.start}&end=${dateRange.end}`),
-          fetch('/api/expense-categories')
+          fetch('/api/expenses/categories')
       ]);
       if (expRes.ok) setExpenses(await expRes.json());
       if (catRes.ok) setCategories(await catRes.json());
