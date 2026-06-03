@@ -4,7 +4,10 @@ import { withAuth } from '@/lib/api-handler';
 import { getMemberRole } from '@/lib/auth';
 
 export const GET = withAuth(async (request: Request, { clinicId }) => {
-  const expenses = await getExpenses(clinicId);
+  const { searchParams } = new URL(request.url);
+  const start = searchParams.get('start') || undefined;
+  const end = searchParams.get('end') || undefined;
+  const expenses = await getExpenses(clinicId, start, end);
   return NextResponse.json(expenses);
 });
 
