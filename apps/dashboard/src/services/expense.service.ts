@@ -30,6 +30,29 @@ export async function createExpense(expenseData: Omit<Expense, 'id' | 'clinic_id
   return result[0] as Expense;
 }
 
+export async function createExpenses(items: Omit<Expense, 'id' | 'clinic_id'>[], clinicId: string): Promise<Expense[]> {
+  if (!clinicId) throw new Error('Clinic ID is required');
+  if (!items.length) return [];
+
+  for (const item of items) {
+    if (!item.date || item.amount === undefined || !item.category) {
+      throw new Error('Each expense requires date, amount, and category');
+    }
+  }
+
+  const sql = getDb();
+  const results: Expense[] = [];
+  for (const item of items) {
+    const rows = await sql`
+      INSERT INTO expenses (date, amount, category, description, clinic_id)
+      VALUES (${item.date}, ${item.amount}, ${item.category}, ${item.description || null}, ${clinicId})
+      RETURNING *
+    `;
+    results.push(rows[0] as Expense);
+  }
+  return results;
+}
+
 export async function deleteExpense(id: number, clinicId: string): Promise<void> {
   if (!id) throw new Error('Expense ID is required');
   if (!clinicId) throw new Error('Clinic ID is required');

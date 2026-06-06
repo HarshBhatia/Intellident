@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getExpenses, createExpense, deleteExpense } from '@/services/expense.service';
+import { getExpenses, createExpense, createExpenses, deleteExpense } from '@/services/expense.service';
 import { withAuth } from '@/lib/api-handler';
 import { getMemberRole } from '@/lib/auth';
 
@@ -13,6 +13,10 @@ export const GET = withAuth(async (request: Request, { clinicId }) => {
 
 export const POST = withAuth(async (request: Request, { clinicId }) => {
   const body = await request.json();
+  if (Array.isArray(body)) {
+    const expenses = await createExpenses(body, clinicId);
+    return NextResponse.json(expenses);
+  }
   const newExpense = await createExpense(body, clinicId);
   return NextResponse.json(newExpense);
 });
