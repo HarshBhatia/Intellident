@@ -5,12 +5,53 @@ const parseBillingItems = (json?: string | null): BillingItem[] => {
   try { return json ? JSON.parse(json) : []; } catch { return []; }
 };
 
-export async function getVisits(clinicId: string, patientId?: string): Promise<Visit[]> {
+export interface VisitFilters {
+  patientId?: string;
+  start?: string;
+  end?: string;
+  visitType?: string;
+  doctor?: string;
+  search?: string;
+}
+
+export async function getVisits(clinicId: string, filters: VisitFilters = {}): Promise<Visit[]> {
   const sql = getDb();
   const cId = parseInt(clinicId);
-  const rows = patientId 
-    ? await sql`SELECT *, dentition_type FROM visits WHERE clinic_id = ${cId} AND patient_id = ${patientId} ORDER BY date DESC`
+  const { patientId, start, end, visitType, doctor, search } = filters;
+
+  let rows: any[] = patientId
+    ? await sql`SELECT v.*, p.name as patient_name FROM visits v JOIN patients p ON v.patient_id = p.id WHERE v.clinic_id = ${cId} AND v.patient_id = ${patientId} ORDER BY v.date DESC`
     : await sql`SELECT v.*, p.name as patient_name FROM visits v JOIN patients p ON v.patient_id = p.id AND p.clinic_id = v.clinic_id WHERE v.clinic_id = ${cId} ORDER BY v.date DESC`;
+
+  if (start) rows = rows.filter(r => r.date >= start);
+  if (end)   rows = rows.filter(r => r.date <= end);
+
+  if (visitType) {
+    const q = visitType.toLowerCase();
+    rows = rows.filter(r =>
+      (r.visit_type || '').toLowerCase().includes(q) ||
+      (r.clinical_findings || '').toLowerCase().includes(q) ||
+      (r.procedure_notes || '').toLowerCase().includes(q)
+    );
+  }
+
+  if (doctor) {
+    const q = doctor.toLowerCase();
+    rows = rows.filter(r => (r.doctor || '').toLowerCase().includes(q) || (r.doctor_email || '').toLowerCase().includes(q));
+  }
+
+  if (search) {
+    const q = search.toLowerCase();
+    rows = rows.filter(r =>
+      (r.clinical_findings || '').toLowerCase().includes(q) ||
+      (r.procedure_notes || '').toLowerCase().includes(q) ||
+      (r.medicine_prescribed || '').toLowerCase().includes(q) ||
+      (r.patient_name || '').toLowerCase().includes(q) ||
+      (r.tooth_number || '').toLowerCase().includes(q)
+    );
+  }
+
+
   return rows.map((r: any) => ({ ...r, billing_items: parseBillingItems(r.billing_items) })) as Visit[];
 }
 

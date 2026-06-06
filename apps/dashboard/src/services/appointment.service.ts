@@ -2,31 +2,47 @@ import { getDb } from '@intellident/api';
 import { Appointment, AppointmentStatus } from '@intellident/api/src/types';
 import { createVisit } from './visit.service';
 
+export interface AppointmentFilters {
+  date?: string;
+  start?: string;
+  end?: string;
+  doctorEmail?: string;
+  status?: string;
+  visitType?: string;
+}
+
+export async function getAppointments(
+  clinicId: string,
+  filters: AppointmentFilters = {}
+): Promise<Appointment[]> {
+  const sql = getDb();
+  const cId = parseInt(clinicId);
+  const { date, start, end, doctorEmail, status, visitType } = filters;
+
+  let rows: any[] = await sql`
+    SELECT a.*, p.name as patient_name
+    FROM appointments a
+    LEFT JOIN patients p ON a.patient_id = p.id
+    WHERE a.clinic_id = ${cId}
+    ORDER BY a.date ASC, a.start_time ASC
+  `;
+
+  if (date)        rows = rows.filter(r => r.date === date);
+  if (start)       rows = rows.filter(r => r.date >= start);
+  if (end)         rows = rows.filter(r => r.date <= end);
+  if (doctorEmail) rows = rows.filter(r => (r.doctor_email || '').toLowerCase().includes(doctorEmail.toLowerCase()));
+  if (status)      rows = rows.filter(r => (r.status || '').toLowerCase() === status.toLowerCase());
+  if (visitType)   rows = rows.filter(r => (r.visit_type || '').toLowerCase().includes(visitType.toLowerCase()));
+
+  return rows as Appointment[];
+}
+
 export async function getAppointmentsByDate(
   clinicId: string,
   date: string,
   doctorEmail?: string
 ): Promise<Appointment[]> {
-  const sql = getDb();
-  const cId = parseInt(clinicId);
-
-  const rows = doctorEmail
-    ? await sql`
-        SELECT a.*, p.name as patient_name
-        FROM appointments a
-        LEFT JOIN patients p ON a.patient_id = p.id AND p.clinic_id = a.clinic_id
-        WHERE a.clinic_id = ${cId} AND a.date = ${date} AND a.doctor_email = ${doctorEmail}
-        ORDER BY a.start_time ASC
-      `
-    : await sql`
-        SELECT a.*, p.name as patient_name
-        FROM appointments a
-        LEFT JOIN patients p ON a.patient_id = p.id AND p.clinic_id = a.clinic_id
-        WHERE a.clinic_id = ${cId} AND a.date = ${date}
-        ORDER BY a.start_time ASC
-      `;
-
-  return rows as Appointment[];
+  return getAppointments(clinicId, { date, doctorEmail });
 }
 
 export async function createAppointment(

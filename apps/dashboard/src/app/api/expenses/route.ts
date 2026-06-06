@@ -5,9 +5,10 @@ import { getMemberRole } from '@/lib/auth';
 
 export const GET = withAuth(async (request: Request, { clinicId }) => {
   const { searchParams } = new URL(request.url);
-  const start = searchParams.get('start') || undefined;
-  const end = searchParams.get('end') || undefined;
-  const expenses = await getExpenses(clinicId, start, end);
+  const start    = searchParams.get('start')    || undefined;
+  const end      = searchParams.get('end')      || undefined;
+  const category = searchParams.get('category') || undefined;
+  const expenses = await getExpenses(clinicId, start, end, category);
   return NextResponse.json(expenses);
 });
 

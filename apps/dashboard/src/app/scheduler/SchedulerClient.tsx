@@ -15,7 +15,7 @@ import { useRefreshOnAiWrite } from '@/hooks/useRefreshOnAiWrite';
 // ============================================================================
 
 const SLOT_START = 9; // 9 AM
-const SLOT_END = 18;  // 6 PM
+const SLOT_END = 21;  // 9 PM
 const SLOT_HEIGHT = 60; // px per 30-min slot
 
 const STATUS_CONFIG: Record<AppointmentStatus, { label: string; bg: string; text: string; border: string }> = {

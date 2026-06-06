@@ -5,12 +5,16 @@ import type { Expense, ExpenseCategory } from '@intellident/api';
 // Expenses
 // ============================================================================
 
-export async function getExpenses(clinicId: string, startDate?: string, endDate?: string): Promise<Expense[]> {
+export async function getExpenses(clinicId: string, startDate?: string, endDate?: string, category?: string): Promise<Expense[]> {
   if (!clinicId) throw new Error('Clinic ID is required');
   const sql = getDb();
-  const rows = startDate && endDate
+  let rows: any[] = startDate && endDate
     ? await sql`SELECT * FROM expenses WHERE clinic_id = ${clinicId} AND date >= ${startDate} AND date <= ${endDate} ORDER BY date DESC`
     : await sql`SELECT * FROM expenses WHERE clinic_id = ${clinicId} ORDER BY date DESC`;
+  if (category) {
+    const q = category.toLowerCase();
+    rows = rows.filter(r => (r.category || '').toLowerCase().includes(q));
+  }
   return rows as Expense[];
 }
 
