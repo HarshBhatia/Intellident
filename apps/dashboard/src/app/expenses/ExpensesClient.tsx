@@ -37,6 +37,10 @@ export default function ExpensesClient() {
       description: ''
   });
 
+  // Edit State
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState({ date: '', amount: '', category: '', description: '' });
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
@@ -91,8 +95,44 @@ export default function ExpensesClient() {
         showToast('Expense added', 'success');
         setForm({ ...form, amount: '', description: '' });
         fetchData();
+      } else {
+        const err = await res.json().catch(() => null);
+        showToast(err?.error || 'Failed to add expense', 'error');
       }
     } catch (e) { showToast('Error saving', 'error'); }
+  };
+
+  const startEdit = (expense: Expense) => {
+    setEditingId(expense.id);
+    setEditForm({
+      date: expense.date,
+      amount: String(expense.amount),
+      category: expense.category,
+      description: expense.description || ''
+    });
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+  };
+
+  const handleUpdate = async () => {
+    if (!editingId || !editForm.amount || !editForm.category) return;
+    try {
+      const res = await fetch('/api/expenses', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: editingId, ...editForm })
+      });
+      if (res.ok) {
+        showToast('Expense updated', 'success');
+        setEditingId(null);
+        fetchData();
+      } else {
+        const err = await res.json().catch(() => null);
+        showToast(err?.error || 'Failed to update expense', 'error');
+      }
+    } catch (e) { showToast('Error updating', 'error'); }
   };
 
   const handleDelete = async (id: number) => {
@@ -210,15 +250,40 @@ export default function ExpensesClient() {
                         {loading ? [1,2,3,4].map(i => <tr key={i}><td colSpan={5} className="px-6 py-4"><Skeleton className="h-4 w-full" /></td></tr>) : 
                          filteredExpenses.length === 0 ? <tr><td colSpan={5} className="px-6 py-12 text-center text-gray-400 italic">No records matching your filters.</td></tr> :
                          filteredExpenses.map((e) => (
+                            editingId === e.id ? (
+                            <tr key={e.id} className="bg-yellow-50/50 dark:bg-yellow-900/10">
+                                <td className="px-4 py-2">
+                                    <input type="date" value={editForm.date} max={new Date().toISOString().split('T')[0]} onChange={ev => setEditForm({...editForm, date: ev.target.value})} className="w-full p-1.5 border dark:border-gray-700 rounded text-sm bg-white dark:bg-gray-800 outline-none" />
+                                </td>
+                                <td className="px-4 py-2">
+                                    <select value={editForm.category} onChange={ev => setEditForm({...editForm, category: ev.target.value})} className="w-full p-1.5 border dark:border-gray-700 rounded text-sm bg-white dark:bg-gray-800 outline-none">
+                                        <option value="">Select</option>
+                                        {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                                    </select>
+                                </td>
+                                <td className="px-4 py-2">
+                                    <input type="text" value={editForm.description} onChange={ev => setEditForm({...editForm, description: ev.target.value})} placeholder="Details..." className="w-full p-1.5 border dark:border-gray-700 rounded text-sm bg-white dark:bg-gray-800 outline-none" />
+                                </td>
+                                <td className="px-4 py-2">
+                                    <input type="number" value={editForm.amount} onChange={ev => setEditForm({...editForm, amount: ev.target.value})} className="w-full p-1.5 border dark:border-gray-700 rounded text-sm bg-white dark:bg-gray-800 outline-none text-right font-mono" />
+                                </td>
+                                <td className="px-4 py-2 text-center whitespace-nowrap">
+                                    <button onClick={handleUpdate} className="text-green-600 hover:text-green-700 dark:text-green-400 transition text-xs font-bold mr-2">Save</button>
+                                    <button onClick={cancelEdit} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition text-xs font-bold">Cancel</button>
+                                </td>
+                            </tr>
+                            ) : (
                             <tr key={e.id} className="hover:bg-red-50/30 dark:hover:bg-red-900/10 transition-colors">
                                 <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-600 dark:text-gray-400">{e.date}</td>
                                 <td className="px-6 py-4 whitespace-nowrap"><span className="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-[10px] font-bold px-2 py-1 rounded border border-gray-200 dark:border-gray-700 uppercase tracking-tight">{e.category}</span></td>
                                 <td className="px-6 py-4 text-gray-500 dark:text-gray-400 italic max-w-xs truncate">{e.description || '—'}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-right font-bold text-red-600 dark:text-red-400 font-mono">₹{Number(e.amount).toLocaleString()}</td>
-                                <td className="px-6 py-4 text-center">
+                                <td className="px-6 py-4 text-center whitespace-nowrap">
+                                    <button onClick={() => startEdit(e)} className="text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 transition text-xs font-bold mr-2">Edit</button>
                                     <button onClick={() => handleDelete(e.id)} className="text-red-300 dark:text-red-900 hover:text-red-600 dark:hover:text-red-400 transition text-lg leading-none">×</button>
                                 </td>
                             </tr>
+                            )
                         ))}
                     </tbody>
                 </table>

@@ -57,6 +57,25 @@ export async function createExpenses(items: Omit<Expense, 'id' | 'clinic_id'>[],
   return results;
 }
 
+export async function updateExpense(id: number, expenseData: Partial<Omit<Expense, 'id' | 'clinic_id'>>, clinicId: string): Promise<Expense> {
+  if (!id) throw new Error('Expense ID is required');
+  if (!clinicId) throw new Error('Clinic ID is required');
+
+  const { date, amount, category, description } = expenseData;
+  const sql = getDb();
+  const result = await sql`
+    UPDATE expenses
+    SET date = COALESCE(${date ?? null}, date),
+        amount = COALESCE(${amount ?? null}, amount),
+        category = COALESCE(${category ?? null}, category),
+        description = COALESCE(${description ?? null}, description)
+    WHERE id = ${id} AND clinic_id = ${clinicId}
+    RETURNING *
+  `;
+  if (result.length === 0) throw new Error('Expense not found');
+  return result[0] as Expense;
+}
+
 export async function deleteExpense(id: number, clinicId: string): Promise<void> {
   if (!id) throw new Error('Expense ID is required');
   if (!clinicId) throw new Error('Clinic ID is required');
