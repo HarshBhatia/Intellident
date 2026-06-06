@@ -1,20 +1,33 @@
 import { NextResponse } from 'next/server';
 import {
+  getAppointments,
   getAppointmentsByDate,
   createAppointment,
   updateAppointment,
   deleteAppointment,
+  AppointmentFilters,
 } from '@/services/appointment.service';
 import { withAuth } from '@/lib/api-handler';
 
 export const GET = withAuth(async (request: Request, { clinicId }) => {
   const { searchParams } = new URL(request.url);
-  const date = searchParams.get('date');
-  if (!date) {
-    return NextResponse.json({ error: 'date parameter is required' }, { status: 400 });
+  const date  = searchParams.get('date')  || undefined;
+  const start = searchParams.get('start') || undefined;
+  const end   = searchParams.get('end')   || undefined;
+
+  if (!date && !start && !end) {
+    return NextResponse.json({ error: 'date, start, or end parameter is required' }, { status: 400 });
   }
-  const doctor = searchParams.get('doctor') || undefined;
-  const appointments = await getAppointmentsByDate(clinicId, date, doctor);
+
+  const filters: AppointmentFilters = {
+    date,
+    start,
+    end,
+    doctorEmail: searchParams.get('doctor')     || undefined,
+    status:      searchParams.get('status')     || undefined,
+    visitType:   searchParams.get('visit_type') || undefined,
+  };
+  const appointments = await getAppointments(clinicId, filters);
   return NextResponse.json(appointments);
 });
 

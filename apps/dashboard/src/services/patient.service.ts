@@ -12,22 +12,28 @@ const parseBillingItems = (billingItemsJson?: string | null): BillingItem[] => {
   }
 };
 
-export async function getPatients(clinicId: string): Promise<Patient[]> {
+export interface PatientFilters {
+  search?: string;
+  gender?: string;
+  patientType?: string;
+  referralSource?: string;
+  minAge?: number;
+  maxAge?: number;
+  hasBalance?: boolean;
+  visitType?: string;
+  start?: string;
+  end?: string;
+}
+
+export async function getPatients(clinicId: string, filters: PatientFilters = {}): Promise<Patient[]> {
   if (!clinicId) throw new Error('Clinic ID is required');
   const sql = getDb();
   const cId = parseInt(clinicId);
-  
-  const rows = await sql`
+
+  let rows: any[] = await sql`
     SELECT
-      p.id,
-      p.patient_id,
-      p.name,
-      p.age,
-      p.gender,
-      p.phone_number,
-      p.patient_type,
-      p.created_at,
-      p.clinic_id,
+      p.id, p.patient_id, p.name, p.age, p.gender, p.phone_number,
+      p.patient_type, p.referral_source, p.created_at, p.clinic_id,
       MAX(v.date) as last_visit,
       COUNT(v.id) as visit_count,
       COALESCE(SUM(v.cost), 0) - COALESCE(SUM(v.paid), 0) as balance,
@@ -36,9 +42,49 @@ export async function getPatients(clinicId: string): Promise<Patient[]> {
     FROM patients p
     LEFT JOIN visits v ON v.patient_id = p.id AND v.clinic_id = ${cId}
     WHERE p.clinic_id = ${cId} AND p.is_active = TRUE
-    GROUP BY p.id, p.patient_id, p.name, p.age, p.gender, p.phone_number, p.patient_type, p.created_at, p.clinic_id
+    GROUP BY p.id, p.patient_id, p.name, p.age, p.gender, p.phone_number, p.patient_type, p.referral_source, p.created_at, p.clinic_id
     ORDER BY last_visit DESC NULLS LAST, p.created_at DESC
   `;
+
+  const { search, gender, patientType, referralSource, minAge, maxAge, hasBalance, visitType, start, end } = filters;
+
+  if (search) {
+    const q = search.toLowerCase();
+    rows = rows.filter(r =>
+      (r.name || '').toLowerCase().includes(q) ||
+      (r.phone_number || '').toLowerCase().includes(q) ||
+      (r.patient_id || '').toLowerCase().includes(q)
+    );
+  }
+  if (gender)         rows = rows.filter(r => (r.gender || '').toLowerCase() === gender.toLowerCase());
+  if (patientType)    rows = rows.filter(r => (r.patient_type || '').toLowerCase().includes(patientType.toLowerCase()));
+  if (referralSource) rows = rows.filter(r => (r.referral_source || '').toLowerCase().includes(referralSource.toLowerCase()));
+  if (minAge !== undefined) rows = rows.filter(r => r.age != null && r.age >= minAge);
+  if (maxAge !== undefined) rows = rows.filter(r => r.age != null && r.age <= maxAge);
+  if (hasBalance)     rows = rows.filter(r => Number(r.balance) > 0);
+
+  // Filter patients who had a specific visit type (or visited in a date range)
+  if (visitType || start || end) {
+    const patientIds = new Set(rows.map(r => r.id));
+    const visitRows: any[] = await sql`
+      SELECT DISTINCT patient_id, date, visit_type, clinical_findings, procedure_notes
+      FROM visits
+      WHERE clinic_id = ${cId} AND patient_id = ANY(${[...patientIds]})
+    `;
+    const matchingIds = new Set<number>();
+    for (const v of visitRows) {
+      const typeMatch = !visitType || (
+        (v.visit_type || '').toLowerCase().includes(visitType.toLowerCase()) ||
+        (v.clinical_findings || '').toLowerCase().includes(visitType.toLowerCase()) ||
+        (v.procedure_notes || '').toLowerCase().includes(visitType.toLowerCase())
+      );
+      const startMatch = !start || v.date >= start;
+      const endMatch   = !end   || v.date <= end;
+      if (typeMatch && startMatch && endMatch) matchingIds.add(v.patient_id);
+    }
+    rows = rows.filter(r => matchingIds.has(r.id));
+  }
+
   return rows as Patient[];
 }
 

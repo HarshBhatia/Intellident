@@ -1,11 +1,18 @@
 import { NextResponse } from 'next/server';
-import { getVisits, createVisit, deleteVisit, updateVisit } from '@/services/visit.service';
+import { getVisits, createVisit, deleteVisit, updateVisit, VisitFilters } from '@/services/visit.service';
 import { withAuth } from '@/lib/api-handler';
 
 export const GET = withAuth(async (request: Request, { clinicId }) => {
   const { searchParams } = new URL(request.url);
-  const patientId = searchParams.get('patientId');
-  const visits = await getVisits(clinicId, patientId || undefined);
+  const filters: VisitFilters = {
+    patientId:  searchParams.get('patientId')  || undefined,
+    start:      searchParams.get('start')       || undefined,
+    end:        searchParams.get('end')         || undefined,
+    visitType:  searchParams.get('visit_type')  || undefined,
+    doctor:     searchParams.get('doctor')      || undefined,
+    search:     searchParams.get('search')      || undefined,
+  };
+  const visits = await getVisits(clinicId, filters);
   return NextResponse.json(visits);
 });
 
