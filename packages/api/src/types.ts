@@ -163,6 +163,26 @@ export interface Appointment {
 }
 
 // ============================================================================
+// Messaging Types
+// ============================================================================
+
+export type MessageChannel = 'sms' | 'whatsapp';
+export type MessageType = 'appointment_reminder' | 'followup' | 'balance_due' | 'custom';
+
+export interface PatientMessage {
+  id: number;
+  clinic_id: number;
+  patient_id: number;
+  channel: MessageChannel;
+  message_type: MessageType;
+  body: string;
+  status: 'sent' | 'failed' | 'pending';
+  msg91_request_id: string | null;
+  sent_by: string;
+  created_at: string;
+}
+
+// ============================================================================
 // UI/Component Types
 // ============================================================================
 

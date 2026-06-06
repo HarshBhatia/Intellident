@@ -212,7 +212,24 @@ export async function initializeDatabase() {
       // pg_trgm may not be available in all environments (e.g. PGlite)
     }
 
-    // 8. Drop doctors table if it exists (consolidated to clinic_members)
+    // 8. Patient messages
+    await sql`
+      CREATE TABLE IF NOT EXISTS patient_messages (
+        id SERIAL PRIMARY KEY,
+        clinic_id INTEGER NOT NULL REFERENCES clinics(id) ON DELETE CASCADE,
+        patient_id INTEGER NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+        channel TEXT NOT NULL,
+        message_type TEXT NOT NULL DEFAULT 'custom',
+        body TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending',
+        msg91_request_id TEXT,
+        sent_by TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+    await sql`CREATE INDEX IF NOT EXISTS idx_patient_messages_clinic_patient ON patient_messages(clinic_id, patient_id)`;
+
+    // 9. Drop doctors table if it exists (consolidated to clinic_members)
     try {
       await sql`DROP TABLE IF EXISTS doctors CASCADE`;
     } catch (err) {
