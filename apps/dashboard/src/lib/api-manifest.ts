@@ -219,6 +219,18 @@ export const apiManifest: Endpoint[] = [
     ],
   },
   {
+    method: 'PUT',
+    path: '/api/expenses',
+    description: 'Update an existing expense.',
+    bodyFields: [
+      { name: 'id', type: 'number', required: true, description: 'Expense id' },
+      { name: 'date', type: 'string', description: 'Date YYYY-MM-DD' },
+      { name: 'amount', type: 'number', description: 'Amount' },
+      { name: 'category', type: 'string', description: 'Expense category' },
+      { name: 'description', type: 'string', description: 'Description' },
+    ],
+  },
+  {
     method: 'DELETE',
     path: '/api/expenses',
     description: 'Delete an expense.',
@@ -344,6 +356,19 @@ export const apiManifest: Endpoint[] = [
     bodyFields: [
       { name: 'id', type: 'number', required: true, description: 'Treatment id' },
     ],
+  },
+
+  // ── Search ─────────────────────────────────────────────────────────────
+  {
+    method: 'GET',
+    path: '/api/search',
+    description:
+      'Full-text search across patients and visits. Searches patient name, phone, patient_id, and visit clinical_findings, procedure_notes, medicine_prescribed, tooth_number, visit_type. Returns up to 25 results per category. Prefer this over listing all patients/visits when looking for specific information.',
+    queryParams: [
+      { name: 'q', type: 'string', required: true, description: 'Search query (min 2 characters)' },
+    ],
+    responseHint:
+      '{ patients: [{ id, patient_id, name, phone_number, age, gender, patient_type, last_visit, visit_count, balance }], visits: [{ id, patient_id, patient_name, patient_code, date, doctor, visit_type, clinical_findings, procedure_notes, medicine_prescribed, tooth_number, cost, paid }] }',
   },
 
   // ── Misc ──────────────────────────────────────────────────────────────

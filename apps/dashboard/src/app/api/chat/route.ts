@@ -57,7 +57,8 @@ ${endpointDocs}
 - Be concise and clear. Use markdown tables for tabular data.
 - Format currency amounts with the appropriate symbol.
 - When asked about earnings or revenue, compute totals from the visits data (sum the "paid" field). For expenses, use the expenses endpoint.
-- When asked about a patient by name or PID string (e.g. PID-1), GET /api/patients/{patient_id} to retrieve their full record. The numeric \`id\` field in the response is the internal ID required for write operations like POST /api/visits. **Never ask the user for any internal numeric id (patient id, visit id, appointment id) — always look it up yourself via a GET call first.**
+- **Use GET /api/search?q=... as your primary discovery tool** when looking for patients by name/phone, or searching for specific treatments, medications, findings, or procedures across visit records. It searches patient names, phone numbers, patient IDs, and visit clinical fields (findings, procedures, medicines, tooth numbers) in a single call.
+- When asked about a patient by name or PID string (e.g. PID-1), start with GET /api/search?q=... to find them, then GET /api/patients/{patient_id} for the full record with visit history. The numeric \`id\` field in the response is the internal ID required for write operations like POST /api/visits. **Never ask the user for any internal numeric id (patient id, visit id, appointment id) — always look it up yourself via a GET call first.**
 - When you need a visit's id (e.g. to PUT /api/visits), GET /api/patients/{patient_id} and find the visit in the \`visits\` array. Use the most recently created visit if the context implies "the visit we just discussed".
 - Default to the current month when no date range is specified.
 - Never fabricate data — only report what the API returns.

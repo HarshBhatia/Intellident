@@ -200,7 +200,18 @@ export async function initializeDatabase() {
     await sql`CREATE INDEX IF NOT EXISTS idx_visits_patient_id ON visits(patient_id)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_appointments_clinic_date ON appointments(clinic_id, date)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_appointments_clinic_doctor_date ON appointments(clinic_id, doctor_email, date)`;
-    
+
+    // Full-text search support: enable pg_trgm for ILIKE index acceleration
+    try {
+      await sql`CREATE EXTENSION IF NOT EXISTS pg_trgm`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_patients_name_trgm ON patients USING gin (name gin_trgm_ops)`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_patients_phone_trgm ON patients USING gin (phone_number gin_trgm_ops)`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_visits_findings_trgm ON visits USING gin (clinical_findings gin_trgm_ops)`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_visits_procedures_trgm ON visits USING gin (procedure_notes gin_trgm_ops)`;
+    } catch {
+      // pg_trgm may not be available in all environments (e.g. PGlite)
+    }
+
     // 8. Drop doctors table if it exists (consolidated to clinic_members)
     try {
       await sql`DROP TABLE IF EXISTS doctors CASCADE`;
