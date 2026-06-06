@@ -51,7 +51,6 @@ export async function getVisits(clinicId: string, filters: VisitFilters = {}): P
     );
   }
 
-
   return rows.map((r: any) => ({ ...r, billing_items: parseBillingItems(r.billing_items) })) as Visit[];
 }
 
