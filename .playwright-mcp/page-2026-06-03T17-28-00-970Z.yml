@@ -1,0 +1,36 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - navigation [ref=e3]:
+      - generic [ref=e5]:
+        - generic [ref=e6] [cursor=pointer]:
+          - img [ref=e8]
+          - generic [ref=e10]: IntelliDent
+        - generic [ref=e11]:
+          - button "Toggle Theme" [ref=e12]:
+            - img [ref=e13]
+          - button "Patients" [ref=e15]:
+            - img [ref=e16]
+            - generic [ref=e18]: Patients
+          - button "Scheduler" [ref=e19]:
+            - img [ref=e20]
+            - generic [ref=e22]: Scheduler
+          - button "Earnings" [ref=e23]:
+            - img [ref=e24]
+            - generic [ref=e26]: Earnings
+          - button "Expenses" [ref=e27]:
+            - img [ref=e28]
+            - generic [ref=e30]: Expenses
+          - button "Settings" [ref=e31]:
+            - img [ref=e32]
+            - generic [ref=e35]: Settings
+    - main [ref=e36]
+    - contentinfo [ref=e38]:
+      - generic [ref=e40]:
+        - paragraph [ref=e41]: © 2026 IntelliDent Platform. Built for Excellence.
+        - generic [ref=e42]:
+          - generic [ref=e43]: v1.0.5 - 2026-06-03
+          - link "Privacy Policy" [ref=e45] [cursor=pointer]:
+            - /url: /privacy
+          - link "Terms of Service" [ref=e47] [cursor=pointer]:
+            - /url: /terms
+  - alert [ref=e48]
