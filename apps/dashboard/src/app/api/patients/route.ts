@@ -25,4 +25,4 @@ export const POST = withAuth(async (request: Request, { clinicId }) => {
   const body = await request.json();
   const newPatient = await createPatient(clinicId, body);
   return NextResponse.json(newPatient);
-});
+}, { requiredPermission: 'patients.create' });

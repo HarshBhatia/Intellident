@@ -14,7 +14,16 @@ async function globalSetup(config: FullConfig) {
   await context.addCookies([
     {
       name: 'x-e2e-secret',
-      value: 'e2e-secret-key',
+      value: process.env.E2E_TEST_SECRET || 'e2e-secret-key',
+      domain: 'localhost',
+      path: '/',
+      httpOnly: false,
+      secure: false,
+      sameSite: 'Lax',
+    },
+    {
+      name: 'x-e2e-mode',
+      value: 'true',
       domain: 'localhost',
       path: '/',
       httpOnly: false,

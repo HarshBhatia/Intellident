@@ -2,8 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Patient Management', () => {
   test.beforeEach(async ({ page }) => {
-    // Patients are on the main dashboard, not /patients
-    await page.goto('/');
+    await page.goto('/patients');
   });
 
   test('should create a new patient', async ({ page }) => {

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI, SchemaType, type Tool } from '@google/generative-ai';
 import { withAuth } from '@/lib/api-handler';
 import { buildEndpointDocs } from '@/lib/api-manifest';
+import { assertFlag } from '@/lib/feature-gate';
 
 // ---------------------------------------------------------------------------
 // Single flexible tool — the LLM can call any dashboard API endpoint
@@ -114,6 +115,9 @@ async function executeApiCall(
 // Route handler
 // ---------------------------------------------------------------------------
 export const POST = withAuth(async (request: Request, { clinicId }) => {
+  const denied = assertFlag('aiChat');
+  if (denied) return denied;
+
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     return NextResponse.json(

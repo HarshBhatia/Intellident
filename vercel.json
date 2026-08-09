@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npm run build --workspace=dashboard",
+  "buildCommand": "if [ \"$VERCEL_ENV\" = \"production\" ]; then npm run db:migrate -w dashboard; fi && npm run build --workspace=dashboard",
   "devCommand": "npm run dev",
   "installCommand": "npm install",
   "framework": "nextjs",

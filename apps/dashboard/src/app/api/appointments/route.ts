@@ -35,7 +35,7 @@ export const POST = withAuth(async (request: Request, { clinicId }) => {
   const body = await request.json();
   const appointment = await createAppointment(clinicId, body);
   return NextResponse.json(appointment);
-});
+}, { requiredPermission: 'appointments.manage' });
 
 export const PUT = withAuth(async (request: Request, { clinicId }) => {
   const body = await request.json();
@@ -44,7 +44,7 @@ export const PUT = withAuth(async (request: Request, { clinicId }) => {
   }
   const appointment = await updateAppointment(clinicId, body.id, body);
   return NextResponse.json(appointment);
-});
+}, { requiredPermission: 'appointments.manage' });
 
 export const DELETE = withAuth(async (request: Request, { clinicId }) => {
   const { searchParams } = new URL(request.url);
@@ -54,4 +54,4 @@ export const DELETE = withAuth(async (request: Request, { clinicId }) => {
   }
   await deleteAppointment(clinicId, parseInt(id));
   return NextResponse.json({ success: true });
-});
+}, { requiredPermission: 'appointments.manage' });

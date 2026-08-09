@@ -37,6 +37,7 @@ export const apiManifest: Endpoint[] = [
     method: 'POST',
     path: '/api/patients',
     description: 'Create a new patient. patient_id (PID-N) is auto-generated.',
+    permission: 'patients.create',
     bodyFields: [
       { name: 'name', type: 'string', required: true, description: 'Patient full name' },
       { name: 'age', type: 'number', description: 'Age in years' },
@@ -57,7 +58,8 @@ export const apiManifest: Endpoint[] = [
   {
     method: 'PUT',
     path: '/api/patients/{patient_id}',
-    description: 'Update patient info. Use the patient_id string (e.g. PID-1) in the URL.',
+    description: 'Update patient info. Use the patient_id string (e.g. PID-1) in the URL. Only provided fields are changed.',
+    permission: 'patients.update (DOCTOR/ADMIN/OWNER)',
     bodyFields: [
       { name: 'name', type: 'string', description: 'Patient full name' },
       { name: 'age', type: 'number', description: 'Age in years' },
@@ -280,7 +282,8 @@ export const apiManifest: Endpoint[] = [
     method: 'POST',
     path: '/api/clinic',
     description:
-      'Create a new clinic (body has name only) or update current clinic settings (body includes id/clinicId plus fields to update).',
+      'Create a new clinic (body has name only) or update current clinic settings (body includes id/clinicId plus fields to update). Updates are partial — omitted fields, including GST, are left unchanged.',
+    permission: 'clinic.update (OWNER/ADMIN) for updates',
     bodyFields: [
       { name: 'name', type: 'string', description: 'Clinic name (for creation)' },
       { name: 'clinic_name', type: 'string', description: 'Clinic display name (for update)' },
@@ -309,10 +312,10 @@ export const apiManifest: Endpoint[] = [
     description: 'Add a clinic member.',
     bodyFields: [
       { name: 'email', type: 'string', required: true, description: 'Member email' },
-      { name: 'role', type: 'string', description: 'Role (default: DOCTOR)' },
+      { name: 'role', type: 'string', description: 'ADMIN | DOCTOR | RECEPTIONIST (STAFF is accepted as an alias for RECEPTIONIST). OWNER cannot be assigned.' },
       { name: 'displayName', type: 'string', description: 'Display name' },
     ],
-    permission: 'OWNER only',
+    permission: 'members.manage (OWNER only)',
   },
   {
     method: 'PUT',
@@ -322,16 +325,16 @@ export const apiManifest: Endpoint[] = [
       { name: 'id', type: 'number', required: true, description: 'Member id' },
       { name: 'displayName', type: 'string', required: true, description: 'New display name' },
     ],
-    permission: 'OWNER only',
+    permission: 'members.manage (OWNER only)',
   },
   {
     method: 'DELETE',
     path: '/api/clinic/members',
-    description: 'Remove a clinic member.',
+    description: 'Remove a clinic member. Cannot remove the last OWNER.',
     queryParams: [
       { name: 'id', type: 'string', required: true, description: 'Member id' },
     ],
-    permission: 'OWNER only',
+    permission: 'members.manage (OWNER only)',
   },
 
   // ── Clinic Treatments ─────────────────────────────────────────────────
@@ -348,6 +351,7 @@ export const apiManifest: Endpoint[] = [
     bodyFields: [
       { name: 'name', type: 'string', required: true, description: 'Treatment name, e.g. RCT, Crown' },
     ],
+    permission: 'clinic.update (OWNER/ADMIN)',
   },
   {
     method: 'DELETE',
@@ -356,6 +360,7 @@ export const apiManifest: Endpoint[] = [
     bodyFields: [
       { name: 'id', type: 'number', required: true, description: 'Treatment id' },
     ],
+    permission: 'clinic.update (OWNER/ADMIN)',
   },
 
   // ── Search ─────────────────────────────────────────────────────────────
@@ -377,6 +382,7 @@ export const apiManifest: Endpoint[] = [
     path: '/api/clinic/invoice',
     description: 'Get the next invoice number (atomically incremented).',
     responseHint: '{ invoice_number: number }',
+    permission: 'billing.admin (OWNER/ADMIN)',
   },
   {
     method: 'GET',

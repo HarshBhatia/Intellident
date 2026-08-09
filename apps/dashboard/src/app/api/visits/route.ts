@@ -20,7 +20,7 @@ export const POST = withAuth(async (request: Request, { clinicId }) => {
   const body = await request.json();
   const newVisit = await createVisit(clinicId, body);
   return NextResponse.json(newVisit);
-});
+}, { requiredPermission: 'visits.create' });
 
 export const DELETE = withAuth(async (request: Request, { clinicId }) => {
   const { searchParams } = new URL(request.url);

@@ -12,6 +12,9 @@ import { useClinic } from '@/context/ClinicContext';
 import { Analytics } from '@/lib/analytics';
 import VisitsTab from '@/components/VisitsTab';
 import OdontogramTab from '@/components/OdontogramTab';
+import FeatureGate from '@/components/FeatureGate';
+import { flags } from '@/lib/flags';
+import { usePermissions } from '@/hooks/usePermissions';
 import { useRefreshOnAiWrite } from '@/hooks/useRefreshOnAiWrite';
 
 type TabKey = 'overview' | 'visits' | 'odontogram' | 'financials' | 'files';
@@ -20,6 +23,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
   const { user } = useAuth();
   const { showToast } = useToast();
   const { clinic: clinicInfo } = useClinic();
+  const { can } = usePermissions();
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -201,10 +205,10 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
   const handleCollect = async (visit: Visit, amount: number) => {
     try {
       const newPaid = Number(visit.paid || 0) + amount;
-      const res = await fetch('/api/visits', {
-        method: 'PUT',
+      const res = await fetch('/api/visits/collect', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...visit, paid: newPaid, billing_items: JSON.stringify(visit.billing_items || []) }),
+        body: JSON.stringify({ id: visit.id, paid: newPaid }),
       });
       if (res.ok) {
         showToast(`₹${amount.toLocaleString('en-IN')} collected!`, 'success');
@@ -292,8 +296,8 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
     { key: 'overview', label: 'Overview' },
     { key: 'visits', label: 'Visits', count: patient.visits?.length || 0 },
     { key: 'odontogram', label: 'Odontogram' },
-    { key: 'financials', label: 'Financials' },
-    { key: 'files', label: 'Files' },
+    ...(flags.patientFinancialsTab ? [{ key: 'financials' as const, label: 'Financials' }] : []),
+    ...(flags.filesXrays ? [{ key: 'files' as const, label: 'Files' }] : []),
   ];
 
   return (
@@ -341,23 +345,29 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
 
           {/* Actions */}
           <div className="flex items-center gap-2 ml-auto">
+            {can('patients.delete') && (
             <button onClick={handleDeletePatient}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-red-500 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors"
               title="Delete patient">
               <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
               Delete
             </button>
+            )}
+            {can('patients.update') && (
             <button onClick={() => setShowEditPatient(true)}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 hover:bg-gray-50 transition-colors">
               <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
               Edit profile
             </button>
+            )}
+            {can('visits.create') && (
             <button
               onClick={() => { setShowVisitForm(true); setEditingVisitId(null); setShowManualFields(true); setSmartNote(''); setPaidTouched(false); setNewVisit({ date: new Date().toISOString().split('T')[0], doctor: '', visit_type: 'Consultation', clinical_findings: '', procedure_notes: '', tooth_number: '', dentition_type: 'Adult', cost: 0, paid: 0, xrays: '[]', billing_items: [] }); setSelectedDoctors([]); setTab('visits'); }}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow transition-colors">
               <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
               New visit
             </button>
+            )}
           </div>
         </div>
 
@@ -453,6 +463,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                     <div className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
                       {/* AI Smart Entry */}
                       {!editingVisitId && (
+                        <FeatureGate flag="aiNotes">
                         <div className="rounded-xl bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/50 p-4">
                           <div className="flex items-center gap-1.5 mb-2">
                             <svg className="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
@@ -472,6 +483,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                             </button>
                           </div>
                         </div>
+                        </FeatureGate>
                       )}
 
                       {(showManualFields || editingVisitId) && (
@@ -573,14 +585,16 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                 onNewVisit={() => { setShowVisitForm(true); setEditingVisitId(null); setShowManualFields(true); setSmartNote(''); setPaidTouched(false); setNewVisit({ date: new Date().toISOString().split('T')[0], doctor: '', visit_type: 'Consultation', clinical_findings: '', procedure_notes: '', tooth_number: '', dentition_type: 'Adult', cost: 0, paid: 0, xrays: '[]', billing_items: [] }); setSelectedDoctors([]); }}
                 onEditVisit={handleEditVisit}
                 onDeleteVisit={handleDeleteVisit}
-                onCollect={handleCollect}
+                onCollect={can('payments.create') ? handleCollect : undefined}
+                canEdit={can('clinical_notes.edit')}
+                canDelete={can('visits.delete')}
               />
             </>
           )}
 
           {/* ── Odontogram tab ───────────────────────────────────────────── */}
           {activeTab === 'odontogram' && (
-            <OdontogramTab patientId={patient.patient_id} visits={patient.visits || []} />
+            <OdontogramTab patientId={patient.patient_id} visits={patient.visits || []} canEdit={can('clinical_notes.edit')} />
           )}
 
           {/* ── Financials stub ──────────────────────────────────────────── */}

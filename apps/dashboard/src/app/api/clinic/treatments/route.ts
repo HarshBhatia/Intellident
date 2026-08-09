@@ -14,7 +14,7 @@ export const POST = withAuth(async (request: Request, { clinicId }) => {
 
   const newTreatment = await createTreatment(name, clinicId);
   return NextResponse.json(newTreatment);
-});
+}, { requiredPermission: 'clinic.update' });
 
 export const DELETE = withAuth(async (request: Request, { clinicId }) => {
   const body = await request.json();
@@ -23,4 +23,4 @@ export const DELETE = withAuth(async (request: Request, { clinicId }) => {
 
   await deleteTreatment(id, clinicId);
   return NextResponse.json({ success: true });
-});
+}, { requiredPermission: 'clinic.update' });

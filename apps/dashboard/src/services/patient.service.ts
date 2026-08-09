@@ -1,5 +1,7 @@
 import { getDb } from '@intellident/api';
 import { Patient, Visit, BillingItem } from '@intellident/api/src/types'; // Import BillingItem
+import { ApiError } from '@/lib/errors';
+import { allocatePatientId } from './clinic.service';
 
 const parseBillingItems = (billingItemsJson?: string | null): BillingItem[] => {
   if (!billingItemsJson) return [];
@@ -129,48 +131,43 @@ export async function getPatientByIdWithVisits(clinicId: string, patientId: stri
 }
 
 
+function isUniqueViolation(err: any): boolean {
+  const msg = String(err?.message || err || '');
+  return err?.code === '23505' || /duplicate key|unique constraint|unique violation/i.test(msg);
+}
+
+function hasOwn<T extends object>(obj: T, key: keyof T): boolean {
+  return Object.prototype.hasOwnProperty.call(obj, key);
+}
+
 export async function createPatient(clinicId: string, patientData: Omit<Patient, 'id' | 'patient_id' | 'created_at' | 'clinic_id'>): Promise<Patient> {
   if (!clinicId) throw new Error('Clinic ID is required');
   if (!patientData.name) throw new Error('Patient name is required');
 
   const sql = getDb();
   const cId = parseInt(clinicId);
-
-  // Auto-generate next Patient ID in PID-XX format for this clinic
-  let nextId = 'PID-1';
-  try {
-    const allIds = await sql`
-      SELECT patient_id FROM patients 
-      WHERE clinic_id = ${cId} 
-      AND patient_id LIKE 'PID-%'
-    `;
-    
-    let maxNum = 0;
-    allIds.forEach((row: any) => {
-      const match = row.patient_id.match(/^PID-(\d+)$/);
-      if (match) {
-        const num = parseInt(match[1]);
-        if (num > maxNum) maxNum = num;
-      }
-    });
-    
-    nextId = `PID-${maxNum + 1}`;
-  } catch (e) {
-    const countResult = await sql`SELECT COUNT(*) FROM patients WHERE clinic_id = ${cId}`;
-    nextId = `PID-${parseInt(countResult[0].count) + 1}`;
-  }
-
   const { name, age, gender, phone_number, patient_type, referral_source } = patientData;
 
-  const result = await sql`
-    INSERT INTO patients (
-      patient_id, name, age, gender, phone_number, patient_type, clinic_id, referral_source
-    ) VALUES (
-      ${nextId}, ${name}, ${age}, ${gender}, ${phone_number}, ${patient_type}, ${cId}, ${referral_source ?? null}
-    )
-    RETURNING *
-  `;
-  return result[0] as Patient;
+  const maxAttempts = 3;
+  let lastError: any;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const nextId = await allocatePatientId(cId);
+    try {
+      const result = await sql`
+        INSERT INTO patients (
+          patient_id, name, age, gender, phone_number, patient_type, clinic_id, referral_source
+        ) VALUES (
+          ${nextId}, ${name}, ${age}, ${gender}, ${phone_number}, ${patient_type}, ${cId}, ${referral_source ?? null}
+        )
+        RETURNING *
+      `;
+      return result[0] as Patient;
+    } catch (err) {
+      lastError = err;
+      if (!isUniqueViolation(err)) throw err;
+    }
+  }
+  throw lastError;
 }
 
 export async function updatePatient(clinicId: string, patientId: string, patientData: Partial<Omit<Patient, 'id' | 'patient_id' | 'created_at' | 'clinic_id'>>): Promise<Patient> {
@@ -179,22 +176,21 @@ export async function updatePatient(clinicId: string, patientId: string, patient
 
   const sql = getDb();
   const cId = parseInt(clinicId);
-  const { name, age, gender, phone_number, patient_type, referral_source } = patientData;
 
   const result = await sql`
     UPDATE patients SET
-      name = ${name},
-      age = ${age},
-      gender = ${gender},
-      phone_number = ${phone_number},
-      patient_type = ${patient_type},
-      referral_source = ${referral_source ?? null}
-    WHERE patient_id = ${patientId} AND clinic_id = ${cId}
+      name = CASE WHEN ${hasOwn(patientData, 'name') ? 1 : 0} = 1 THEN ${patientData.name ?? null} ELSE name END,
+      age = CASE WHEN ${hasOwn(patientData, 'age') ? 1 : 0} = 1 THEN ${patientData.age ?? null} ELSE age END,
+      gender = CASE WHEN ${hasOwn(patientData, 'gender') ? 1 : 0} = 1 THEN ${patientData.gender ?? null} ELSE gender END,
+      phone_number = CASE WHEN ${hasOwn(patientData, 'phone_number') ? 1 : 0} = 1 THEN ${patientData.phone_number ?? null} ELSE phone_number END,
+      patient_type = CASE WHEN ${hasOwn(patientData, 'patient_type') ? 1 : 0} = 1 THEN ${patientData.patient_type ?? null} ELSE patient_type END,
+      referral_source = CASE WHEN ${hasOwn(patientData, 'referral_source') ? 1 : 0} = 1 THEN ${patientData.referral_source ?? null} ELSE referral_source END
+    WHERE patient_id = ${patientId} AND clinic_id = ${cId} AND is_active = TRUE
     RETURNING *
   `;
 
   if (result.length === 0) {
-    throw new Error('Patient not found');
+    throw new ApiError(404, 'Patient not found');
   }
 
   return result[0] as Patient;
@@ -208,7 +204,7 @@ export async function deletePatient(clinicId: string, patientId: string): Promis
   const cId = parseInt(clinicId);
   const result = await sql`DELETE FROM patients WHERE patient_id = ${patientId} AND clinic_id = ${cId} RETURNING id`;
   if (result.length === 0) {
-    throw new Error('Patient not found');
+    throw new ApiError(404, 'Patient not found');
   }
 }
 
@@ -221,10 +217,10 @@ export async function softDeletePatient(clinicId: string, patientId: string): Pr
   const result = await sql`
     UPDATE patients 
     SET is_active = FALSE 
-    WHERE patient_id = ${patientId} AND clinic_id = ${cId} 
+    WHERE patient_id = ${patientId} AND clinic_id = ${cId} AND is_active = TRUE
     RETURNING id
   `;
   if (result.length === 0) {
-    throw new Error('Patient not found');
+    throw new ApiError(404, 'Patient not found');
   }
 }

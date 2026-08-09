@@ -9,8 +9,12 @@ import Navbar from "@/components/Navbar";
 import { validateEnv } from "@/lib/env";
 import { ClinicProvider } from "@/context/ClinicContext";
 import ChatBox from "@/components/ChatBox";
+import FeatureGate from "@/components/FeatureGate";
+import PageTracker from "@/components/PageTracker";
 import Script from "next/script";
 import "./globals.css";
+
+const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || '';
 
 validateEnv();
 
@@ -98,25 +102,31 @@ export default function RootLayout({
                   </main>
                   <Footer />
                 </div>
-                <ChatBox />
+                <FeatureGate flag="aiChat">
+                  <ChatBox />
+                </FeatureGate>
+                <PageTracker />
               </ToastProvider>
             </ThemeProvider>
           </ClinicProvider>
         </ClerkProvider>
-        
-        {/* Google Analytics */}
-        <Script
-          src="https://www.googletagmanager.com/gtag/js?id=G-1BJ5E2NT8X"
-          strategy="afterInteractive"
-        />
-        <Script id="ga4-init" strategy="afterInteractive">
-          {`
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-            gtag('config', 'G-1BJ5E2NT8X');
-          `}
-        </Script>
+
+        {GA_MEASUREMENT_ID && (
+          <>
+            <Script
+              src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
+              strategy="afterInteractive"
+            />
+            <Script id="ga4-init" strategy="afterInteractive">
+              {`
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){dataLayer.push(arguments);}
+                gtag('js', new Date());
+                gtag('config', '${GA_MEASUREMENT_ID}', { send_page_view: false, anonymize_ip: true });
+              `}
+            </Script>
+          </>
+        )}
       </body>
     </html>
   );

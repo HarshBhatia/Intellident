@@ -9,4 +9,4 @@ export const PUT = withAuth(async (request: Request, { clinicId }) => {
   }
   const appointment = await updateAppointmentStatus(clinicId, id, status);
   return NextResponse.json(appointment);
-});
+}, { requiredPermission: 'appointments.manage' });

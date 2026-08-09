@@ -13,6 +13,7 @@
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:debug": "playwright test --debug",
     "seed": "tsx scripts/seed-test-data.ts",
+    "db:migrate": "tsx scripts/migrate.ts",
     "prepare": "husky"
   },
   "dependencies": {

@@ -97,6 +97,8 @@ export async function initializeDatabase() {
     await sql`ALTER TABLE clinics ADD COLUMN IF NOT EXISTS gst_rate NUMERIC DEFAULT 18`;
     await sql`ALTER TABLE clinics ADD COLUMN IF NOT EXISTS state_code TEXT`;
     await sql`ALTER TABLE clinics ADD COLUMN IF NOT EXISTS invoice_counter INTEGER DEFAULT 0`;
+    await sql`ALTER TABLE clinics ADD COLUMN IF NOT EXISTS owner_name TEXT`;
+    await sql`ALTER TABLE clinics ADD COLUMN IF NOT EXISTS patient_counter INTEGER DEFAULT 0`;
     
     await sql`
       CREATE TABLE IF NOT EXISTS clinic_members (
@@ -112,14 +114,40 @@ export async function initializeDatabase() {
     `;
     await sql`ALTER TABLE clinic_members ADD COLUMN IF NOT EXISTS user_id TEXT`;
     await sql`ALTER TABLE clinic_members ADD COLUMN IF NOT EXISTS display_name TEXT`;
+
+    try {
+      await sql`UPDATE clinic_members SET role = 'RECEPTIONIST' WHERE UPPER(role) = 'STAFF'`;
+    } catch (err) {
+      // Role backfill is best-effort
+    }
     
     try {
       await sql`CREATE INDEX IF NOT EXISTS idx_clinic_members_user_id ON clinic_members(user_id)`;
       await sql`CREATE INDEX IF NOT EXISTS idx_clinic_members_clinic_user ON clinic_members(clinic_id, user_id) WHERE status = 'ACTIVE'`;
       await sql`CREATE INDEX IF NOT EXISTS idx_clinic_members_clinic_email ON clinic_members(clinic_id, user_email) WHERE status = 'ACTIVE'`;
       await sql`CREATE INDEX IF NOT EXISTS idx_clinic_members_role ON clinic_members(clinic_id, role) WHERE status = 'ACTIVE'`;
+      await sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_clinic_members_email_lower ON clinic_members (clinic_id, LOWER(user_email))`;
     } catch (err) {
-      // Indexes already exist
+      // Indexes already exist or duplicate mixed-case emails prevent unique lower index
+    }
+
+    try {
+      await sql`
+        UPDATE clinics c
+        SET patient_counter = sub.max_num
+        FROM (
+          SELECT clinic_id,
+            COALESCE(MAX(CAST(SUBSTRING(patient_id FROM 5) AS INTEGER)), 0) AS max_num
+          FROM patients
+          WHERE patient_id LIKE 'PID-%'
+            AND SUBSTRING(patient_id FROM 5) ~ '^[0-9]+$'
+          GROUP BY clinic_id
+        ) sub
+        WHERE c.id = sub.clinic_id
+          AND COALESCE(c.patient_counter, 0) < sub.max_num
+      `;
+    } catch (err) {
+      // Backfill is best-effort (regex may be unavailable)
     }
 
     // 5. Visits Table
@@ -229,7 +257,21 @@ export async function initializeDatabase() {
     `;
     await sql`CREATE INDEX IF NOT EXISTS idx_patient_messages_clinic_patient ON patient_messages(clinic_id, patient_id)`;
 
-    // 9. Drop doctors table if it exists (consolidated to clinic_members)
+    // 9. Odontogram charts (one row per patient)
+    await sql`
+      CREATE TABLE IF NOT EXISTS patient_odontograms (
+        id SERIAL PRIMARY KEY,
+        clinic_id INTEGER NOT NULL REFERENCES clinics(id) ON DELETE CASCADE,
+        patient_id INTEGER NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+        chart JSONB NOT NULL DEFAULT '{}',
+        updated_by TEXT,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE (clinic_id, patient_id)
+      )
+    `;
+    await sql`CREATE INDEX IF NOT EXISTS idx_odontograms_clinic_patient ON patient_odontograms (clinic_id, patient_id)`;
+
+    // 10. Drop doctors table if it exists (consolidated to clinic_members)
     try {
       await sql`DROP TABLE IF EXISTS doctors CASCADE`;
     } catch (err) {

@@ -4,15 +4,21 @@ import { withAuth, withAuthOnly } from '@/lib/api-handler';
 
 export const dynamic = 'force-dynamic';
 
+function handleClinicUpdate(request: Request, body: Record<string, unknown>) {
+  return withAuth(async (_req: Request, { clinicId }) => {
+    const updatedClinicInfo = await updateClinicInfo(clinicId, body);
+    return NextResponse.json(updatedClinicInfo);
+  }, { requiredPermission: 'clinic.update' })(request);
+}
+
 // GET /api/clinic - List all clinics for user (no clinic context)
-// GET /api/clinic?id=123 - Get specific clinic info (with clinic context)
+// GET /api/clinic?id=current - Get current clinic info (cookie/header clinic)
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const clinicId = searchParams.get('id');
 
   if (clinicId) {
-    // Get specific clinic info (requires auth + clinic membership)
-    return withAuth(async (req: Request, { clinicId: cId }) => {
+    return withAuth(async (_req: Request, { clinicId: cId }) => {
       const clinicInfo = await getClinicInfo(cId);
       if (!clinicInfo) return NextResponse.json({ error: 'Clinic not found' }, { status: 404 });
 
@@ -24,33 +30,32 @@ export async function GET(request: Request) {
     })(request);
   }
 
-  // List all clinics for user (no clinic context required)
-  return withAuthOnly(async (_userId, userEmail) => {
-    const clinics = await getClinics(userEmail);
+  return withAuthOnly(async (userId, userEmail) => {
+    const clinics = await getClinics(userEmail, userId);
     return NextResponse.json(clinics);
   })(request);
 }
 
-// POST /api/clinic - Create new clinic (no clinic context)
-// PUT /api/clinic - Update current clinic (with clinic context)
+// POST /api/clinic - Create new clinic (body.name only)
+// POST /api/clinic with id/clinicId - Update current clinic (backward compatible)
 export async function POST(request: Request) {
   const body = await request.json();
-  
+
   if (body.id || body.clinicId) {
-    // Update existing clinic
-    return withAuth(async (req: Request, { clinicId }) => {
-      const updatedClinicInfo = await updateClinicInfo(clinicId, body);
-      return NextResponse.json(updatedClinicInfo);
-    })(request);
+    return handleClinicUpdate(request, body);
   }
 
-  // Create new clinic
-  return withAuthOnly(async (_userId, userEmail, req) => {
+  return withAuthOnly(async (userId, userEmail) => {
     const { name } = body;
     if (!name) {
       return NextResponse.json({ error: 'Clinic name is required' }, { status: 400 });
     }
-    const newClinic = await createClinic(name, userEmail);
+    const newClinic = await createClinic(name, userEmail, userId);
     return NextResponse.json(newClinic);
   })(request);
+}
+
+export async function PUT(request: Request) {
+  const body = await request.json();
+  return handleClinicUpdate(request, body);
 }

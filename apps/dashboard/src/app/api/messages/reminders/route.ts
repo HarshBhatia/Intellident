@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/api-handler';
 import { sendAppointmentReminders } from '@/services/message.service';
+import { assertFlag } from '@/lib/feature-gate';
 
 // POST /api/messages/reminders
 // Body: { date?: string }  — defaults to tomorrow (IST)
 export const POST = withAuth(async (request: Request, { clinicId }) => {
+  const denied = assertFlag('messaging');
+  if (denied) return denied;
+
   const body = await request.json().catch(() => ({}));
 
   let targetDate = body.date as string | undefined;

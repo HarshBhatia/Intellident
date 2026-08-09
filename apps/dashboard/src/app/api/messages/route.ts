@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/api-handler';
 import { getMessagesByPatient, sendMessage } from '@/services/message.service';
+import { assertFlag } from '@/lib/feature-gate';
 import { MessageChannel, MessageType } from '@intellident/api/src/types';
 
 export const GET = withAuth(async (request: Request, { clinicId }) => {
+  const denied = assertFlag('messaging');
+  if (denied) return denied;
+
   const { searchParams } = new URL(request.url);
   const patientId = searchParams.get('patient_id');
   if (!patientId) {
@@ -14,6 +18,9 @@ export const GET = withAuth(async (request: Request, { clinicId }) => {
 });
 
 export const POST = withAuth(async (request: Request, { clinicId, userEmail }) => {
+  const denied = assertFlag('messaging');
+  if (denied) return denied;
+
   const body = await request.json();
   const { patient_id, phone, channel, message_type, message, template_params } = body;
 

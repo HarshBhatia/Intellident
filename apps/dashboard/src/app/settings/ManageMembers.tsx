@@ -5,10 +5,17 @@ import { useToast } from '@/components/ToastProvider';
 import { useClinic } from '@/context/ClinicContext';
 import type { ClinicMember } from '@/types';
 
-const ROLE_LABELS: Record<string, string> = { OWNER: 'Owner', DOCTOR: 'Doctor', STAFF: 'Staff', ADMIN: 'Admin' };
+const ROLE_LABELS: Record<string, string> = {
+  OWNER: 'Owner',
+  DOCTOR: 'Doctor',
+  RECEPTIONIST: 'Staff',
+  STAFF: 'Staff',
+  ADMIN: 'Admin',
+};
 const ROLE_COLORS: Record<string, string> = {
   OWNER: 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400',
   DOCTOR: 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400',
+  RECEPTIONIST: 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-500',
   STAFF: 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-500',
   ADMIN: 'bg-purple-50 text-purple-700 dark:bg-purple-900/20 dark:text-purple-400',
 };
@@ -29,12 +36,13 @@ export default function ManageMembers() {
 
   const [newName, setNewName] = useState('');
   const [newEmail, setNewEmail] = useState('');
-  const [newRole, setNewRole] = useState<'DOCTOR' | 'STAFF' | 'ADMIN'>('DOCTOR');
+  const [newRole, setNewRole] = useState<'DOCTOR' | 'RECEPTIONIST' | 'ADMIN'>('DOCTOR');
   const [inviting, setInviting] = useState(false);
   const [showInviteForm, setShowInviteForm] = useState(false);
 
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editName, setEditName] = useState('');
+  const [updatingRoleId, setUpdatingRoleId] = useState<number | null>(null);
 
   const fetchMembers = async () => {
     try {
@@ -93,6 +101,22 @@ export default function ManageMembers() {
     } catch {}
   };
 
+  const handleRoleChange = async (id: number, role: string) => {
+    setUpdatingRoleId(id);
+    try {
+      const res = await fetch('/api/clinic/members', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, role }),
+      });
+      if (res.ok) { showToast('Role updated', 'success'); fetchMembers(); refreshDoctors(); }
+      else {
+        const data = await res.json().catch(() => ({}));
+        showToast(data.error || 'Failed to update role', 'error');
+      }
+    } catch { showToast('Failed to update role', 'error'); }
+    finally { setUpdatingRoleId(null); }
+  };
+
   const handleRemove = async (id: number) => {
     if (!confirm('Remove this member?')) return;
     try {
@@ -132,7 +156,7 @@ export default function ManageMembers() {
             <select value={newRole} onChange={e => setNewRole(e.target.value as any)}
               className="px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-gray-100">
               <option value="DOCTOR">Doctor</option>
-              <option value="STAFF">Staff</option>
+              <option value="RECEPTIONIST">Staff</option>
               <option value="ADMIN">Admin</option>
             </select>
             <button type="submit" disabled={inviting}
@@ -217,9 +241,22 @@ export default function ManageMembers() {
                     </div>
                   </td>
                   <td className="px-6 py-4">
+                    {isOwner && m.role !== 'OWNER' ? (
+                      <select
+                        value={m.role === 'STAFF' ? 'RECEPTIONIST' : m.role}
+                        disabled={updatingRoleId === m.id}
+                        onChange={e => handleRoleChange(m.id, e.target.value)}
+                        className={`text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-lg border-0 outline-none ${ROLE_COLORS[m.role] || ROLE_COLORS.STAFF}`}
+                      >
+                        <option value="ADMIN">Admin</option>
+                        <option value="DOCTOR">Doctor</option>
+                        <option value="RECEPTIONIST">Staff</option>
+                      </select>
+                    ) : (
                     <span className={`inline-block text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-lg ${ROLE_COLORS[m.role] || ROLE_COLORS.STAFF}`}>
                       {ROLE_LABELS[m.role] || m.role}
                     </span>
+                    )}
                   </td>
                   <td className="px-6 py-4">
                     <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-700 dark:text-gray-300">

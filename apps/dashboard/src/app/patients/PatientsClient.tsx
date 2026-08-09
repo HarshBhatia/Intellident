@@ -9,6 +9,7 @@ import Skeleton from '@/components/Skeleton';
 import { useAuth } from '@/hooks/useAuth';
 import { useClinic } from '@/context/ClinicContext';
 import { useRefreshOnAiWrite } from '@/hooks/useRefreshOnAiWrite';
+import { usePermissions } from '@/hooks/usePermissions';
 
 // ─── Segments ─────────────────────────────────────────────────────────────────
 const SEGMENTS = [
@@ -38,6 +39,7 @@ const IcGrid = () => <svg width="13" height="13" fill="none" stroke="currentColo
 export default function PatientsClient() {
   const { user } = useAuth();
   const { clinic: clinicInfo } = useClinic();
+  const { can } = usePermissions();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -199,12 +201,13 @@ export default function PatientsClient() {
               ))}
             </div>
 
-            {/* Add patient */}
+            {can('patients.create') && (
             <button onClick={() => setShowAdd(true)}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 text-[13px] font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-[9px] transition-colors">
               <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" d="M12 5v14M5 12h14"/></svg>
               Add patient
             </button>
+            )}
           </div>
 
           {/* Table / cards */}
@@ -217,7 +220,7 @@ export default function PatientsClient() {
           ) : (
             <PatientTable
               patients={filtered}
-              onAddClick={() => setShowAdd(true)}
+              onAddClick={can('patients.create') ? () => setShowAdd(true) : undefined}
               onDeleteSuccess={fetchPatients}
               viewMode={viewMode}
             />

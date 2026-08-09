@@ -99,3 +99,19 @@ export async function deleteVisit(clinicId: string, id: string): Promise<void> {
   const sql = getDb();
   await sql`DELETE FROM visits WHERE id=${id} AND clinic_id=${parseInt(clinicId)}`;
 }
+
+export async function collectVisitPayment(clinicId: string, visitId: number, paid: number): Promise<Visit> {
+  if (!visitId) throw new Error('Visit id is required');
+  if (typeof paid !== 'number' || Number.isNaN(paid) || paid < 0) {
+    throw new Error('paid must be a non-negative number');
+  }
+  const sql = getDb();
+  const cId = parseInt(clinicId);
+  const result = await sql`
+    UPDATE visits SET paid = ${paid}
+    WHERE id = ${visitId} AND clinic_id = ${cId}
+    RETURNING *
+  `;
+  if (result.length === 0) throw new Error('Visit not found');
+  return { ...result[0], billing_items: parseBillingItems(result[0].billing_items) } as Visit;
+}

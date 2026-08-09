@@ -7,9 +7,9 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : 4,
-  timeout: 15000, // 15 seconds per test
+  timeout: process.env.CI ? 30000 : 15000,
   expect: {
-    timeout: 5000, // 5 seconds for assertions
+    timeout: process.env.CI ? 10000 : 5000,
   },
   globalSetup: './test/e2e/global-setup.ts',
   reporter: [

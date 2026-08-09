@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAuthContext, getClinicId, verifyMembership, getMemberRole } from './auth';
 import { type Permission, type Role, hasPermission } from './permissions';
+import { ApiError } from './errors';
 
 export interface AuthenticatedContext {
   userId: string;
@@ -15,8 +16,19 @@ export interface AuthOptions {
 
 type ApiHandler<T = any> = (
   request: Request,
-  context: AuthenticatedContext
+  context: AuthenticatedContext,
+  routeParams?: any
 ) => Promise<NextResponse<T> | NextResponse>;
+
+function jsonError(error: any) {
+  if (error instanceof ApiError) {
+    return NextResponse.json({ error: error.message }, { status: error.status });
+  }
+  return NextResponse.json(
+    { error: error.message || 'Internal server error' },
+    { status: 500 }
+  );
+}
 
 export function withAuth<T = any>(handler: ApiHandler<T>, options?: AuthOptions) {
   return async (request: Request, routeParams?: any) => {
@@ -37,19 +49,16 @@ export function withAuth<T = any>(handler: ApiHandler<T>, options?: AuthOptions)
 
       let userRole: Role | null = null;
       if (options?.requiredPermission) {
-        userRole = (await getMemberRole(clinicId, userEmail, userId)) as Role | null;
+        userRole = await getMemberRole(clinicId, userEmail, userId);
         if (!hasPermission(userRole, options.requiredPermission)) {
           return NextResponse.json({ error: 'Forbidden: insufficient permissions' }, { status: 403 });
         }
       }
 
       const context: AuthenticatedContext = { userId, userEmail, clinicId, userRole };
-      return await handler(request, context);
+      return await handler(request, context, routeParams);
     } catch (error: any) {
-      return NextResponse.json(
-        { error: error.message || 'Internal server error' },
-        { status: 500 }
-      );
+      return jsonError(error);
     }
   };
 }
@@ -69,10 +78,7 @@ export function withAuthOnly<T = any>(
 
       return await handler(userId, userEmail, request, routeParams);
     } catch (error: any) {
-      return NextResponse.json(
-        { error: error.message || 'Internal server error' },
-        { status: 500 }
-      );
+      return jsonError(error);
     }
   };
 }

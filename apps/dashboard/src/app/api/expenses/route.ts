@@ -10,7 +10,7 @@ export const GET = withAuth(async (request: Request, { clinicId }) => {
   const category = searchParams.get('category') || undefined;
   const expenses = await getExpenses(clinicId, start, end, category);
   return NextResponse.json(expenses);
-});
+}, { requiredPermission: 'billing.admin' });
 
 export const POST = withAuth(async (request: Request, { clinicId }) => {
   const body = await request.json();
@@ -20,17 +20,17 @@ export const POST = withAuth(async (request: Request, { clinicId }) => {
   }
   const newExpense = await createExpense(body, clinicId);
   return NextResponse.json(newExpense);
-});
+}, { requiredPermission: 'billing.admin' });
 
 export const PUT = withAuth(async (request: Request, { clinicId }) => {
   const { id, ...data } = await request.json();
   if (!id) return NextResponse.json({ error: 'Expense ID is required' }, { status: 400 });
   const updated = await updateExpense(id, data, clinicId);
   return NextResponse.json(updated);
-});
+}, { requiredPermission: 'billing.admin' });
 
-export const DELETE = withAuth(async (request: Request, { clinicId, userEmail }) => {
-  const role = await getMemberRole(clinicId, userEmail);
+export const DELETE = withAuth(async (request: Request, { clinicId, userEmail, userId }) => {
+  const role = await getMemberRole(clinicId, userEmail, userId);
   if (role !== 'OWNER') {
     return NextResponse.json({ error: 'Only clinic owners can delete expenses' }, { status: 403 });
   }

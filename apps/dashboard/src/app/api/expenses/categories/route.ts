@@ -5,7 +5,7 @@ import { withAuth } from '@/lib/api-handler';
 export const GET = withAuth(async (request: Request, { clinicId }) => {
   const expenseCategories = await getExpenseCategories(clinicId);
   return NextResponse.json(expenseCategories);
-});
+}, { requiredPermission: 'billing.admin' });
 
 export const POST = withAuth(async (request: Request, { clinicId }) => {
   const body = await request.json();
@@ -14,7 +14,7 @@ export const POST = withAuth(async (request: Request, { clinicId }) => {
 
   const newExpenseCategory = await createExpenseCategory(name, clinicId);
   return NextResponse.json(newExpenseCategory);
-});
+}, { requiredPermission: 'billing.admin' });
 
 export const DELETE = withAuth(async (request: Request, { clinicId }) => {
   const body = await request.json();
@@ -23,4 +23,4 @@ export const DELETE = withAuth(async (request: Request, { clinicId }) => {
 
   await deleteExpenseCategory(id, clinicId);
   return NextResponse.json({ success: true });
-});
+}, { requiredPermission: 'billing.admin' });

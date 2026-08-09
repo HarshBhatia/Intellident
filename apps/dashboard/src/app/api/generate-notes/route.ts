@@ -2,10 +2,14 @@ import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
 import { withAuth } from '@/lib/api-handler';
 import { getDb } from '@intellident/api';
+import { assertFlag } from '@/lib/feature-gate';
 
 const AI_RATE_LIMIT_PER_HOUR = 20;
 
 export const POST = withAuth(async (request: Request, { clinicId, userId }) => {
+  const denied = assertFlag('aiNotes');
+  if (denied) return denied;
+
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return NextResponse.json({ error: 'GEMINI_API_KEY is not configured' }, { status: 500 });
 

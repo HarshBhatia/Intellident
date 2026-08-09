@@ -1,6 +1,7 @@
 import { getDb } from '@intellident/api';
 import { cookies, headers } from 'next/headers';
 import { auth, currentUser } from '@clerk/nextjs/server';
+import { normalizeRole, type Role } from './permissions';
 
 export const MOCK_E2E_USER = {
   userId: 'user_e2e_test',
@@ -49,12 +50,15 @@ export async function verifyMembership(clinicId: number | string, userEmail: str
   if (isNaN(cId)) return false;
 
   try {
-    // Single query checking both user_id and email
+    const uid = userId || null;
     const result = await sql`
       SELECT id, user_id FROM clinic_members 
       WHERE clinic_id = ${cId} 
-      AND (user_id = ${userId || ''} OR user_email = ${userEmail})
       AND status = 'ACTIVE'
+      AND (
+        (${uid}::text IS NOT NULL AND user_id = ${uid})
+        OR LOWER(user_email) = LOWER(${userEmail})
+      )
       LIMIT 1
     `;
     
@@ -72,7 +76,7 @@ export async function verifyMembership(clinicId: number | string, userEmail: str
   }
 }
 
-export async function getMemberRole(clinicId: number | string, userEmail: string, userId?: string): Promise<string | null> {
+export async function getMemberRole(clinicId: number | string, userEmail: string, userId?: string): Promise<Role | null> {
   if (await isE2E() && userEmail === MOCK_E2E_USER.email) return 'OWNER';
 
   const sql = getDb();
@@ -80,19 +84,18 @@ export async function getMemberRole(clinicId: number | string, userEmail: string
   if (isNaN(cId)) return null;
 
   try {
-    if (userId) {
-      const result = await sql`
-        SELECT role FROM clinic_members 
-        WHERE clinic_id = ${cId} AND user_id = ${userId} AND status = 'ACTIVE'
-      `;
-      if (result.length > 0) return result[0].role;
-    }
-
+    const uid = userId || null;
     const result = await sql`
       SELECT role FROM clinic_members 
-      WHERE clinic_id = ${cId} AND user_email = ${userEmail} AND status = 'ACTIVE'
+      WHERE clinic_id = ${cId} 
+      AND status = 'ACTIVE'
+      AND (
+        (${uid}::text IS NOT NULL AND user_id = ${uid})
+        OR LOWER(user_email) = LOWER(${userEmail})
+      )
+      LIMIT 1
     `;
-    return result.length > 0 ? result[0].role : null;
+    return result.length > 0 ? normalizeRole(result[0].role) : null;
   } catch (error) {
     console.error('Role fetch failed:', error);
     return null;

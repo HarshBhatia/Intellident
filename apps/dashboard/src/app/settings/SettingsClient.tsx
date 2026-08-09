@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useToast } from '@/components/ToastProvider';
 import { useClinic } from '@/context/ClinicContext';
 import ManageMembers from './ManageMembers';
+import FeatureGate from '@/components/FeatureGate';
+import { usePermissions } from '@/hooks/usePermissions';
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 
@@ -251,12 +253,32 @@ function PreviewRail({ form, pct }: { form: any; pct: number }) {
   );
 }
 
+// ─── Form field wrapper (module-scope so inputs keep focus on re-render) ──────
+
+function Field({ label, required, hint, help, children }: {
+  label: string; required?: boolean; hint?: string; help?: string; children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <label className="flex items-center gap-1.5 text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+        {label}
+        {required && <span className="text-red-500">*</span>}
+        {hint && <span className="ml-auto text-[10px] font-bold text-gray-400 uppercase tracking-wide">{hint}</span>}
+      </label>
+      {children}
+      {help && <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1.5 leading-relaxed">{help}</p>}
+    </div>
+  );
+}
+
 // ─── Clinic Profile ───────────────────────────────────────────────────────────
 
 function ClinicProfile() {
   const router = useRouter();
   const { showToast } = useToast();
   const { clinic, loading, refreshClinic } = useClinic();
+  const { can } = usePermissions();
+  const canUpdate = can('clinic.update');
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     clinic_name: '', tagline: '', owner_name: '', phone: '',
@@ -323,20 +345,6 @@ function ClinicProfile() {
     </div>
   );
 
-  const Field = ({ label, required, hint, help, children }: {
-    label: string; required?: boolean; hint?: string; help?: string; children: React.ReactNode;
-  }) => (
-    <div>
-      <label className="flex items-center gap-1.5 text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
-        {label}
-        {required && <span className="text-red-500">*</span>}
-        {hint && <span className="ml-auto text-[10px] font-bold text-gray-400 uppercase tracking-wide">{hint}</span>}
-      </label>
-      {children}
-      {help && <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1.5 leading-relaxed">{help}</p>}
-    </div>
-  );
-
   const inputCls = "w-full px-3 py-2.5 text-sm font-medium text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition placeholder:text-gray-300 dark:placeholder:text-gray-600";
   const sectionNumCls = "text-[11px] font-black text-gray-300 dark:text-gray-600 font-mono";
 
@@ -380,10 +388,12 @@ function ClinicProfile() {
               <div className="flex-1">
                 <p className="text-sm font-bold text-gray-800 dark:text-gray-200">Clinic logo</p>
                 <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">Square PNG/SVG, at least 256×256 px. Shows on receipts and the patient review page.</p>
+                <FeatureGate flag="logoUpload">
                 <div className="flex gap-2 mt-2">
                   <button className="text-xs font-semibold px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-50 transition">Upload</button>
                   <button className="text-xs font-semibold px-3 py-1.5 text-gray-400 hover:text-gray-600 transition">Remove</button>
                 </div>
+                </FeatureGate>
               </div>
             </div>
 
@@ -501,7 +511,7 @@ function ClinicProfile() {
                 className="px-4 py-2 text-sm font-semibold rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition">
                 Discard
               </button>
-              <button onClick={handleSave} disabled={saving}
+              <button onClick={handleSave} disabled={saving || !canUpdate}
                 className="px-4 py-2 text-sm font-semibold rounded-xl bg-blue-600 hover:bg-blue-500 transition disabled:opacity-50 flex items-center gap-1.5">
                 {saving ? 'Saving...' : <><CheckIcon /> Save changes</>}
               </button>
@@ -527,7 +537,10 @@ function Manager({ title, apiEndpoint }: { title: string; apiEndpoint: string })
     setLoading(true);
     try {
       const res = await fetch(apiEndpoint);
-      if (res.ok) setItems(Array.isArray(await res.json()) ? await res.json() : []);
+      if (res.ok) {
+        const data = await res.json();
+        setItems(Array.isArray(data) ? data : []);
+      }
     } catch { showToast(`Failed to load ${title}`, 'error'); }
     finally { setLoading(false); }
   };

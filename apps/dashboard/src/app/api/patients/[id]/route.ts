@@ -1,97 +1,40 @@
 import { NextResponse } from 'next/server';
-import { getClinicId, getAuthContext, verifyMembership, getMemberRole } from '@/lib/auth';
-import { hasPermission, type Role } from '@/lib/permissions';
+import { withAuth } from '@/lib/api-handler';
 import { getPatientByIdWithVisits, updatePatient, deletePatient, softDeletePatient } from '@/services/patient.service';
 
-export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  try {
-    const { userId, userEmail } = await getAuthContext();
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    
-    const clinicId = await getClinicId();
-    if (!clinicId) return NextResponse.json({ error: 'No clinic selected' }, { status: 400 });
+type RouteParams = { params: Promise<{ id: string }> };
 
-    if (!userEmail || !(await verifyMembership(clinicId, userEmail))) {
-        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    const patient = await getPatientByIdWithVisits(clinicId, id);
-    if (!patient) {
-        console.log(`Patient not found: ID=${id}, Clinic=${clinicId}`);
-        return NextResponse.json({ error: 'Not found' }, { status: 404 });
-    }
-    
-    return NextResponse.json(patient);
-  } catch (error: any) {
-    console.error('CRITICAL Error in GET /api/patients/[id]:', {
-        id,
-        message: error.message,
-        stack: error.stack
-    });
-    return NextResponse.json({ error: error.message || 'Failed to fetch patient' }, { status: 500 });
-  }
+async function patientIdFrom(routeParams?: RouteParams): Promise<string> {
+  const { id } = await routeParams!.params;
+  return id;
 }
 
-export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  try {
-    const { userId, userEmail } = await getAuthContext();
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    
-    const clinicId = await getClinicId();
-    if (!clinicId) return NextResponse.json({ error: 'No clinic selected' }, { status: 400 });
-
-    if (!userEmail || !(await verifyMembership(clinicId, userEmail))) {
-        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    const body = await request.json();
-    const updatedPatient = await updatePatient(clinicId, id, body);
-    
-    return NextResponse.json(updatedPatient);
-  } catch (error: any) {
-    console.error('Error in PUT /api/patients/[id]:', error);
-    if (error.message === 'Patient not found') {
-      return NextResponse.json({ error: 'Patient not found' }, { status: 404 });
-    }
-    return NextResponse.json({ error: error.message || 'Failed to update patient' }, { status: 500 });
+export const GET = withAuth(async (_request, { clinicId }, routeParams: RouteParams) => {
+  const id = await patientIdFrom(routeParams);
+  const patient = await getPatientByIdWithVisits(clinicId, id);
+  if (!patient) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
-}
+  return NextResponse.json(patient);
+});
 
-export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  try {
-    const { userId, userEmail } = await getAuthContext();
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    
-    const clinicId = await getClinicId();
-    if (!clinicId) return NextResponse.json({ error: 'No clinic selected' }, { status: 400 });
+export const PUT = withAuth(async (request, { clinicId }, routeParams: RouteParams) => {
+  const id = await patientIdFrom(routeParams);
+  const body = await request.json();
+  const updatedPatient = await updatePatient(clinicId, id, body);
+  return NextResponse.json(updatedPatient);
+}, { requiredPermission: 'patients.update' });
 
-    if (!userEmail || !(await verifyMembership(clinicId, userEmail))) {
-        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+export const DELETE = withAuth(async (request, { clinicId }, routeParams: RouteParams) => {
+  const id = await patientIdFrom(routeParams);
+  const { searchParams } = new URL(request.url);
+  const isHardDelete = searchParams.get('hard') === 'true';
 
-    const role = (await getMemberRole(clinicId, userEmail, userId)) as Role | null;
-    if (!hasPermission(role, 'patients.delete')) {
-      return NextResponse.json({ error: 'Forbidden: insufficient permissions' }, { status: 403 });
-    }
-
-    const { searchParams } = new URL(request.url);
-    const isHardDelete = searchParams.get('hard') === 'true';
-
-    if (isHardDelete) {
-      await deletePatient(clinicId, id);
-    } else {
-      await softDeletePatient(clinicId, id);
-    }
-    
-    return NextResponse.json({ success: true });
-  } catch (error: any) {
-    console.error('Error in DELETE /api/patients/[id]:', error);
-    if (error.message === 'Patient not found') {
-      return NextResponse.json({ error: 'Patient not found' }, { status: 404 });
-    }
-    return NextResponse.json({ error: error.message || 'Failed to delete patient' }, { status: 500 });
+  if (isHardDelete) {
+    await deletePatient(clinicId, id);
+  } else {
+    await softDeletePatient(clinicId, id);
   }
-}
+
+  return NextResponse.json({ success: true });
+}, { requiredPermission: 'patients.delete' });

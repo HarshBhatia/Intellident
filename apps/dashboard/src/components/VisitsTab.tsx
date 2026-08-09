@@ -253,18 +253,23 @@ function VisitCard({
                 )}
               </div>
 
-              {/* Edit / Delete */}
+              {(canEdit || canDelete) && (
               <div className="flex gap-2">
+                {canEdit && (
                 <button onClick={() => onEdit(visit)}
                   className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-semibold text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 hover:bg-gray-50 transition-colors">
                   <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                   Edit
                 </button>
+                )}
+                {canDelete && (
                 <button onClick={() => visit.id && onDelete(visit.id)}
                   className="flex items-center justify-center p-2 text-red-400 hover:text-red-600 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 hover:bg-red-50 transition-colors">
                   <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                 </button>
+                )}
               </div>
+              )}
             </div>
           </div>
         </div>
@@ -273,7 +278,7 @@ function VisitCard({
   );
 }
 
-export default function VisitsTab({ visits, onNewVisit, onEditVisit, onDeleteVisit, onCollect }: VisitsTabProps) {
+export default function VisitsTab({ visits, onNewVisit: _onNewVisit, onEditVisit, onDeleteVisit, onCollect, canEdit = true, canDelete = true }: VisitsTabProps) {
   const [expanded, setExpanded] = useState<number | null>(visits[0]?.id ?? null);
   const [filter, setFilter] = useState<FilterKey>('all');
   const [search, setSearch] = useState('');
@@ -363,8 +368,8 @@ export default function VisitsTab({ visits, onNewVisit, onEditVisit, onDeleteVis
               onEdit={onEditVisit}
               onDelete={onDeleteVisit}
               onCollect={onCollect}
-              canEdit={true}
-              canDelete={true}
+              canEdit={canEdit}
+              canDelete={canDelete}
             />
           ))
         )}
