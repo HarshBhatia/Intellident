@@ -6,18 +6,14 @@ import { Patient, Visit } from '@/types';
 import { useToast } from '@/components/ToastProvider';
 import Skeleton from '@/components/Skeleton';
 import Link from 'next/link';
-import { uploadImage } from '@/lib/image-utils';
 import { useAuth } from '@/hooks/useAuth';
 import { useClinic } from '@/context/ClinicContext';
 import { Analytics } from '@/lib/analytics';
 import VisitsTab from '@/components/VisitsTab';
-import OdontogramTab from '@/components/OdontogramTab';
-import FeatureGate from '@/components/FeatureGate';
-import { flags } from '@/lib/flags';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useRefreshOnAiWrite } from '@/hooks/useRefreshOnAiWrite';
 
-type TabKey = 'overview' | 'visits' | 'odontogram' | 'financials' | 'files';
+type TabKey = 'overview' | 'visits';
 
 export default function PatientDetailClient({ params }: { params: Promise<{ id: string }> }) {
   const { user } = useAuth();
@@ -29,7 +25,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
   const pathname = usePathname();
   const isDebug = searchParams.get('debug') === 'true';
 
-  const VALID_TABS: TabKey[] = ['overview', 'visits', 'odontogram', 'financials', 'files'];
+  const VALID_TABS: TabKey[] = ['overview', 'visits'];
   const tabFromUrl = searchParams.get('tab') as TabKey | null;
 
   const [patientId, setPatientId] = useState<string | null>(null);
@@ -51,11 +47,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
   const [showVisitForm, setShowVisitForm] = useState(false);
   const [editingVisitId, setEditingVisitId] = useState<number | null>(null);
   const [showEditPatient, setShowEditPatient] = useState(searchParams.get('edit') === 'true');
-  const [uploadingXRay, setUploadingXRay] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [showManualFields, setShowManualFields] = useState(true);
-  const [smartNote, setSmartNote] = useState('');
 
   const [newVisit, setNewVisit] = useState<Partial<Visit>>({
     date: new Date().toISOString().split('T')[0],
@@ -76,8 +68,8 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
 
   const isFormDirty = useMemo(() => {
     if (!showVisitForm) return false;
-    return !!(smartNote.trim() || newVisit.clinical_findings?.trim() || newVisit.procedure_notes?.trim() || (newVisit.cost && newVisit.cost > 0));
-  }, [showVisitForm, smartNote, newVisit]);
+    return !!(newVisit.clinical_findings?.trim() || newVisit.procedure_notes?.trim() || (newVisit.cost && newVisit.cost > 0));
+  }, [showVisitForm, newVisit]);
 
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => { if (isFormDirty) { e.preventDefault(); e.returnValue = ''; } };
@@ -89,8 +81,6 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
     if (isFormDirty && !confirm('Discard unsaved changes?')) return;
     setShowVisitForm(false);
     setEditingVisitId(null);
-    setSmartNote('');
-    setShowManualFields(true);
   }, [isFormDirty]);
 
   useEffect(() => { params.then(p => setPatientId(p.id)); }, [params]);
@@ -128,24 +118,6 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
     } catch { showToast('Error updating patient', 'error'); }
   };
 
-  const handleAIGenerate = async () => {
-    if (!smartNote.trim()) { showToast('Enter a note first', 'error'); return; }
-    try {
-      setIsGenerating(true);
-      const res = await fetch('/api/generate-notes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: smartNote }) });
-      if (res.ok) {
-        const data = await res.json();
-        const detectedDentition: 'Adult' | 'Child' = data.tooth_number && /[A-E]/i.test(data.tooth_number) ? 'Child' : 'Adult';
-        setNewVisit(prev => ({ ...prev, clinical_findings: data.clinical_findings || prev.clinical_findings, procedure_notes: data.procedure_notes || prev.procedure_notes, medicine_prescribed: data.medicine_prescribed || prev.medicine_prescribed, tooth_number: data.tooth_number || prev.tooth_number, visit_type: data.visit_type || prev.visit_type, dentition_type: detectedDentition, cost: data.cost || prev.cost }));
-        Analytics.notesGenerated();
-        setShowManualFields(true);
-        showToast('Note parsed!', 'success');
-        setSmartNote('');
-      }
-    } catch { showToast('Error connecting to AI', 'error'); }
-    finally { setIsGenerating(false); }
-  };
-
   const handleSaveVisit = async () => {
     if (!patient?.id) return;
     if (!newVisit.clinical_findings?.trim()) { showToast('Clinical findings required', 'error'); return; }
@@ -178,7 +150,6 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
   const handleEditVisit = (visit: Visit) => {
     if (!visit.id) return;
     setEditingVisitId(visit.id);
-    setShowManualFields(true);
     setSelectedDoctors(visit.doctor ? visit.doctor.split(',').map(d => d.trim()).filter(Boolean) : []);
     setPaidTouched(true);
     setNewVisit({ date: visit.date, doctor: visit.doctor, visit_type: visit.visit_type || 'Consultation', clinical_findings: visit.clinical_findings || '', procedure_notes: visit.procedure_notes || '', tooth_number: visit.tooth_number || '', medicine_prescribed: visit.medicine_prescribed || '', dentition_type: visit.dentition_type || 'Adult', cost: Number(visit.cost), paid: Number(visit.paid || 0), xrays: visit.xrays || '[]', billing_items: visit.billing_items || [] });
@@ -224,19 +195,6 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
       const res = await fetch(`/api/visits?id=${visitId}`, { method: 'DELETE' });
       if (res.ok) { showToast('Visit deleted', 'success'); fetchPatient(); }
     } catch { showToast('Error', 'error'); }
-  };
-
-  const handleFormXRayUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      setUploadingXRay(true);
-      const url = await uploadImage(file);
-      if (url) {
-        const cur = newVisit.xrays ? JSON.parse(newVisit.xrays) : [];
-        setNewVisit(prev => ({ ...prev, xrays: JSON.stringify([...cur, { url, name: file.name, date: new Date().toISOString().split('T')[0] }]) }));
-      }
-    } finally { setUploadingXRay(false); }
   };
 
   const initials = patient?.name?.split(' ').filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('') || '?';
@@ -294,9 +252,6 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
   const TABS: { key: TabKey; label: string; count?: number }[] = [
     { key: 'overview', label: 'Overview' },
     { key: 'visits', label: 'Visits', count: patient.visits?.length || 0 },
-    { key: 'odontogram', label: 'Odontogram' },
-    ...(flags.patientFinancialsTab ? [{ key: 'financials' as const, label: 'Financials' }] : []),
-    ...(flags.filesXrays ? [{ key: 'files' as const, label: 'Files' }] : []),
   ];
 
   return (
@@ -363,7 +318,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
             )}
             {can('visits.create') && (
             <button
-              onClick={() => { setShowVisitForm(true); setEditingVisitId(null); setShowManualFields(true); setSmartNote(''); setPaidTouched(false); setNewVisit({ date: new Date().toISOString().split('T')[0], doctor: '', visit_type: 'Consultation', clinical_findings: '', procedure_notes: '', tooth_number: '', dentition_type: 'Adult', cost: 0, paid: 0, xrays: '[]', billing_items: [] }); setSelectedDoctors(doctors[0] ? [doctors[0].name || doctors[0].user_email] : []); setTab('visits'); }}
+              onClick={() => { setShowVisitForm(true); setEditingVisitId(null); setPaidTouched(false); setNewVisit({ date: new Date().toISOString().split('T')[0], doctor: '', visit_type: 'Consultation', clinical_findings: '', procedure_notes: '', tooth_number: '', dentition_type: 'Adult', cost: 0, paid: 0, xrays: '[]', billing_items: [] }); setSelectedDoctors(doctors[0] ? [doctors[0].name || doctors[0].user_email] : []); setTab('visits'); }}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow transition-colors">
               <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
               New visit
@@ -464,33 +419,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                     </div>
 
                     <div className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
-                      {/* AI Smart Entry */}
-                      {!editingVisitId && (
-                        <FeatureGate flag="aiNotes">
-                        <div className="rounded-xl bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/50 p-4">
-                          <div className="flex items-center gap-1.5 mb-2">
-                            <svg className="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                            <label className="text-[10px] font-black text-blue-700 dark:text-blue-300 uppercase tracking-wider">AI Smart Entry</label>
-                          </div>
-                          <textarea value={smartNote} onChange={e => setSmartNote(e.target.value)}
-                            placeholder="Describe the visit naturally... e.g., 'Patient came for tooth pain on upper right molar, charged 2000 rupees'"
-                            className="w-full p-3 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 text-sm focus:ring-2 focus:ring-blue-500 outline-none min-h-[80px] resize-none" />
-                          <div className="flex justify-between items-center mt-2.5">
-                            <button onClick={() => setShowManualFields(v => !v)} className="text-xs font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1">
-                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={showManualFields ? 'M19 9l-7 7-7-7' : 'M9 5l7 7-7 7'} /></svg>
-                              {showManualFields ? 'Hide manual fields' : 'Manual entry'}
-                            </button>
-                            <button onClick={handleAIGenerate} disabled={isGenerating || !smartNote.trim()}
-                              className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-4 py-1.5 rounded-lg text-xs font-bold disabled:cursor-not-allowed transition-all flex items-center gap-1.5">
-                              {isGenerating ? (<><svg className="animate-spin w-3 h-3" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" /></svg>Parsing...</>) : 'Parse with AI'}
-                            </button>
-                          </div>
-                        </div>
-                        </FeatureGate>
-                      )}
-
-                      {(showManualFields || editingVisitId) && (
-                        <div className="space-y-3">
+                      <div className="space-y-3">
                           <div className="grid grid-cols-2 gap-3">
                             <div>
                               <label className="flex items-center gap-1 text-[10px] font-black text-gray-400 uppercase mb-1">Date <span className="text-red-500">*</span></label>
@@ -546,7 +475,6 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                             </div>
                           </div>
                         </div>
-                      )}
                     </div>
 
                     <div className="flex justify-end gap-2 px-6 py-3 border-t border-gray-100 dark:border-gray-800 rounded-b-2xl">
@@ -561,7 +489,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
 
               <VisitsTab
                 visits={patient.visits || []}
-                onNewVisit={() => { setShowVisitForm(true); setEditingVisitId(null); setShowManualFields(true); setSmartNote(''); setPaidTouched(false); setNewVisit({ date: new Date().toISOString().split('T')[0], doctor: '', visit_type: 'Consultation', clinical_findings: '', procedure_notes: '', tooth_number: '', dentition_type: 'Adult', cost: 0, paid: 0, xrays: '[]', billing_items: [] }); setSelectedDoctors(doctors[0] ? [doctors[0].name || doctors[0].user_email] : []); }}
+                onNewVisit={() => { setShowVisitForm(true); setEditingVisitId(null); setPaidTouched(false); setNewVisit({ date: new Date().toISOString().split('T')[0], doctor: '', visit_type: 'Consultation', clinical_findings: '', procedure_notes: '', tooth_number: '', dentition_type: 'Adult', cost: 0, paid: 0, xrays: '[]', billing_items: [] }); setSelectedDoctors(doctors[0] ? [doctors[0].name || doctors[0].user_email] : []); }}
                 onEditVisit={handleEditVisit}
                 onDeleteVisit={handleDeleteVisit}
                 onCollect={can('payments.create') ? handleCollect : undefined}
@@ -571,32 +499,6 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
             </>
           )}
 
-          {/* ── Odontogram tab ───────────────────────────────────────────── */}
-          {activeTab === 'odontogram' && (
-            <OdontogramTab patientId={patient.patient_id} visits={patient.visits || []} canEdit={can('clinical_notes.edit')} />
-          )}
-
-          {/* ── Financials stub ──────────────────────────────────────────── */}
-          {activeTab === 'financials' && (
-            <div className="py-16 text-center text-gray-400">
-              <svg width="48" height="48" fill="none" stroke="currentColor" viewBox="0 0 24 24" className="mx-auto mb-3 text-gray-300 dark:text-gray-700">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-              <div className="text-sm font-semibold text-gray-500">Detailed financials coming soon</div>
-              <div className="text-xs text-gray-400 mt-1">Total collected: ₹{totalPaid.toLocaleString('en-IN')} · Outstanding: ₹{Math.max(0, totalDue).toLocaleString('en-IN')}</div>
-            </div>
-          )}
-
-          {/* ── Files stub ───────────────────────────────────────────────── */}
-          {activeTab === 'files' && (
-            <div className="py-16 text-center text-gray-400">
-              <svg width="48" height="48" fill="none" stroke="currentColor" viewBox="0 0 24 24" className="mx-auto mb-3 text-gray-300 dark:text-gray-700">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-              <div className="text-sm font-semibold text-gray-500">Files & X-rays</div>
-              <div className="text-xs text-gray-400 mt-1">X-rays attached to individual visits appear here</div>
-            </div>
-          )}
         </div>
       </div>
 

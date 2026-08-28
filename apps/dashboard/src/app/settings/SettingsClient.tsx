@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useToast } from '@/components/ToastProvider';
 import { useClinic } from '@/context/ClinicContext';
 import ManageMembers from './ManageMembers';
-import FeatureGate from '@/components/FeatureGate';
 import { usePermissions } from '@/hooks/usePermissions';
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
@@ -388,12 +387,6 @@ function ClinicProfile() {
               <div className="flex-1">
                 <p className="text-sm font-bold text-gray-800 dark:text-gray-200">Clinic logo</p>
                 <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">Square PNG/SVG, at least 256×256 px. Shows on receipts and the patient review page.</p>
-                <FeatureGate flag="logoUpload">
-                <div className="flex gap-2 mt-2">
-                  <button className="text-xs font-semibold px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-50 transition">Upload</button>
-                  <button className="text-xs font-semibold px-3 py-1.5 text-gray-400 hover:text-gray-600 transition">Remove</button>
-                </div>
-                </FeatureGate>
               </div>
             </div>
 
@@ -622,31 +615,14 @@ function Manager({ title, apiEndpoint }: { title: string; apiEndpoint: string })
 // ─── Preferences ──────────────────────────────────────────────────────────────
 
 function Preferences() {
-  const [notation, setNotation] = useState(() => {
-    if (typeof window !== 'undefined') return localStorage.getItem('odontogram_notation') || 'FDI';
-    return 'FDI';
-  });
-  const save = (v: string) => { setNotation(v); localStorage.setItem('odontogram_notation', v); };
-
   return (
     <>
       <div className="px-6 py-5 border-b border-gray-100 dark:border-gray-800">
         <h2 className="text-lg font-black text-gray-900 dark:text-gray-100">Preferences</h2>
         <p className="text-xs text-gray-400 mt-0.5">Clinic-wide defaults for your workflow.</p>
       </div>
-      <div className="p-6 space-y-6">
-        <div>
-          <h3 className="text-sm font-black text-gray-800 dark:text-gray-200 mb-1">Odontogram notation</h3>
-          <p className="text-xs text-gray-400 mb-3">Controls how tooth numbers appear across the app.</p>
-          <div className="flex gap-2">
-            {['FDI', 'Universal', 'Palmer'].map(n => (
-              <button key={n} onClick={() => save(n)}
-                className={`px-4 py-2 text-sm font-bold rounded-xl border transition ${notation === n ? 'bg-blue-600 text-white border-blue-600' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-blue-300'}`}>
-                {n}
-              </button>
-            ))}
-          </div>
-        </div>
+      <div className="p-6">
+        <p className="text-sm text-gray-400">No extra preferences in the current MVP.</p>
       </div>
     </>
   );

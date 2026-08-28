@@ -12,7 +12,7 @@ export default function PrivacyPage() {
 
       <section className="mb-10">
         <h2 className="text-sm font-black text-blue-600 uppercase tracking-widest mb-4">2. What we store</h2>
-        <p className="leading-relaxed mb-3">On behalf of a clinic we may store: staff identity and login (via Clerk); clinic profile; patient identity (name, age, gender, phone); clinical notes, odontogram charts, visit history; billing amounts and expense records; membership/roles.</p>
+        <p className="leading-relaxed mb-3">On behalf of a clinic we may store: staff identity and login (via Clerk); clinic profile; patient identity (name, age, gender, phone); clinical notes and visit history; billing amounts and expense records; membership/roles.</p>
         <p className="leading-relaxed">We do not sell personal data. We do not use clinical content to train public AI models. AI note features are off unless a clinic explicitly enables them.</p>
       </section>
 

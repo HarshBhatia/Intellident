@@ -8,8 +8,6 @@ import Footer from "@/components/Footer";
 import Navbar from "@/components/Navbar";
 import { validateEnv } from "@/lib/env";
 import { ClinicProvider } from "@/context/ClinicContext";
-import ChatBox from "@/components/ChatBox";
-import FeatureGate from "@/components/FeatureGate";
 import PageTracker from "@/components/PageTracker";
 import Script from "next/script";
 import "./globals.css";
@@ -102,9 +100,6 @@ export default function RootLayout({
                   </main>
                   <Footer />
                 </div>
-                <FeatureGate flag="aiChat">
-                  <ChatBox />
-                </FeatureGate>
                 <PageTracker />
               </ToastProvider>
             </ThemeProvider>
