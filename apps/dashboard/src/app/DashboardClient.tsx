@@ -7,8 +7,6 @@ import Skeleton from '@/components/Skeleton';
 import { useAuth } from '@/hooks/useAuth';
 import { useClinic } from '@/context/ClinicContext';
 import { Appointment } from '@intellident/api';
-import { useRefreshOnAiWrite } from '@/hooks/useRefreshOnAiWrite';
-
 // ─── Earnings Chart ───────────────────────────────────────────────────────────
 
 function EarningsChart({ visits, numDays }: { visits: Visit[]; numDays: number }) {
@@ -215,8 +213,6 @@ export default function DashboardClient() {
         .then(() => setIsInitialLoad(false));
     }
   }, [user?.id, fetchPatients, fetchVisits, fetchTodayAppts]);
-
-  useRefreshOnAiWrite(fetchPatients, fetchVisits, fetchTodayAppts);
 
   // ── Derived stats ──
   const stats = useMemo(() => {

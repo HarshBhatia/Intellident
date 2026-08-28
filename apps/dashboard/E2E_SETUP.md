@@ -62,8 +62,8 @@ Tests attach labeled full-page screenshots via `snap(page, 'name')` in `test/e2e
 - `scheduler-check.spec.ts` — Calendar chrome, walk-in + existing-patient booking, confirm
 - `expense.spec.ts` — Expense create, search, delete
 - `earnings.spec.ts` — Totals and monthly trend
-- `treatment.spec.ts` — Treatments in Settings
 - `settings.spec.ts` — Clinic profile, members invite, expense categories
+- `permissions.spec.ts` — Receptionist/doctor UI gates and API 403s
 
 ## Test Credentials
 

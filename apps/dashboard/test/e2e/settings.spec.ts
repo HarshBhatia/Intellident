@@ -44,4 +44,13 @@ test.describe('Settings', () => {
     await expect(page.getByText(name)).toBeVisible();
     await snap(page, 'settings-expense-category');
   });
+
+  test('invite form requires an email', async ({ page }) => {
+    await page.goto('/settings?tab=members');
+    await page.getByRole('button', { name: /invite member/i }).click();
+    await page.getByRole('button', { name: 'Add' }).click();
+    const valid = await page.getByPlaceholder('colleague@example.com').evaluate((el: HTMLInputElement) => el.validity.valid);
+    expect(valid).toBe(false);
+    await snap(page, 'settings-invite-email-required');
+  });
 });

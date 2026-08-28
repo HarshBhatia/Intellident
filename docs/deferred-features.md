@@ -13,6 +13,8 @@ These shipped behind flags (or as unfinished UI) and were removed from the MVP `
 | `feature/logo-upload` | Clinic logo upload controls |
 | `feature/patient-financials` | Patient detail Financials tab stub |
 
-Schema tables (`patient_odontograms`, `patient_messages`) stay in `initializeDatabase()` so existing databases are unchanged. Re-introduce UI/API from the matching branch; do not drop those tables from main.
+The unused Settings **Treatments** catalog (and `/api/search`, image upload helpers) were later removed from `main`. The `treatments` table stays in `initializeDatabase()`. Search + `useRefreshOnAiWrite` belong with `feature/ai-chat`; image upload belongs with `feature/files-xrays`.
+
+Schema tables (`patient_odontograms`, `patient_messages`, `treatments`) stay in `initializeDatabase()` so existing databases are unchanged. Re-introduce UI/API from the matching branch; do not drop those tables from main.
 
 Take branches one at a time: rebase onto current `main`, finish the feature, add E2E, then merge.

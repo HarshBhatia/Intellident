@@ -8,7 +8,6 @@ import AddPatientForm from '@/components/AddPatientForm';
 import Skeleton from '@/components/Skeleton';
 import { useAuth } from '@/hooks/useAuth';
 import { useClinic } from '@/context/ClinicContext';
-import { useRefreshOnAiWrite } from '@/hooks/useRefreshOnAiWrite';
 import { usePermissions } from '@/hooks/usePermissions';
 
 // ─── Segments ─────────────────────────────────────────────────────────────────
@@ -67,8 +66,6 @@ export default function PatientsClient() {
   useEffect(() => {
     if (user?.id) fetchPatients();
   }, [user?.id, fetchPatients]);
-
-  useRefreshOnAiWrite(fetchPatients);
 
   // Segment counts computed from all patients
   const segmentCounts = useMemo(() =>

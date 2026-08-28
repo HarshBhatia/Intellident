@@ -19,11 +19,6 @@ const UsersIcon = () => (
     <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
   </svg>
 );
-const ClipboardIcon = () => (
-  <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-  </svg>
-);
 const MinusCircleIcon = () => (
   <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
     <circle cx="12" cy="12" r="9" /><path strokeLinecap="round" d="M8 12h8" />
@@ -32,16 +27,6 @@ const MinusCircleIcon = () => (
 const DownloadIcon = () => (
   <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-  </svg>
-);
-const BellIcon = () => (
-  <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-  </svg>
-);
-const ShieldIcon = () => (
-  <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
   </svg>
 );
 const CheckIcon = () => (
@@ -109,16 +94,16 @@ function Ring({ pct, size = 44 }: { pct: number; size?: number }) {
 
 // ─── Side Nav ─────────────────────────────────────────────────────────────────
 
-type SectionId = 'profile' | 'members' | 'treatments' | 'expenses' | 'preferences' | 'export';
+type SectionId = 'profile' | 'members' | 'expenses' | 'export';
+
+const SETTINGS_TABS: SectionId[] = ['profile', 'members', 'expenses', 'export'];
 
 const NAV_CLINIC = [
   { id: 'profile' as SectionId, label: 'Clinic Profile', Icon: BuildingIcon },
   { id: 'members' as SectionId, label: 'Clinic Members', Icon: UsersIcon },
-  { id: 'treatments' as SectionId, label: 'Treatments', Icon: ClipboardIcon },
   { id: 'expenses' as SectionId, label: 'Expenses', Icon: MinusCircleIcon },
 ];
 const NAV_ACCOUNT = [
-  { id: 'preferences' as SectionId, label: 'Preferences', Icon: BellIcon },
   { id: 'export' as SectionId, label: 'Data Export', Icon: DownloadIcon },
 ];
 
@@ -614,20 +599,6 @@ function Manager({ title, apiEndpoint }: { title: string; apiEndpoint: string })
 
 // ─── Preferences ──────────────────────────────────────────────────────────────
 
-function Preferences() {
-  return (
-    <>
-      <div className="px-6 py-5 border-b border-gray-100 dark:border-gray-800">
-        <h2 className="text-lg font-black text-gray-900 dark:text-gray-100">Preferences</h2>
-        <p className="text-xs text-gray-400 mt-0.5">Clinic-wide defaults for your workflow.</p>
-      </div>
-      <div className="p-6">
-        <p className="text-sm text-gray-400">No extra preferences in the current MVP.</p>
-      </div>
-    </>
-  );
-}
-
 // ─── Data Export ──────────────────────────────────────────────────────────────
 
 function DataExport() {
@@ -689,8 +660,9 @@ export default function SettingsClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { clinic } = useClinic();
+  const tabFromUrl = searchParams.get('tab') as SectionId | null;
   const [active, setActive] = useState<SectionId>(
-    (searchParams.get('tab') as SectionId) || 'profile'
+    tabFromUrl && SETTINGS_TABS.includes(tabFromUrl) ? tabFromUrl : 'profile'
   );
 
   useEffect(() => {
@@ -727,9 +699,7 @@ export default function SettingsClient() {
           <div className="min-w-0 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden">
             {active === 'profile' && <ClinicProfile />}
             {active === 'members' && <ManageMembers />}
-            {active === 'treatments' && <Manager title="Treatments" apiEndpoint="/api/clinic/treatments" />}
             {active === 'expenses' && <Manager title="Expense Categories" apiEndpoint="/api/expenses/categories" />}
-            {active === 'preferences' && <Preferences />}
             {active === 'export' && <DataExport />}
           </div>
         </div>

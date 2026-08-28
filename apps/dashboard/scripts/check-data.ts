@@ -16,10 +16,7 @@ async function checkData() {
     
     const categories = await sql`SELECT * FROM expense_categories WHERE clinic_id = ${clinicId}`;
     console.log('\nExpense Categories:', categories);
-    
-    const treatments = await sql`SELECT * FROM treatments WHERE clinic_id = ${clinicId}`;
-    console.log('\nTreatments:', treatments);
-    
+
     const members = await sql`SELECT * FROM clinic_members WHERE clinic_id = ${clinicId}`;
     console.log('\nClinic Members:', members);
   }

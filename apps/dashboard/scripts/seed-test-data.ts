@@ -49,18 +49,6 @@ async function seedClinic(sql: ReturnType<typeof getDb>, clinicId: number, owner
       SET display_name = EXCLUDED.display_name, role = EXCLUDED.role, status = 'ACTIVE'
   `;
 
-  const treatments = [
-    'Consultation', 'Scaling & Polishing', 'Composite Filling', 'Root Canal',
-    'Crown', 'Extraction', 'Implant', 'Braces Adjustment', 'Whitening', 'X-Ray',
-  ];
-  for (const name of treatments) {
-    await sql`
-      INSERT INTO treatments (clinic_id, name)
-      VALUES (${clinicId}, ${name})
-      ON CONFLICT (name, clinic_id) DO NOTHING
-    `;
-  }
-
   const categories = ['Supplies', 'Equipment', 'Utilities', 'Salaries', 'Rent', 'Marketing', 'Lab Fees'];
   for (const name of categories) {
     await sql`
