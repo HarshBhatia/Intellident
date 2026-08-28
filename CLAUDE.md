@@ -31,8 +31,8 @@ npm run seed -w dashboard          # Seed test data (tsx scripts/seed-test-data.
 
 **Turborepo monorepo** with npm workspaces:
 
-- `apps/dashboard` — Next.js 16 App Router. Main web app and API. Deployed on Netlify.
-- `apps/landing` — Next.js marketing site.
+- `apps/dashboard` — Next.js 16 App Router. Main web app and API. Deployed on Vercel (project `intellident-dashboard`). Note: `DATABASE_URL`/`NETLIFY_DATABASE_URL` env var naming is a holdover from an earlier Netlify setup — the Neon connection works the same on Vercel.
+- `apps/landing` — Next.js marketing site. Deployed on Vercel (project `landing`).
 - `apps/mobile` — Expo/React Native patient-facing app.
 - `packages/api` — Shared database layer (`getDb()`, types, schema init). Used by dashboard.
 
@@ -41,7 +41,7 @@ npm run seed -w dashboard          # Seed test data (tsx scripts/seed-test-data.
 1. **Clerk middleware** (`src/middleware.ts`) gates all non-public routes, checks auth, redirects to `/select-clinic` if no `clinic_id` cookie.
 2. **API route handlers** use `withAuth()` or `withAuthOnly()` wrappers from `src/lib/api-handler.ts`. These handle auth verification, clinic context, and membership checks automatically.
 3. **Service layer** (`src/services/*.service.ts`) contains business logic and SQL queries. Services call `getDb()` from `@intellident/api`.
-4. **Database**: `getDb()` returns a tagged template literal SQL function. In production it connects to Neon (PostgreSQL via `@netlify/neon`). Locally it uses PGlite (in-process PostgreSQL at `~/.intellident-pgdata`).
+4. **Database**: `getDb()` returns a tagged template literal SQL function. In production it connects to Neon (PostgreSQL, via `@netlify/neon` despite the app now running on Vercel). Locally it uses PGlite (in-process PostgreSQL at `~/.intellident-pgdata`).
 
 ### Multi-Tenancy
 
@@ -99,15 +99,17 @@ This section maps every external account, property, and tool so Claude doesn't r
 | `mcp__ga4__run_report` | GA4 Data API — website analytics. Params use **snake_case** (protobuf format), not camelCase. |
 | `mcp__ga4__run_realtime_report` | GA4 real-time data. |
 | `mcp__playwright__*` | Browser automation — scraping, UI testing, screenshots. |
-| Vercel MCP | Deployments, env vars, logs. |
+| `vercel` CLI (Bash) | Both apps deploy via Vercel. `vercel ls <project> --yes` (run from repo root or `cd` into the app dir first — `vercel ls` from the wrong dir looks up the wrong project) lists recent deployments/status. |
 
 ---
 
 ### Project: Intellident (Dental Management Platform)
 
 **Code**: `/Users/harsh/Code/intellident2/` (this repo)  
-**Dashboard URL**: TBD — check Netlify for current deployment  
-**Landing URL**: TBD
+**Dashboard**: Vercel project `intellident-dashboard` (org `harshbhatias-projects`) — check `vercel ls intellident-dashboard --yes` for the current production URL, it changes per deploy  
+**Landing**: Vercel project `landing` (org `harshbhatias-projects`) — same, check via `vercel ls landing --yes` from `apps/landing/`
+
+As of 2026-08-28: dashboard's latest production deploy matches the latest commit touching `apps/dashboard`. Landing's latest production deploy predates a small `apps/landing/app/layout.tsx` change from commit `116b919` (2026-08-09) — landing may need a redeploy to pick that up. Repo `main` had 5 uncommitted local changes at that time (dashboard components + an e2e spec), not yet pushed.
 
 #### GA4
 - **Intellident Dashboard** — Measurement ID `G-1BJ5E2NT8X`

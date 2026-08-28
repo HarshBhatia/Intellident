@@ -71,7 +71,6 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
     billing_items: [],
   });
   const [selectedDoctors, setSelectedDoctors] = useState<string[]>([]);
-  const [doctorDropdownOpen, setDoctorDropdownOpen] = useState(false);
   const [paidTouched, setPaidTouched] = useState(false);
   const [editPatient, setEditPatient] = useState<Partial<Patient>>({});
 
@@ -332,12 +331,14 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                   <span>{patient.phone_number}</span>
                 </>
               )}
-              <span className="bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                {patient.patient_type || 'Patient'}
-              </span>
+              {patient.patient_type && !['New', 'Patient'].includes(patient.patient_type) && (
+                <span className="bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                  Type · {patient.patient_type}
+                </span>
+              )}
               {patient.referral_source && (
-                <span className="bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                  {patient.referral_source}
+                <span className="bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 text-[10px] font-semibold px-2 py-0.5 rounded-full">
+                  Via {patient.referral_source}
                 </span>
               )}
             </div>
@@ -362,7 +363,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
             )}
             {can('visits.create') && (
             <button
-              onClick={() => { setShowVisitForm(true); setEditingVisitId(null); setShowManualFields(true); setSmartNote(''); setPaidTouched(false); setNewVisit({ date: new Date().toISOString().split('T')[0], doctor: '', visit_type: 'Consultation', clinical_findings: '', procedure_notes: '', tooth_number: '', dentition_type: 'Adult', cost: 0, paid: 0, xrays: '[]', billing_items: [] }); setSelectedDoctors([]); setTab('visits'); }}
+              onClick={() => { setShowVisitForm(true); setEditingVisitId(null); setShowManualFields(true); setSmartNote(''); setPaidTouched(false); setNewVisit({ date: new Date().toISOString().split('T')[0], doctor: '', visit_type: 'Consultation', clinical_findings: '', procedure_notes: '', tooth_number: '', dentition_type: 'Adult', cost: 0, paid: 0, xrays: '[]', billing_items: [] }); setSelectedDoctors(doctors[0] ? [doctors[0].name || doctors[0].user_email] : []); setTab('visits'); }}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow transition-colors">
               <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
               New visit
@@ -404,8 +405,10 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                     { label: 'Phone',  val: patient.phone_number || '—' },
                     { label: 'Age',    val: patient.age ? `${patient.age} years` : '—' },
                     { label: 'Gender', val: patient.gender || '—' },
-                    { label: 'Type',   val: patient.patient_type || '—' },
-                    ...(patient.referral_source ? [{ label: 'Source', val: patient.referral_source }] : []),
+                    ...(patient.patient_type && !['New', 'Patient'].includes(patient.patient_type)
+                      ? [{ label: 'Type', val: patient.patient_type }]
+                      : []),
+                    ...(patient.referral_source ? [{ label: 'Heard about us', val: patient.referral_source }] : []),
                   ].map(({ label, val }) => (
                     <div key={label} className="flex justify-between items-center">
                       <span className="text-gray-500 dark:text-gray-400">{label}</span>
@@ -490,8 +493,8 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                         <div className="space-y-3">
                           <div className="grid grid-cols-2 gap-3">
                             <div>
-                              <label className="block text-[10px] font-black text-gray-400 uppercase mb-1">Date</label>
-                              <input type="date" value={newVisit.date} onChange={e => setNewVisit(p => ({ ...p, date: e.target.value }))} className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm" />
+                              <label className="flex items-center gap-1 text-[10px] font-black text-gray-400 uppercase mb-1">Date <span className="text-red-500">*</span></label>
+                              <input type="date" value={newVisit.date} onChange={e => setNewVisit(p => ({ ...p, date: e.target.value }))} className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm" required />
                             </div>
                             <div>
                               <label className="block text-[10px] font-black text-gray-400 uppercase mb-1">Visit type</label>
@@ -501,50 +504,26 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                             </div>
                           </div>
                           <div>
-                            <label className="block text-[10px] font-black text-gray-400 uppercase mb-1">Doctors</label>
-                            <div className="flex flex-wrap gap-1.5 mb-1.5">
-                              {selectedDoctors.map((d, i) => (
-                                <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-md text-xs font-medium">
-                                  {d}
-                                  <button onClick={() => setSelectedDoctors(p => p.filter((_, j) => j !== i))} className="hover:text-blue-900 ml-0.5">
-                                    <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                                  </button>
-                                </span>
-                              ))}
-                            </div>
-                            <div className="relative">
-                              <button
-                                type="button"
-                                onClick={() => setDoctorDropdownOpen(o => !o)}
-                                className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-left flex items-center justify-between"
-                              >
-                                <span className="text-gray-400 dark:text-gray-500">+ Add doctor</span>
-                                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
-                              </button>
-                              {doctorDropdownOpen && (
-                                <div className="absolute z-20 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg overflow-hidden">
-                                  {doctors.filter(d => !selectedDoctors.includes(d.name)).length === 0 ? (
-                                    <div className="px-3 py-2 text-sm text-gray-400">No more doctors</div>
-                                  ) : (
-                                    doctors.filter(d => !selectedDoctors.includes(d.name)).map(d => (
-                                      <button
-                                        key={d.id}
-                                        type="button"
-                                        onClick={() => { setSelectedDoctors(p => [...p, d.name]); setDoctorDropdownOpen(false); }}
-                                        className="w-full px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-700 flex flex-col"
-                                      >
-                                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{d.name}</span>
-                                        <span className="text-xs text-gray-400">{d.user_email}</span>
-                                      </button>
-                                    ))
-                                  )}
-                                </div>
+                            <label className="flex items-center gap-1 text-[10px] font-black text-gray-400 uppercase mb-1">Doctor <span className="text-red-500">*</span></label>
+                            <select
+                              value={selectedDoctors[0] || ''}
+                              onChange={e => setSelectedDoctors(e.target.value ? [e.target.value] : [])}
+                              className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm"
+                              required
+                            >
+                              <option value="">Select doctor</option>
+                              {doctors.map(d => {
+                                const label = d.name || d.user_email;
+                                return <option key={d.id} value={label}>{label}{d.user_email && d.name ? ` · ${d.user_email}` : ''}</option>;
+                              })}
+                              {selectedDoctors[0] && !doctors.some(d => (d.name || d.user_email) === selectedDoctors[0]) && (
+                                <option value={selectedDoctors[0]}>{selectedDoctors[0]}</option>
                               )}
-                            </div>
+                            </select>
                           </div>
                           <div>
-                            <label className="block text-[10px] font-black text-gray-400 uppercase mb-1">Clinical findings</label>
-                            <textarea value={newVisit.clinical_findings} onChange={e => setNewVisit(p => ({ ...p, clinical_findings: e.target.value }))} className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm h-20 resize-none" />
+                            <label className="flex items-center gap-1 text-[10px] font-black text-gray-400 uppercase mb-1">Clinical findings <span className="text-red-500">*</span></label>
+                            <textarea value={newVisit.clinical_findings} onChange={e => setNewVisit(p => ({ ...p, clinical_findings: e.target.value }))} className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm h-20 resize-none" required />
                           </div>
                           <div>
                             <label className="block text-[10px] font-black text-gray-400 uppercase mb-1">Procedure notes</label>
@@ -582,7 +561,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
 
               <VisitsTab
                 visits={patient.visits || []}
-                onNewVisit={() => { setShowVisitForm(true); setEditingVisitId(null); setShowManualFields(true); setSmartNote(''); setPaidTouched(false); setNewVisit({ date: new Date().toISOString().split('T')[0], doctor: '', visit_type: 'Consultation', clinical_findings: '', procedure_notes: '', tooth_number: '', dentition_type: 'Adult', cost: 0, paid: 0, xrays: '[]', billing_items: [] }); setSelectedDoctors([]); }}
+                onNewVisit={() => { setShowVisitForm(true); setEditingVisitId(null); setShowManualFields(true); setSmartNote(''); setPaidTouched(false); setNewVisit({ date: new Date().toISOString().split('T')[0], doctor: '', visit_type: 'Consultation', clinical_findings: '', procedure_notes: '', tooth_number: '', dentition_type: 'Adult', cost: 0, paid: 0, xrays: '[]', billing_items: [] }); setSelectedDoctors(doctors[0] ? [doctors[0].name || doctors[0].user_email] : []); }}
                 onEditVisit={handleEditVisit}
                 onDeleteVisit={handleDeleteVisit}
                 onCollect={can('payments.create') ? handleCollect : undefined}
@@ -652,6 +631,19 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                     <option value="">Select</option><option>Male</option><option>Female</option><option>Other</option>
                   </select>
                 </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Patient type</label>
+                <select value={editPatient.patient_type || ''} onChange={e => setEditPatient(p => ({ ...p, patient_type: e.target.value }))} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                  <option value="">Select type</option>
+                  <option>Regular</option>
+                  <option>Insurance</option>
+                  <option>Corporate</option>
+                  <option>Staff / family</option>
+                  {editPatient.patient_type && !['Regular', 'Insurance', 'Corporate', 'Staff / family'].includes(editPatient.patient_type) && (
+                    <option value={editPatient.patient_type}>{editPatient.patient_type}</option>
+                  )}
+                </select>
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Referral source</label>

@@ -481,33 +481,11 @@ export default function DashboardClient() {
           </div>
         </div>
 
-        {/* Quick actions */}
+        {/* Quick actions — hidden for MVP to keep the home screen focused
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-5 mb-8">
-          <div className="text-sm font-bold text-gray-900 dark:text-white mb-3">Quick actions</div>
-          <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
-            {[
-              { label: 'Patients', sub: 'All records', color: '#eff6ff', icon_c: '#2563eb', action: () => router.push('/patients'),
-                icon: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg> },
-              { label: 'Schedule', sub: 'Book visit', color: '#fffbeb', icon_c: '#d97706', action: () => router.push('/scheduler'),
-                icon: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg> },
-              { label: 'Earnings', sub: 'Financial report', color: '#f0fdf4', icon_c: '#16a34a', action: () => router.push('/earnings'),
-                icon: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> },
-              { label: 'Expenses', sub: 'Track outflow', color: '#fef2f2', icon_c: '#dc2626', action: () => router.push('/expenses'),
-                icon: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg> },
-              { label: 'Settings', sub: 'Clinic config', color: '#f5f3ff', icon_c: '#7c3aed', action: () => router.push('/settings'),
-                icon: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg> },
-              { label: 'Members', sub: 'Team management', color: '#ecfeff', icon_c: '#06b6d4', action: () => router.push('/settings?tab=doctors'),
-                icon: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg> },
-            ].map(q => (
-              <button key={q.label} onClick={q.action}
-                className="p-3.5 border border-gray-200 dark:border-gray-700 rounded-xl text-left bg-white dark:bg-gray-900 hover:border-blue-200 dark:hover:border-blue-800 hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-all group">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center mb-2" style={{ background: q.color, color: q.icon_c }}>{q.icon}</div>
-                <div className="text-xs font-bold text-gray-900 dark:text-white">{q.label}</div>
-                <div className="text-xs text-gray-400 mt-0.5">{q.sub}</div>
-              </button>
-            ))}
-          </div>
+          ...
         </div>
+        */}
 
       </main>
     </div>

@@ -17,10 +17,8 @@ test.describe('Patient Management', () => {
     await page.fill('input[name="name"]', `Test Patient ${timestamp}`);
     await page.fill('input[name="phone_number"]', '9876543210');
     await page.fill('input[name="age"]', '35');
-    await page.selectOption('select[name="gender"]', 'Male');
-    
-    // Submit form
-    await page.click('button:has-text("Create Patient")');
+
+    await page.click('button:has-text("Create patient")');
     
     // Verify redirect to patient detail page
     await expect(page).toHaveURL(/\/patients\/PID-/);
@@ -31,7 +29,7 @@ test.describe('Patient Management', () => {
 
   test('should view patient list', async ({ page }) => {
     // Verify heading is visible
-    await expect(page.locator('h2:has-text("Patient Records")')).toBeVisible();
+    await expect(page.locator('h1:has-text("Patients")')).toBeVisible();
     
     // Verify table headers using th elements
     await expect(page.locator('th', { hasText: 'ID' })).toBeVisible();

@@ -276,7 +276,7 @@ function Field({ label, required, hint, help, children }: {
 function ClinicProfile() {
   const router = useRouter();
   const { showToast } = useToast();
-  const { clinic, loading, refreshClinic } = useClinic();
+  const { clinic, loading, refreshClinic, doctors } = useClinic();
   const { can } = usePermissions();
   const canUpdate = can('clinic.update');
   const [saving, setSaving] = useState(false);
@@ -407,9 +407,17 @@ function ClinicProfile() {
                   className={inputCls} placeholder="One-line description" />
               </Field>
               <Field label="Owner / head doctor" required
-                help="Receives all account-level emails.">
-                <input value={form.owner_name} onChange={e => up('owner_name', e.target.value)}
-                  className={inputCls} placeholder="Dr. Name" />
+                help="Pick a clinic member. Shown on receipts and account emails.">
+                <select value={form.owner_name} onChange={e => up('owner_name', e.target.value)} className={inputCls} disabled={!canUpdate}>
+                  <option value="">Select a doctor</option>
+                  {doctors.map(d => {
+                    const label = d.display_name || d.user_email;
+                    return <option key={d.id} value={label}>{label}{d.user_email && d.display_name ? ` · ${d.user_email}` : ''}</option>;
+                  })}
+                  {form.owner_name && !doctors.some(d => (d.display_name || d.user_email) === form.owner_name) && (
+                    <option value={form.owner_name}>{form.owner_name}</option>
+                  )}
+                </select>
               </Field>
               <Field label="Currency">
                 <select value={form.currency} onChange={e => up('currency', e.target.value)} className={inputCls}>
