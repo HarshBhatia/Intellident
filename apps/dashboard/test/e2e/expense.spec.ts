@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { acceptNextDialog, ensureExpenseCategory, uniqueSuffix } from './helpers/auth';
+import { acceptNextDialog, dismissNextDialog, ensureExpenseCategory, uniqueSuffix } from './helpers/auth';
 import { snap } from './helpers/screenshot';
 
 test.describe('Expense Management', () => {
@@ -63,5 +63,27 @@ test.describe('Expense Management', () => {
     await row.getByRole('button', { name: '×' }).click();
     await expect(page.getByText(description)).toHaveCount(0);
     await snap(page, 'expense-deleted');
+  });
+
+  test('does not submit an incomplete expense', async ({ page }) => {
+    await expect(page.getByRole('button', { name: /add expense entry/i })).toBeDisabled();
+    await page.fill('input[placeholder="0"]', '100');
+    await expect(page.getByRole('button', { name: /add expense entry/i })).toBeDisabled();
+    await snap(page, 'expense-incomplete');
+  });
+
+  test('keeps the expense if delete is cancelled', async ({ page }) => {
+    const description = `KeepExp ${uniqueSuffix()}`;
+    await page.fill('input[placeholder="Details..."]', description);
+    await page.fill('input[placeholder="0"]', '75');
+    await page.locator('select').first().selectOption({ index: 1 });
+    await page.getByRole('button', { name: /add expense entry/i }).click();
+
+    const row = page.locator('tr', { hasText: description });
+    await expect(row).toBeVisible();
+    dismissNextDialog(page);
+    await row.getByRole('button', { name: '×' }).click();
+    await expect(page.getByText(description)).toBeVisible();
+    await snap(page, 'expense-delete-cancelled');
   });
 });

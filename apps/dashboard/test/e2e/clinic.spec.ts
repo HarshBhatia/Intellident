@@ -18,4 +18,11 @@ test.describe('Clinic selection', () => {
     await snap(page, 'sign-in');
     await context.close();
   });
+
+  test('unauthenticated API calls are rejected', async ({ browser }) => {
+    const context = await browser.newContext({ storageState: { cookies: [], origins: [] } });
+    const res = await context.request.get('/api/patients', { maxRedirects: 0 });
+    expect(res.status()).toBeGreaterThanOrEqual(300);
+    await context.close();
+  });
 });

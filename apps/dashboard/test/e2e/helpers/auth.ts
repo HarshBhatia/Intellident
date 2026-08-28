@@ -1,5 +1,7 @@
 import { Page } from '@playwright/test';
 
+export type E2ERole = 'OWNER' | 'ADMIN' | 'DOCTOR' | 'RECEPTIONIST';
+
 export async function signIn(_page: Page) {
   // With global setup and storageState, authentication is already handled.
 }
@@ -81,4 +83,63 @@ export async function ensureExpenseCategory(page: Page, name = 'E2E Supplies') {
 
 export async function acceptNextDialog(page: Page) {
   page.once('dialog', dialog => dialog.accept());
+}
+
+export async function dismissNextDialog(page: Page) {
+  page.once('dialog', dialog => dialog.dismiss());
+}
+
+/** Impersonate a clinic role for the rest of this browser context (E2E only). */
+export async function asRole(page: Page, role: E2ERole) {
+  await page.context().addCookies([{
+    name: 'x-e2e-role',
+    value: role,
+    domain: 'localhost',
+    path: '/',
+    httpOnly: false,
+    secure: false,
+    sameSite: 'Lax',
+  }]);
+}
+
+export async function apiJson(page: Page, url: string, init: RequestInit = {}) {
+  return page.evaluate(async ({ url, init }) => {
+    const res = await fetch(url, {
+      ...init,
+      headers: { 'Content-Type': 'application/json', ...(init.headers as Record<string, string> || {}) },
+    });
+    const body = await res.json().catch(() => ({}));
+    return { status: res.status, body };
+  }, { url, init });
+}
+
+export async function createVisitViaApi(
+  page: Page,
+  patientNumericId: number,
+  findings: string,
+  extras: { cost?: number; paid?: number; doctor?: string } = {},
+) {
+  await ensureApp(page);
+  const visit = await page.evaluate(async ({ patient_id, findings, extras }) => {
+    const res = await fetch('/api/visits', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        patient_id,
+        date: new Date().toISOString().split('T')[0],
+        visit_type: 'Consultation',
+        clinical_findings: findings,
+        procedure_notes: '',
+        doctor: extras.doctor || 'E2E Doctor',
+        cost: extras.cost ?? 0,
+        paid: extras.paid ?? 0,
+      }),
+    });
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`createVisitViaApi failed: ${res.status} ${err}`);
+    }
+    return res.json();
+  }, { patient_id: patientNumericId, findings, extras });
+  return visit as { id: number };
 }

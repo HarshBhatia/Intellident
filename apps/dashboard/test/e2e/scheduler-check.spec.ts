@@ -130,4 +130,19 @@ test.describe('Scheduler Page', () => {
     await expect(item.getByText('Confirmed')).toBeVisible();
     await snap(page, 'scheduler-appointment-confirmed');
   });
+
+  test('requires a patient before creating an existing-patient appointment', async ({ page }) => {
+    await page.getByRole('button', { name: 'New Appointment' }).click();
+    await page.getByRole('button', { name: 'Create' }).click();
+    await expect(page.getByText('Please select a patient')).toBeVisible();
+    await snap(page, 'scheduler-patient-required');
+  });
+
+  test('requires a walk-in name', async ({ page }) => {
+    await page.getByRole('button', { name: 'New Appointment' }).click();
+    await page.getByRole('button', { name: 'Walk-in' }).click();
+    await page.getByRole('button', { name: 'Create' }).click();
+    await expect(page.getByText('Please enter walk-in patient name')).toBeVisible();
+    await snap(page, 'scheduler-walk-in-name-required');
+  });
 });

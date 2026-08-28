@@ -77,7 +77,12 @@ export async function verifyMembership(clinicId: number | string, userEmail: str
 }
 
 export async function getMemberRole(clinicId: number | string, userEmail: string, userId?: string): Promise<Role | null> {
-  if (await isE2E() && userEmail === MOCK_E2E_USER.email) return 'OWNER';
+  if (await isE2E() && userEmail === MOCK_E2E_USER.email) {
+    const headerList = await headers();
+    const cookieStore = await cookies();
+    const override = headerList.get('x-e2e-role') || cookieStore.get('x-e2e-role')?.value;
+    return normalizeRole(override) ?? 'OWNER';
+  }
 
   const sql = getDb();
   const cId = typeof clinicId === 'string' ? parseInt(clinicId) : clinicId;
