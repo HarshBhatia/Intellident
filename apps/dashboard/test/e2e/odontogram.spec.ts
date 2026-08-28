@@ -1,42 +1,32 @@
 import { test, expect } from '@playwright/test';
+import { createPatientViaApi } from './helpers/auth';
+import { snap } from './helpers/screenshot';
 
 test.describe('Odontogram', () => {
-  test('persists a tooth marking after reload', async ({ page }) => {
-    await page.goto('/patients');
-    await page.click('button:has-text("Add patient")');
-    await expect(page.locator('h2:has-text("New Patient")')).toBeVisible();
+  test('marks a tooth from the chart and persists after reload', async ({ page }) => {
+    const patient = await createPatientViaApi(page);
+    await page.goto(`/patients/${patient.patient_id}?tab=odontogram`);
+    await expect(page.getByText(/dental chart/i)).toBeVisible();
 
-    const timestamp = Date.now();
-    const name = `Odon Patient ${timestamp}`;
-    await page.fill('input[name="name"]', name);
-    await page.fill('input[name="phone_number"]', '9876500000');
-    await page.click('button:has-text("Create Patient")');
-    await expect(page).toHaveURL(/\/patients\/PID-/);
+    await page.locator('[data-tooth="16"] svg').click({ position: { x: 18, y: 28 } });
+    await expect(page.getByRole('button', { name: 'Crown' })).toBeVisible();
+    await page.getByRole('button', { name: 'Crown' }).click();
+    await expect(page.getByText('Treated').locator('..')).toContainText('1');
+    await expect(page.getByText(/· Saved/)).toBeVisible();
+    await snap(page, 'odontogram-marked');
 
-    await page.click('button:has-text("Odontogram")');
-    await expect(page.locator('text=Dental chart')).toBeVisible();
-
-    const chart = { 16: { whole: 'crown' } };
-    const path = page.url().split('?')[0];
-    const pid = path.split('/patients/')[1];
-    const res = await page.evaluate(async ({ pid, chart }) => {
-      const r = await fetch(`/api/patients/${pid}/odontogram`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chart }),
-      });
-      return { ok: r.ok, status: r.status, body: await r.json() };
-    }, { pid, chart });
-    expect(res.ok).toBeTruthy();
+    await expect.poll(async () => {
+      const loaded = await page.evaluate(async (pid) => {
+        const r = await fetch(`/api/patients/${pid}/odontogram`);
+        return r.json();
+      }, patient.patient_id);
+      return loaded.chart?.['16']?.whole;
+    }).toBe('crown');
 
     await page.reload();
-    await page.click('button:has-text("Odontogram")');
-    await expect(page.locator('text=Dental chart')).toBeVisible();
-
-    const loaded = await page.evaluate(async (pid) => {
-      const r = await fetch(`/api/patients/${pid}/odontogram`);
-      return r.json();
-    }, pid);
-    expect(loaded.chart['16'].whole).toBe('crown');
+    await page.getByRole('button', { name: 'Odontogram' }).click();
+    await expect(page.getByText(/dental chart/i)).toBeVisible();
+    await expect(page.getByText('Treated').locator('..')).toContainText('1');
+    await snap(page, 'odontogram-after-reload');
   });
 });

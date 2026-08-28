@@ -45,16 +45,26 @@ npm run test:e2e:ui -w dashboard
 
 # Debug mode (step through)
 npm run test:e2e:debug -w dashboard
+
+# Open the HTML report (named screenshots are on each test)
+npx playwright show-report
+# (run from apps/dashboard, or pass the report dir: npx playwright show-report apps/dashboard/playwright-report)
 ```
+
+Tests attach labeled full-page screenshots via `snap(page, 'name')` in `test/e2e/helpers/screenshot.ts`, and Playwright also captures a screenshot at the end of every test (`screenshot: 'on'`).
 
 ## Available Test Suites
 
-- `simple-auth.spec.ts` - Verifies sign-in/sign-up pages load (no user required)
-- `dashboard.spec.ts` - Dashboard statistics and navigation
-- `patient.spec.ts` - Patient CRUD operations
-- `visit.spec.ts` - Visit management and billing
-- `expense.spec.ts` - Expense tracking
-- `treatment.spec.ts` - Treatment management
+- `clinic.spec.ts` — Clinic picker + unauthenticated sign-in page
+- `dashboard.spec.ts` — Home KPIs and navigation
+- `patient.spec.ts` — Patient create, list, search, edit, delete
+- `visit.spec.ts` — Visit create, collect payment, edit, delete
+- `odontogram.spec.ts` — Chart marking + persistence
+- `scheduler-check.spec.ts` — Calendar chrome, walk-in + existing-patient booking, confirm
+- `expense.spec.ts` — Expense create, search, delete
+- `earnings.spec.ts` — Totals and monthly trend
+- `treatment.spec.ts` — Treatments in Settings
+- `settings.spec.ts` — Clinic profile, members invite, expense categories
 
 ## Test Credentials
 
@@ -87,23 +97,19 @@ Stored in `apps/dashboard/.env.test`:
 ## Writing New Tests
 
 1. Create new `.spec.ts` files in `apps/dashboard/test/e2e/`
-2. Import and use the `signIn` helper from `./helpers/auth`
-3. Use `test.beforeEach` to sign in before each test
+2. Use helpers in `./helpers/auth` (`createPatientViaApi`, `createPatientViaUi`, `uniqueSuffix`, `acceptNextDialog`)
+3. Give every created record a unique name so parallel workers do not collide
 4. Example:
 
 ```typescript
 import { test, expect } from '@playwright/test';
-import { signIn } from './helpers/auth';
+import { createPatientViaApi, uniqueSuffix } from './helpers/auth';
 
 test.describe('My Feature', () => {
-  test.beforeEach(async ({ page }) => {
-    await signIn(page);
-  });
-
   test('should do something', async ({ page }) => {
-    // Your test logic here
-    await page.click('button:has-text("Click Me")');
-    await expect(page.locator('text=Success')).toBeVisible();
+    const patient = await createPatientViaApi(page, { name: `Case ${uniqueSuffix()}` });
+    await page.goto(`/patients/${patient.patient_id}`);
+    await expect(page.getByRole('heading', { name: patient.name })).toBeVisible();
   });
 });
 ```

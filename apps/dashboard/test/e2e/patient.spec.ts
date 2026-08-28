@@ -1,85 +1,65 @@
 import { test, expect } from '@playwright/test';
+import { acceptNextDialog, createPatientViaApi, createPatientViaUi, uniqueSuffix } from './helpers/auth';
+import { snap } from './helpers/screenshot';
 
 test.describe('Patient Management', () => {
-  test.beforeEach(async ({ page }) => {
-    await page.goto('/patients');
-  });
-
   test('should create a new patient', async ({ page }) => {
-    // Click "Add Patient" button
-    await page.click('button:has-text("Add Patient")');
-    
-    // Wait for form to appear
-    await expect(page.locator('h2:has-text("New Patient")')).toBeVisible();
-    
-    // Fill patient form
-    const timestamp = Date.now();
-    await page.fill('input[name="name"]', `Test Patient ${timestamp}`);
-    await page.fill('input[name="phone_number"]', '9876543210');
-    await page.fill('input[name="age"]', '35');
-
-    await page.click('button:has-text("Create patient")');
-    
-    // Verify redirect to patient detail page
-    await expect(page).toHaveURL(/\/patients\/PID-/);
-    
-    // Verify patient name is displayed on detail page
-    await expect(page.locator(`text=${`Test Patient ${timestamp}`}`).first()).toBeVisible();
+    const { name } = await createPatientViaUi(page);
+    await expect(page.getByRole('heading', { name })).toBeVisible();
+    await snap(page, 'patient-created');
   });
 
   test('should view patient list', async ({ page }) => {
-    // Verify heading is visible
-    await expect(page.locator('h1:has-text("Patients")')).toBeVisible();
-    
-    // Verify table headers using th elements
-    await expect(page.locator('th', { hasText: 'ID' })).toBeVisible();
-    await expect(page.locator('th', { hasText: 'NAME' })).toBeVisible();
-    await expect(page.locator('th', { hasText: 'AGE' })).toBeVisible();
-    await expect(page.locator('th', { hasText: 'GENDER' })).toBeVisible();
-    await expect(page.locator('th', { hasText: 'PHONE' })).toBeVisible();
+    await page.goto('/patients');
+    await expect(page.getByRole('heading', { name: 'Patients' })).toBeVisible();
+    await expect(page.getByRole('columnheader', { name: 'Patient' })).toBeVisible();
+    await expect(page.getByRole('columnheader', { name: 'Contact' })).toBeVisible();
+    await expect(page.getByRole('columnheader', { name: 'Last visit' })).toBeVisible();
+    await expect(page.getByRole('columnheader', { name: 'Next visit' })).toBeVisible();
+    await expect(page.getByRole('columnheader', { name: 'Outstanding' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'All patients' })).toBeVisible();
+    await snap(page, 'patient-list');
   });
 
   test('should search for a patient', async ({ page }) => {
-    // Wait for search input
-    const searchInput = page.locator('input[placeholder*="Search"]');
-    await searchInput.waitFor({ state: 'visible' });
-    
-    // Search for a patient
-    await searchInput.fill('John');
-    
-    // Wait for results to update
-    await page.waitForTimeout(500);
-    
-    // Verify search results contain the search term
-    const tableRows = page.locator('tbody tr');
-    const count = await tableRows.count();
-    
-    if (count > 0) {
-      const firstRow = tableRows.first();
-      await expect(firstRow).toBeVisible();
-    }
+    const name = `SearchMe ${uniqueSuffix()}`;
+    const patient = await createPatientViaApi(page, { name });
+    await page.goto('/patients');
+    await page.getByTestId('patient-search').fill(name);
+    const row = page.getByTestId(`patient-row-${patient.patient_id}`);
+    await expect(row).toBeVisible();
+    await expect(row).toContainText(name);
+    await expect(page.locator('tbody tr')).toHaveCount(1);
+    await snap(page, 'patient-search');
   });
 
   test('should edit patient details', async ({ page }) => {
-    // Click on first patient row
-    const firstPatient = page.locator('tbody tr').first();
-    await firstPatient.click();
-    
-    // Wait for patient detail page
-    await expect(page).toHaveURL(/\/patients\/PID-/);
-    
-    // Click edit button
-    await page.click('button:has-text("Edit")');
-    
-    // Update age
-    const ageInput = page.locator('input[name="age"]');
-    await ageInput.clear();
-    await ageInput.fill('40');
-    
-    // Save changes
-    await page.click('button:has-text("Save")');
-    
-    // Verify update
-    await expect(page.locator('text=40')).toBeVisible();
+    const name = `EditMe ${uniqueSuffix()}`;
+    const patient = await createPatientViaApi(page, { name, age: 28 });
+    await page.goto(`/patients/${patient.patient_id}`);
+    await expect(page.getByRole('heading', { name })).toBeVisible();
+
+    await page.getByRole('button', { name: /edit profile/i }).click();
+    await expect(page.getByRole('heading', { name: 'Edit Patient' })).toBeVisible();
+    await page.locator('input[name="age"]').fill('41');
+    await page.getByTestId('save-patient').click();
+
+    await expect(page.getByText('41 yrs')).toBeVisible();
+    await snap(page, 'patient-edited');
+  });
+
+  test('should delete a patient', async ({ page }) => {
+    const name = `DeleteMe ${uniqueSuffix()}`;
+    const patient = await createPatientViaApi(page, { name });
+    await page.goto(`/patients/${patient.patient_id}`);
+    await expect(page.getByRole('heading', { name })).toBeVisible();
+
+    acceptNextDialog(page);
+    await page.getByRole('button', { name: /^delete$/i }).click();
+    await page.waitForURL(/\/patients\/?$/);
+
+    await page.getByTestId('patient-search').fill(name);
+    await expect(page.getByTestId(`patient-row-${patient.patient_id}`)).toHaveCount(0);
+    await snap(page, 'patient-deleted');
   });
 });

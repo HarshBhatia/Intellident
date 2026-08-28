@@ -523,25 +523,25 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                           </div>
                           <div>
                             <label className="flex items-center gap-1 text-[10px] font-black text-gray-400 uppercase mb-1">Clinical findings <span className="text-red-500">*</span></label>
-                            <textarea value={newVisit.clinical_findings} onChange={e => setNewVisit(p => ({ ...p, clinical_findings: e.target.value }))} className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm h-20 resize-none" required />
+                            <textarea name="clinical_findings" value={newVisit.clinical_findings} onChange={e => setNewVisit(p => ({ ...p, clinical_findings: e.target.value }))} className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm h-20 resize-none" required />
                           </div>
                           <div>
                             <label className="block text-[10px] font-black text-gray-400 uppercase mb-1">Procedure notes</label>
-                            <textarea value={newVisit.procedure_notes} onChange={e => setNewVisit(p => ({ ...p, procedure_notes: e.target.value }))} className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm h-20 resize-none" />
+                            <textarea name="procedure_notes" value={newVisit.procedure_notes} onChange={e => setNewVisit(p => ({ ...p, procedure_notes: e.target.value }))} className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm h-20 resize-none" />
                           </div>
                           <div className="grid grid-cols-2 gap-3">
                             <div>
                               <label className="block text-[10px] font-black text-gray-400 uppercase mb-1">Total cost (₹)</label>
                               <div className="relative">
                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">₹</span>
-                                <input type="number" value={newVisit.cost || ''} onChange={e => { const cost = e.target.value === '' ? 0 : Number(e.target.value); setNewVisit(p => ({ ...p, cost, paid: paidTouched ? p.paid : cost })); }} className="w-full pl-7 pr-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="0" min="0" />
+                                <input name="cost" type="number" value={newVisit.cost || ''} onChange={e => { const cost = e.target.value === '' ? 0 : Number(e.target.value); setNewVisit(p => ({ ...p, cost, paid: paidTouched ? p.paid : cost })); }} className="w-full pl-7 pr-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="0" min="0" />
                               </div>
                             </div>
                             <div>
                               <label className="block text-[10px] font-black text-gray-400 uppercase mb-1">Paid (₹)</label>
                               <div className="relative">
                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">₹</span>
-                                <input type="number" value={newVisit.paid || ''} onChange={e => { setPaidTouched(true); setNewVisit(p => ({ ...p, paid: e.target.value === '' ? 0 : Number(e.target.value) })); }} className="w-full pl-7 pr-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="0" min="0" />
+                                <input name="paid" type="number" value={newVisit.paid || ''} onChange={e => { setPaidTouched(true); setNewVisit(p => ({ ...p, paid: e.target.value === '' ? 0 : Number(e.target.value) })); }} className="w-full pl-7 pr-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="0" min="0" />
                               </div>
                             </div>
                           </div>
@@ -551,7 +551,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
 
                     <div className="flex justify-end gap-2 px-6 py-3 border-t border-gray-100 dark:border-gray-800 rounded-b-2xl">
                       <button onClick={handleCloseVisitForm} className="px-4 py-2 text-gray-500 font-semibold text-xs rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">Cancel</button>
-                      <button onClick={handleSaveVisit} disabled={isSaving || !newVisit.clinical_findings?.trim()} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-bold text-xs shadow-sm disabled:opacity-50 transition-colors">
+                      <button data-testid="save-visit" onClick={handleSaveVisit} disabled={isSaving || !newVisit.clinical_findings?.trim()} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-bold text-xs shadow-sm disabled:opacity-50 transition-colors">
                         {isSaving ? 'Saving...' : 'Save visit'}
                       </button>
                     </div>
@@ -617,13 +617,13 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
               ].map(({ label, field, type, placeholder }) => (
                 <div key={field}>
                   <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">{label}</label>
-                  <input type={type} value={(editPatient as any)[field] || ''} onChange={e => setEditPatient(p => ({ ...p, [field]: e.target.value }))} placeholder={placeholder} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+                  <input name={field} type={type} value={(editPatient as any)[field] || ''} onChange={e => setEditPatient(p => ({ ...p, [field]: e.target.value }))} placeholder={placeholder} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
                 </div>
               ))}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Age</label>
-                  <input type="number" value={editPatient.age || ''} onChange={e => setEditPatient(p => ({ ...p, age: Number(e.target.value) }))} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+                  <input name="age" type="number" value={editPatient.age || ''} onChange={e => setEditPatient(p => ({ ...p, age: Number(e.target.value) }))} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Gender</label>
@@ -656,7 +656,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
             </div>
             <div className="sticky bottom-0 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-end gap-3 rounded-b-2xl">
               <button onClick={() => setShowEditPatient(false)} className="px-5 py-2.5 text-gray-500 font-bold text-xs uppercase tracking-wider hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl transition-colors">Cancel</button>
-              <button onClick={handleUpdatePatient} className="px-7 py-2.5 bg-blue-600 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow hover:bg-blue-700 transition-colors">Save changes</button>
+              <button data-testid="save-patient" onClick={handleUpdatePatient} className="px-7 py-2.5 bg-blue-600 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow hover:bg-blue-700 transition-colors">Save changes</button>
             </div>
           </div>
         </div>

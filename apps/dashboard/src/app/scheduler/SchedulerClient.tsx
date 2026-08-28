@@ -307,6 +307,7 @@ export default function SchedulerClient() {
                     return (
                       <div
                         key={appt.id}
+                        data-testid="appointment-item"
                         onClick={() => setSelectedAppointment(appt)}
                         className={`bg-white dark:bg-gray-900 rounded-xl border px-4 py-3 cursor-pointer transition-shadow hover:shadow-md ${config.border}`}
                       >

@@ -392,6 +392,7 @@ export default function PatientTable({ patients, onAddClick, onDeleteSuccess, vi
             <tbody className="divide-y divide-gray-50 dark:divide-gray-800/80">
               {paged.map(p => (
                 <tr key={p.id}
+                  data-testid={`patient-row-${p.patient_id}`}
                   className={`group/row cursor-pointer transition-colors hover:bg-gray-50/80 dark:hover:bg-gray-800/40 ${selected.has(p.id!) ? 'bg-blue-50/60 dark:bg-blue-900/10' : ''}`}
                   onClick={() => openPatient(p)}>
                   <td className="pl-4 py-3.5 w-9" onClick={e => e.stopPropagation()}>
