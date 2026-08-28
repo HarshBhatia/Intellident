@@ -29,6 +29,11 @@ const DownloadIcon = () => (
     <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
   </svg>
 );
+const BellIcon = () => (
+  <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+  </svg>
+);
 const CheckIcon = () => (
   <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -94,9 +99,9 @@ function Ring({ pct, size = 44 }: { pct: number; size?: number }) {
 
 // ─── Side Nav ─────────────────────────────────────────────────────────────────
 
-type SectionId = 'profile' | 'members' | 'expenses' | 'export';
+type SectionId = 'profile' | 'members' | 'expenses' | 'preferences' | 'export';
 
-const SETTINGS_TABS: SectionId[] = ['profile', 'members', 'expenses', 'export'];
+const SETTINGS_TABS: SectionId[] = ['profile', 'members', 'expenses', 'preferences', 'export'];
 
 const NAV_CLINIC = [
   { id: 'profile' as SectionId, label: 'Clinic Profile', Icon: BuildingIcon },
@@ -104,6 +109,7 @@ const NAV_CLINIC = [
   { id: 'expenses' as SectionId, label: 'Expenses', Icon: MinusCircleIcon },
 ];
 const NAV_ACCOUNT = [
+  { id: 'preferences' as SectionId, label: 'Preferences', Icon: BellIcon },
   { id: 'export' as SectionId, label: 'Data Export', Icon: DownloadIcon },
 ];
 
@@ -599,6 +605,37 @@ function Manager({ title, apiEndpoint }: { title: string; apiEndpoint: string })
 
 // ─── Preferences ──────────────────────────────────────────────────────────────
 
+function Preferences() {
+  const [notation, setNotation] = useState(() => {
+    if (typeof window !== 'undefined') return localStorage.getItem('odontogram_notation') || 'FDI';
+    return 'FDI';
+  });
+  const save = (v: string) => { setNotation(v); localStorage.setItem('odontogram_notation', v); };
+
+  return (
+    <>
+      <div className="px-6 py-5 border-b border-gray-100 dark:border-gray-800">
+        <h2 className="text-lg font-black text-gray-900 dark:text-gray-100">Preferences</h2>
+        <p className="text-xs text-gray-400 mt-0.5">Clinic-wide defaults for your workflow.</p>
+      </div>
+      <div className="p-6 space-y-6">
+        <div>
+          <h3 className="text-sm font-black text-gray-800 dark:text-gray-200 mb-1">Odontogram notation</h3>
+          <p className="text-xs text-gray-400 mb-3">Controls how tooth numbers appear across the app.</p>
+          <div className="flex gap-2">
+            {['FDI', 'Universal', 'Palmer'].map(n => (
+              <button key={n} onClick={() => save(n)}
+                className={`px-4 py-2 text-sm font-bold rounded-xl border transition ${notation === n ? 'bg-blue-600 text-white border-blue-600' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-blue-300'}`}>
+                {n}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ─── Data Export ──────────────────────────────────────────────────────────────
 
 function DataExport() {
@@ -700,6 +737,7 @@ export default function SettingsClient() {
             {active === 'profile' && <ClinicProfile />}
             {active === 'members' && <ManageMembers />}
             {active === 'expenses' && <Manager title="Expense Categories" apiEndpoint="/api/expenses/categories" />}
+            {active === 'preferences' && <Preferences />}
             {active === 'export' && <DataExport />}
           </div>
         </div>

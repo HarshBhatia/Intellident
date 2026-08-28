@@ -59,6 +59,7 @@ Tests attach labeled full-page screenshots via `snap(page, 'name')` in `test/e2e
 - `dashboard.spec.ts` — Home KPIs and navigation
 - `patient.spec.ts` — Patient create, list, search, edit, delete
 - `visit.spec.ts` — Visit create, collect payment, edit, delete
+- `odontogram.spec.ts` — Chart marking + persistence
 - `scheduler-check.spec.ts` — Calendar chrome, walk-in + existing-patient booking, confirm
 - `expense.spec.ts` — Expense create, search, delete
 - `earnings.spec.ts` — Totals and monthly trend

@@ -10,9 +10,10 @@ import { useAuth } from '@/hooks/useAuth';
 import { useClinic } from '@/context/ClinicContext';
 import { Analytics } from '@/lib/analytics';
 import VisitsTab from '@/components/VisitsTab';
+import OdontogramTab from '@/components/OdontogramTab';
 import { usePermissions } from '@/hooks/usePermissions';
 
-type TabKey = 'overview' | 'visits';
+type TabKey = 'overview' | 'visits' | 'odontogram';
 
 export default function PatientDetailClient({ params }: { params: Promise<{ id: string }> }) {
   const { user } = useAuth();
@@ -24,7 +25,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
   const pathname = usePathname();
   const isDebug = searchParams.get('debug') === 'true';
 
-  const VALID_TABS: TabKey[] = ['overview', 'visits'];
+  const VALID_TABS: TabKey[] = ['overview', 'visits', 'odontogram'];
   const tabFromUrl = searchParams.get('tab') as TabKey | null;
 
   const [patientId, setPatientId] = useState<string | null>(null);
@@ -249,6 +250,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
   const TABS: { key: TabKey; label: string; count?: number }[] = [
     { key: 'overview', label: 'Overview' },
     { key: 'visits', label: 'Visits', count: patient.visits?.length || 0 },
+    { key: 'odontogram', label: 'Odontogram' },
   ];
 
   return (
@@ -494,6 +496,10 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
                 canDelete={can('visits.delete')}
               />
             </>
+          )}
+
+          {activeTab === 'odontogram' && (
+            <OdontogramTab patientId={patient.patient_id} visits={patient.visits || []} canEdit={can('clinical_notes.edit')} />
           )}
 
         </div>
