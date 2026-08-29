@@ -20,6 +20,11 @@ type ApiHandler<T = unknown, P = unknown> = (
   routeParams: P
 ) => Promise<NextResponse<T> | NextResponse>;
 
+// Routes with a dynamic segment declare a concrete P and must receive routeParams
+// (required, matching what Next.js's generated route types expect). Routes without
+// one leave P as the unknown default and never read routeParams, so it stays optional.
+type RouteParamArg<P> = unknown extends P ? [routeParams?: P] : [routeParams: P];
+
 function jsonError(error: unknown) {
   if (error instanceof ApiError) {
     return NextResponse.json({ error: error.message }, { status: error.status });
@@ -29,7 +34,8 @@ function jsonError(error: unknown) {
 }
 
 export function withAuth<T = unknown, P = unknown>(handler: ApiHandler<T, P>, options?: AuthOptions) {
-  return async (request: Request, routeParams?: P) => {
+  return async (request: Request, ...rest: RouteParamArg<P>) => {
+    const routeParams = rest[0] as P;
     try {
       const { userId, userEmail } = await getAuthContext();
       if (!userId) {
@@ -54,8 +60,7 @@ export function withAuth<T = unknown, P = unknown>(handler: ApiHandler<T, P>, op
       }
 
       const context: AuthenticatedContext = { userId, userEmail, clinicId, userRole };
-      // Dynamic routes always receive routeParams from Next.js; static routes never read it.
-      return await handler(request, context, routeParams as P);
+      return await handler(request, context, routeParams);
     } catch (error: unknown) {
       return jsonError(error);
     }
