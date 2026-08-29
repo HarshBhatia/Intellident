@@ -44,8 +44,8 @@ jobs:
       - name: Run e2e
         env:
           E2E_TEST_SECRET: e2e-secret-key
-          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_placeholder
-          CLERK_SECRET_KEY: sk_test_placeholder
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.CLERK_TEST_PUBLISHABLE_KEY }}
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_TEST_SECRET_KEY }}
         run: npm run test:e2e
       - uses: actions/upload-artifact@v4
         if: failure()

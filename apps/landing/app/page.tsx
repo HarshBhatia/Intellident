@@ -42,6 +42,7 @@ export default function LandingPage() {
     const stored = localStorage.getItem("intellident-theme");
     const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
     const dark = stored ? stored === "dark" : prefersDark;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- theme can only be known client-side (localStorage/matchMedia), so this can't be a lazy useState initializer without a hydration mismatch
     setIsDark(dark);
     if (dark) document.documentElement.classList.add("dark");
     else document.documentElement.classList.remove("dark");
