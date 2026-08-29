@@ -3,6 +3,7 @@
 import { Patient } from '@/types';
 import { useRouter } from 'next/navigation';
 import { useState, useMemo, useEffect, useRef } from 'react';
+import type { CSSProperties } from 'react';
 import { useToast } from '@/components/ToastProvider';
 import { useClinic } from '@/context/ClinicContext';
 
@@ -247,7 +248,7 @@ function SortTh({ label, col, sort, setSort, align }: {
   const active = sort.key === col;
   return (
     <th className={`px-3.5 py-3 text-left text-[10px] font-black uppercase tracking-[0.06em] text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-gray-800/50 cursor-pointer select-none whitespace-nowrap hover:text-gray-600 dark:hover:text-gray-300 transition-colors ${align === 'right' ? 'text-right' : ''}`}
-      style={{ textAlign: align as any }}
+      style={{ textAlign: align as CSSProperties['textAlign'] }}
       onClick={() => setSort({ key: col, dir: active && sort.dir === 'asc' ? 'desc' : 'asc' })}>
       {label}
       <span className={`ml-1 inline-block transition-transform ${active ? 'opacity-100 text-blue-600' : 'opacity-40'} ${active && sort.dir === 'desc' ? 'rotate-180' : ''}`}>
@@ -315,13 +316,18 @@ export default function PatientTable({ patients, onAddClick, onDeleteSuccess, vi
   const [page, setPage] = useState(1);
   const PER_PAGE = 15;
 
-  // Reset page when patient list changes (search/filter from parent)
-  useEffect(() => { setPage(1); }, [patients.length]);
+  // Reset page when patient list changes (search/filter from parent) — adjusted
+  // during render rather than in an effect to avoid an extra render pass.
+  const [prevPatientsLength, setPrevPatientsLength] = useState(patients.length);
+  if (patients.length !== prevPatientsLength) {
+    setPrevPatientsLength(patients.length);
+    setPage(1);
+  }
 
   const sorted = useMemo(() => {
     const arr = [...patients];
     arr.sort((a, b) => {
-      let av: any, bv: any;
+      let av: string | number, bv: string | number;
       if (sort.key === 'name') { av = a.name.toLowerCase(); bv = b.name.toLowerCase(); }
       else if (sort.key === 'last_visit') { av = a.last_visit ? new Date(a.last_visit).getTime() : 0; bv = b.last_visit ? new Date(b.last_visit).getTime() : 0; }
       else if (sort.key === 'next_visit') { av = a.next_visit ? new Date(a.next_visit).getTime() : 0; bv = b.next_visit ? new Date(b.next_visit).getTime() : 0; }

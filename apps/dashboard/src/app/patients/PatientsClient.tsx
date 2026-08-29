@@ -190,7 +190,7 @@ export default function PatientsClient() {
 
             {/* View toggle */}
             <div className="flex items-center gap-0.5 p-1 bg-gray-100 dark:bg-gray-800 rounded-[10px]">
-              {([['table', <IcTable />], ['cards', <IcGrid />]] as const).map(([v, icon]) => (
+              {([['table', <IcTable key="table-icon" />], ['cards', <IcGrid key="cards-icon" />]] as const).map(([v, icon]) => (
                 <button key={v} onClick={() => setViewMode(v as 'table' | 'cards')}
                   className={`w-8 h-8 flex items-center justify-center rounded-[7px] transition-all
                     ${viewMode === v ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-600' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}>

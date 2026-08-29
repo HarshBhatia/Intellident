@@ -14,24 +14,22 @@ export interface AuthOptions {
   requiredPermission?: Permission;
 }
 
-type ApiHandler<T = any> = (
+type ApiHandler<T = unknown, P = unknown> = (
   request: Request,
   context: AuthenticatedContext,
-  routeParams?: any
+  routeParams: P
 ) => Promise<NextResponse<T> | NextResponse>;
 
-function jsonError(error: any) {
+function jsonError(error: unknown) {
   if (error instanceof ApiError) {
     return NextResponse.json({ error: error.message }, { status: error.status });
   }
-  return NextResponse.json(
-    { error: error.message || 'Internal server error' },
-    { status: 500 }
-  );
+  const message = error instanceof Error ? error.message : 'Internal server error';
+  return NextResponse.json({ error: message }, { status: 500 });
 }
 
-export function withAuth<T = any>(handler: ApiHandler<T>, options?: AuthOptions) {
-  return async (request: Request, routeParams?: any) => {
+export function withAuth<T = unknown, P = unknown>(handler: ApiHandler<T, P>, options?: AuthOptions) {
+  return async (request: Request, routeParams?: P) => {
     try {
       const { userId, userEmail } = await getAuthContext();
       if (!userId) {
@@ -56,17 +54,18 @@ export function withAuth<T = any>(handler: ApiHandler<T>, options?: AuthOptions)
       }
 
       const context: AuthenticatedContext = { userId, userEmail, clinicId, userRole };
-      return await handler(request, context, routeParams);
-    } catch (error: any) {
+      // Dynamic routes always receive routeParams from Next.js; static routes never read it.
+      return await handler(request, context, routeParams as P);
+    } catch (error: unknown) {
       return jsonError(error);
     }
   };
 }
 
-export function withAuthOnly<T = any>(
-  handler: (userId: string, userEmail: string, request: Request, params?: any) => Promise<NextResponse<T> | NextResponse>
+export function withAuthOnly<T = unknown, P = unknown>(
+  handler: (userId: string, userEmail: string, request: Request, params?: P) => Promise<NextResponse<T> | NextResponse>
 ) {
-  return async (request: Request, routeParams?: any) => {
+  return async (request: Request, routeParams?: P) => {
     try {
       const { userId, userEmail } = await getAuthContext();
       if (!userId) {
@@ -77,7 +76,7 @@ export function withAuthOnly<T = any>(
       }
 
       return await handler(userId, userEmail, request, routeParams);
-    } catch (error: any) {
+    } catch (error: unknown) {
       return jsonError(error);
     }
   };

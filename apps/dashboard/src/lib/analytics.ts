@@ -1,4 +1,4 @@
-declare function gtag(...args: any[]): void;
+declare function gtag(...args: unknown[]): void;
 
 export function trackEvent(name: string, params?: Record<string, string | number | boolean>) {
   if (typeof window === 'undefined' || typeof gtag === 'undefined') return;

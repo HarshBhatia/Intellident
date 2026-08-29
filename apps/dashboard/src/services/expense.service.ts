@@ -8,7 +8,7 @@ import type { Expense, ExpenseCategory } from '@intellident/api';
 export async function getExpenses(clinicId: string, startDate?: string, endDate?: string, category?: string): Promise<Expense[]> {
   if (!clinicId) throw new Error('Clinic ID is required');
   const sql = getDb();
-  let rows: any[] = startDate && endDate
+  let rows: Expense[] = startDate && endDate
     ? await sql`SELECT * FROM expenses WHERE clinic_id = ${clinicId} AND date >= ${startDate} AND date <= ${endDate} ORDER BY date DESC`
     : await sql`SELECT * FROM expenses WHERE clinic_id = ${clinicId} ORDER BY date DESC`;
   if (category) {

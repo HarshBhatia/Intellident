@@ -223,7 +223,11 @@ async function seedClinic(sql: ReturnType<typeof getDb>, clinicId: number, owner
     const rows = await sql`SELECT id, patient_id FROM patients WHERE clinic_id = ${clinicId}`;
     for (const r of rows) byCode[r.patient_id] = r.id;
 
-    const appointments = [
+    const appointments: Array<{
+      patient: string | null; doctor_email: string; doctor_name: string; offset: number;
+      start: string; end: string; type: string; status: string; notes: string;
+      walk_in_name?: string; walk_in_phone?: string;
+    }> = [
       { patient: 'PID-1', doctor_email: ownerEmail, doctor_name: 'Dr. Aisha Khan', offset: 0, start: '10:00', end: '10:30', type: 'RCT follow-up', status: 'CONFIRMED', notes: 'Crown discussion' },
       { patient: 'PID-2', doctor_email: ownerEmail, doctor_name: 'Dr. Aisha Khan', offset: 0, start: '11:00', end: '11:30', type: 'Review', status: 'SCHEDULED', notes: '' },
       { patient: 'PID-6', doctor_email: 'doctor.mehta@example.com', doctor_name: 'Dr. Rohan Mehta', offset: 0, start: '16:00', end: '16:30', type: 'Filling review', status: 'SCHEDULED', notes: 'Child — parent attending' },
@@ -242,8 +246,8 @@ async function seedClinic(sql: ReturnType<typeof getDb>, clinicId: number, owner
         ) VALUES (
           ${clinicId},
           ${a.patient ? byCode[a.patient] ?? null : null},
-          ${(a as any).walk_in_name || null},
-          ${(a as any).walk_in_phone || null},
+          ${a.walk_in_name || null},
+          ${a.walk_in_phone || null},
           ${a.doctor_email},
           ${a.doctor_name},
           ${isoDate(a.offset)},

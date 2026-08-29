@@ -8,7 +8,7 @@ const parseBillingItems = (billingItemsJson?: string | null): BillingItem[] => {
   try {
     const parsed = JSON.parse(billingItemsJson);
     return Array.isArray(parsed) ? parsed : [];
-  } catch (e) {
+  } catch {
     // Skip invalid billing items
     return [];
   }
@@ -32,7 +32,14 @@ export async function getPatients(clinicId: string, filters: PatientFilters = {}
   const sql = getDb();
   const cId = parseInt(clinicId);
 
-  let rows: any[] = await sql`
+  type PatientRow = Patient & {
+    last_visit: string | null;
+    visit_count: number;
+    balance: number;
+    lifetime_value: number;
+    next_visit: string | null;
+  };
+  let rows: PatientRow[] = await sql`
     SELECT
       p.id, p.patient_id, p.name, p.age, p.gender, p.phone_number,
       p.patient_type, p.referral_source, p.created_at, p.clinic_id,
@@ -68,7 +75,8 @@ export async function getPatients(clinicId: string, filters: PatientFilters = {}
   // Filter patients who had a specific visit type (or visited in a date range)
   if (visitType || start || end) {
     const patientIds = new Set(rows.map(r => r.id));
-    const visitRows: any[] = await sql`
+    type VisitRow = { patient_id: number; date: string; visit_type: string | null; clinical_findings: string | null; procedure_notes: string | null };
+    const visitRows: VisitRow[] = await sql`
       SELECT DISTINCT patient_id, date, visit_type, clinical_findings, procedure_notes
       FROM visits
       WHERE clinic_id = ${cId} AND patient_id = ANY(${[...patientIds]})
@@ -84,13 +92,16 @@ export async function getPatients(clinicId: string, filters: PatientFilters = {}
       const endMatch   = !end   || v.date <= end;
       if (typeMatch && startMatch && endMatch) matchingIds.add(v.patient_id);
     }
-    rows = rows.filter(r => matchingIds.has(r.id));
+    rows = rows.filter(r => matchingIds.has(r.id!));
   }
 
   return rows as Patient[];
 }
 
-export async function getPatientByIdWithVisits(clinicId: string, patientId: string): Promise<any | null> {
+export async function getPatientByIdWithVisits(
+  clinicId: string,
+  patientId: string
+): Promise<(Patient & { visits: Visit[]; doctors: { id: number; name: string }[] }) | null> {
   if (!clinicId) throw new Error('Clinic ID is required');
   if (!patientId) throw new Error('Patient ID is required');
 
@@ -105,7 +116,7 @@ export async function getPatientByIdWithVisits(clinicId: string, patientId: stri
   const visitsPromise = sql`
     SELECT id, clinic_id, patient_id, date, doctor, visit_type, clinical_findings, procedure_notes, tooth_number, medicine_prescribed, cost, paid, xrays, billing_items, created_at, dentition_type
     FROM visits 
-    WHERE patient_id = ${patient.id} 
+    WHERE patient_id = ${patient.id!}
     AND clinic_id = ${cId}
     ORDER BY date DESC, created_at DESC
   `;
@@ -122,18 +133,19 @@ export async function getPatientByIdWithVisits(clinicId: string, patientId: stri
   
   return { 
     ...patient, 
-    visits: visits.map((row: any) => ({
+    visits: visits.map((row: Visit) => ({
       ...row,
-      billing_items: parseBillingItems(row.billing_items)
+      billing_items: parseBillingItems(row.billing_items as unknown as string)
     })) as Visit[],
     doctors: doctors as { id: number, name: string }[]
   };
 }
 
 
-function isUniqueViolation(err: any): boolean {
-  const msg = String(err?.message || err || '');
-  return err?.code === '23505' || /duplicate key|unique constraint|unique violation/i.test(msg);
+function isUniqueViolation(err: unknown): boolean {
+  const code = (err as { code?: string })?.code;
+  const msg = err instanceof Error ? err.message : String(err ?? '');
+  return code === '23505' || /duplicate key|unique constraint|unique violation/i.test(msg);
 }
 
 function hasOwn<T extends object>(obj: T, key: keyof T): boolean {
@@ -149,7 +161,7 @@ export async function createPatient(clinicId: string, patientData: Omit<Patient,
   const { name, age, gender, phone_number, patient_type, referral_source } = patientData;
 
   const maxAttempts = 3;
-  let lastError: any;
+  let lastError: unknown;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const nextId = await allocatePatientId(cId);
     try {

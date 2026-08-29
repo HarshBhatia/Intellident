@@ -1,6 +1,10 @@
 import { getDb } from '@intellident/api';
 import { Visit, BillingItem } from '@intellident/api/src/types';
 
+type VisitInput = Partial<Omit<Visit, 'billing_items'>> & {
+  billing_items?: string | BillingItem[];
+};
+
 const parseBillingItems = (json?: string | null): BillingItem[] => {
   try { return json ? JSON.parse(json) : []; } catch { return []; }
 };
@@ -19,7 +23,7 @@ export async function getVisits(clinicId: string, filters: VisitFilters = {}): P
   const cId = parseInt(clinicId);
   const { patientId, start, end, visitType, doctor, search } = filters;
 
-  let rows: any[] = patientId
+  let rows: Array<Visit & { patient_name: string }> = patientId
     ? await sql`SELECT v.*, p.name as patient_name FROM visits v JOIN patients p ON v.patient_id = p.id WHERE v.clinic_id = ${cId} AND v.patient_id = ${patientId} ORDER BY v.date DESC`
     : await sql`SELECT v.*, p.name as patient_name FROM visits v JOIN patients p ON v.patient_id = p.id AND p.clinic_id = v.clinic_id WHERE v.clinic_id = ${cId} ORDER BY v.date DESC`;
 
@@ -51,10 +55,10 @@ export async function getVisits(clinicId: string, filters: VisitFilters = {}): P
     );
   }
 
-  return rows.map((r: any) => ({ ...r, billing_items: parseBillingItems(r.billing_items) })) as Visit[];
+  return rows.map(r => ({ ...r, billing_items: parseBillingItems(r.billing_items as unknown as string) })) as Visit[];
 }
 
-export async function createVisit(clinicId: string, data: any): Promise<Visit> {
+export async function createVisit(clinicId: string, data: VisitInput): Promise<Visit> {
   if (!data.patient_id) throw new Error('patient_id is required');
   if (!data.date) throw new Error('date is required');
   if (!data.clinical_findings?.trim()) throw new Error('clinical_findings is required');
@@ -71,7 +75,7 @@ export async function createVisit(clinicId: string, data: any): Promise<Visit> {
     if (patient.length === 0) throw new Error('Patient not found in this clinic');
   }
   const billingItemsArray = typeof data.billing_items === 'string' ? parseBillingItems(data.billing_items) : (data.billing_items || []);
-  const cost = billingItemsArray.reduce((s: number, i: any) => s + Number(i.amount), 0) || data.cost || 0;
+  const cost = billingItemsArray.reduce((s: number, i: BillingItem) => s + Number(i.amount), 0) || data.cost || 0;
   const result = await sql`
     INSERT INTO visits (clinic_id, patient_id, date, doctor, visit_type, clinical_findings, procedure_notes, tooth_number, medicine_prescribed, cost, paid, xrays, billing_items, dentition_type)
     VALUES (${cId}, ${data.patient_id}, ${data.date}, ${data.doctor}, ${data.visit_type}, ${data.clinical_findings}, ${data.procedure_notes}, ${data.tooth_number}, ${data.medicine_prescribed}, ${cost}, ${data.paid || 0}, ${data.xrays}, ${JSON.stringify(billingItemsArray)}, ${data.dentition_type || 'Adult'})
@@ -87,7 +91,7 @@ export async function updateVisit(clinicId: string, data: Visit): Promise<Visit>
   const sql = getDb();
   const cId = parseInt(clinicId);
   const billingItemsArray = typeof data.billing_items === 'string' ? parseBillingItems(data.billing_items) : (data.billing_items || []);
-  const cost = billingItemsArray.reduce((s: number, i: any) => s + Number(i.amount), 0) || data.cost || 0;
+  const cost = billingItemsArray.reduce((s: number, i: BillingItem) => s + Number(i.amount), 0) || data.cost || 0;
   const result = await sql`
     UPDATE visits SET date=${data.date}, doctor=${data.doctor}, visit_type=${data.visit_type}, clinical_findings=${data.clinical_findings}, procedure_notes=${data.procedure_notes}, tooth_number=${data.tooth_number}, medicine_prescribed=${data.medicine_prescribed}, cost=${cost}, paid=${data.paid}, xrays=${data.xrays}, billing_items=${JSON.stringify(billingItemsArray)}, dentition_type=${data.dentition_type || 'Adult'}
     WHERE id=${data.id} AND clinic_id=${cId} RETURNING *

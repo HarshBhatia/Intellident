@@ -14,6 +14,7 @@ export function useAuth() {
     }, {} as Record<string, string>);
 
     if (cookies['x-e2e-secret'] && cookies['x-e2e-mode'] === 'true') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- E2E mode can only be detected client-side via document.cookie
       setIsE2E(true);
       setMockUser({
         id: cookies['x-e2e-user-id'] || 'user_e2e_test',

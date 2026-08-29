@@ -6,6 +6,7 @@ import { useToast } from '@/components/ToastProvider';
 import { useClinic } from '@/context/ClinicContext';
 import ManageMembers from './ManageMembers';
 import { usePermissions } from '@/hooks/usePermissions';
+import type { Patient } from '@intellident/api';
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 
@@ -151,7 +152,13 @@ function SideNav({ active, setActive, memberCount, clinicName }: {
 
 // ─── Preview Rail ─────────────────────────────────────────────────────────────
 
-function PreviewRail({ form, pct }: { form: any; pct: number }) {
+interface ClinicProfileForm {
+  clinic_name: string; tagline: string; owner_name: string; phone: string;
+  address: string; email: string; google_maps_link: string; website: string;
+  currency: string; timezone: string;
+}
+
+function PreviewRail({ form, pct }: { form: ClinicProfileForm; pct: number }) {
   const incomplete = pct < 100;
   return (
     <div className="border-l border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50 p-6">
@@ -208,7 +215,7 @@ function PreviewRail({ form, pct }: { form: any; pct: number }) {
         </div>
         <div className="flex gap-0.5 mb-2 text-amber-400">{[0,1,2,3,4].map(i => <StarIcon key={i} />)}</div>
         <div className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
-          "Hi! Thanks for visiting <strong>{form.clinic_name || 'your clinic'}</strong>. Tap to leave us a quick review."
+          &ldquo;Hi! Thanks for visiting <strong>{form.clinic_name || 'your clinic'}</strong>. Tap to leave us a quick review.&rdquo;
         </div>
         <div className={`flex items-center gap-1.5 text-[11px] font-semibold mt-2 pt-2 border-t border-gray-100 dark:border-gray-800 ${form.google_maps_link ? 'text-green-600' : 'text-amber-500'}`}>
           {form.google_maps_link ? <><CheckIcon /> Review link configured</> : <>! Add Google Maps link to enable</>}
@@ -275,15 +282,15 @@ function ClinicProfile() {
     if (clinic) {
       const v = {
         clinic_name: clinic.clinic_name || '',
-        tagline: (clinic as any).tagline || '',
+        tagline: clinic.tagline || '',
         owner_name: clinic.owner_name || '',
         phone: clinic.phone || '',
         address: clinic.address || '',
         email: clinic.email || '',
         google_maps_link: clinic.google_maps_link || '',
-        website: (clinic as any).website || '',
-        currency: (clinic as any).currency || 'INR',
-        timezone: (clinic as any).timezone || 'Asia/Kolkata',
+        website: clinic.website || '',
+        currency: clinic.currency || 'INR',
+        timezone: clinic.timezone || 'Asia/Kolkata',
       };
       setForm(v);
       setSaved(v);
@@ -490,7 +497,7 @@ function ClinicProfile() {
             <span className="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_0_3px_rgba(251,191,36,0.25)]" />
             <div>
               <span className="text-sm font-bold">Unsaved changes</span>
-              <span className="text-xs text-gray-400 ml-2">You've edited the clinic profile but haven't saved yet.</span>
+              <span className="text-xs text-gray-400 ml-2">You&apos;ve edited the clinic profile but haven&apos;t saved yet.</span>
             </div>
             <div className="ml-auto flex gap-2">
               <button onClick={() => setForm({ ...saved })}
@@ -565,7 +572,7 @@ function Manager({ title, apiEndpoint }: { title: string; apiEndpoint: string })
       <div className="px-6 py-5 border-b border-gray-100 dark:border-gray-800 flex items-center gap-3">
         <div className="flex-1">
           <h2 className="text-lg font-black text-gray-900 dark:text-gray-100">{title}</h2>
-          <p className="text-xs text-gray-400 mt-0.5">Manage your clinic's {title.toLowerCase()} list.</p>
+          <p className="text-xs text-gray-400 mt-0.5">Manage your clinic&apos;s {title.toLowerCase()} list.</p>
         </div>
         <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400">{items.length} items</span>
       </div>
@@ -610,7 +617,7 @@ function DataExport() {
     try {
       const res = await fetch('/api/patients');
       if (!res.ok) throw new Error();
-      const patients: any[] = await res.json();
+      const patients: Patient[] = await res.json();
       if (patients.length === 0) { showToast('No data to export', 'error'); return; }
 
       let blob: Blob, filename: string;

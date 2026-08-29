@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import Skeleton from '@/components/Skeleton';
 import Navbar from '@/components/Navbar';
+import type { StatsResult } from '@intellident/api';
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'];
 
@@ -24,7 +25,7 @@ export default function EarningsClient() {
   const endDefault = today.toISOString().split('T')[0];
 
   const [dateRange, setDateRange] = useState({ start: startDefault, end: endDefault });
-  const [data, setData] = useState<{ totalRevenue: number; totalExpenses: number; profit: number; pieData: any[]; monthlyTrend: any[] } | null>(null);
+  const [data, setData] = useState<StatsResult | null>(null);
 
   const fetchStats = async (start: string, end: string) => {
     setLoading(true);
@@ -142,7 +143,7 @@ export default function EarningsClient() {
                                         {data.pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                                     </Pie>
                                     <Tooltip 
-                                        formatter={(val: any) => `₹${Number(val).toLocaleString()}`}
+                                        formatter={(val: number | string | undefined) => `₹${Number(val).toLocaleString()}`}
                                         contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', color: 'var(--foreground)' }}
                                         itemStyle={{ color: 'var(--foreground)' }}
                                         labelStyle={{ color: 'var(--foreground)' }}
@@ -193,7 +194,7 @@ export default function EarningsClient() {
                                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#9ca3af' }} tickFormatter={(val) => `₹${val >= 1000 ? (val/1000).toFixed(1) + 'k' : val}`} />
                                 <Tooltip 
                                     cursor={{ fill: 'var(--secondary)' }} 
-                                    formatter={(val: any) => [`₹${Number(val).toLocaleString()}`, 'Revenue']} 
+                                    formatter={(val: number | string | undefined) => [`₹${Number(val).toLocaleString()}`, 'Revenue']} 
                                     contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', color: 'var(--foreground)', borderRadius: '4px', fontSize: '12px' }} 
                                     itemStyle={{ color: 'var(--foreground)' }}
                                     labelStyle={{ color: 'var(--foreground)' }}

@@ -7,9 +7,27 @@ function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
-function mapClinicRow(c: any): ClinicInfo {
+interface ClinicRow {
+  name?: string;
+  owner_name?: string;
+  owner_email?: string;
+  phone?: string;
+  address?: string;
+  email?: string;
+  google_maps_link?: string;
+  tagline?: string;
+  website?: string;
+  currency?: string;
+  timezone?: string;
+  gstin?: string;
+  pan?: string;
+  gst_rate?: number | string | null;
+  state_code?: string;
+}
+
+function mapClinicRow(c: ClinicRow): ClinicInfo {
   return {
-    clinic_name: c.name,
+    clinic_name: c.name || '',
     owner_name: c.owner_name || c.owner_email || '',
     phone: c.phone || '',
     address: c.address || '',

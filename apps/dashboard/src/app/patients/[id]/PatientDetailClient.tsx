@@ -516,7 +516,7 @@ export default function PatientDetailClient({ params }: { params: Promise<{ id: 
               ].map(({ label, field, type, placeholder }) => (
                 <div key={field}>
                   <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">{label}</label>
-                  <input name={field} type={type} value={(editPatient as any)[field] || ''} onChange={e => setEditPatient(p => ({ ...p, [field]: e.target.value }))} placeholder={placeholder} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+                  <input name={field} type={type} value={String(editPatient[field as keyof typeof editPatient] ?? '')} onChange={e => setEditPatient(p => ({ ...p, [field]: e.target.value }))} placeholder={placeholder} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
                 </div>
               ))}
               <div className="grid grid-cols-2 gap-4">

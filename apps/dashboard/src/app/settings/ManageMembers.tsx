@@ -153,7 +153,7 @@ export default function ManageMembers() {
               className="w-36 px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-gray-100" />
             <input type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="colleague@example.com" required
               className="flex-1 min-w-48 px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-gray-100" />
-            <select value={newRole} onChange={e => setNewRole(e.target.value as any)}
+            <select value={newRole} onChange={e => setNewRole(e.target.value as 'DOCTOR' | 'RECEPTIONIST' | 'ADMIN')}
               className="px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-gray-100">
               <option value="DOCTOR">Doctor</option>
               <option value="RECEPTIONIST">Staff</option>

@@ -51,7 +51,7 @@ export async function getClinicStats(clinicId: string, startDate: Date, endDate:
   let totalExpenses = 0;
 
   // 1. Process ALL visits for monthly trend
-  allVisits.forEach((visit: any) => {
+  allVisits.forEach((visit: { date: string; paid: number }) => {
       const visitDate = new Date(visit.date);
       const paidAmount = Number(visit.paid) || 0;
       
@@ -62,22 +62,22 @@ export async function getClinicStats(clinicId: string, startDate: Date, endDate:
   });
 
   // 2. Process FILTERED visits for revenue and categories
-  filteredVisits.forEach((visit: any) => {
+  filteredVisits.forEach((visit: { date: string; paid: number; billing_items: string | null; procedure_notes: string | null }) => {
       const paidAmount = Number(visit.paid) || 0;
       filteredRevenue += paidAmount;
-      
+
       let items: BillingItem[] = [];
       try {
         if (visit.billing_items) {
           items = JSON.parse(visit.billing_items);
         }
-      } catch (e) {
+      } catch {
         // Skip invalid billing items
       }
 
       if (items.length > 0) {
         const splitAmt = paidAmount / items.length;
-        items.forEach((item: any) => {
+        items.forEach((item: BillingItem) => {
           const cat = normalizeCategory(item.description);
           categoryMap[cat] = (categoryMap[cat] || 0) + splitAmt;
         });
@@ -88,8 +88,8 @@ export async function getClinicStats(clinicId: string, startDate: Date, endDate:
   });
 
   // 3. Process Expenses (already filtered by SQL)
-  expenses.forEach((e: any) => { 
-      totalExpenses += Number(e.amount) || 0; 
+  expenses.forEach((e: { amount: number }) => {
+      totalExpenses += Number(e.amount) || 0;
   });
 
   // 3. Final Formatting with Rounding

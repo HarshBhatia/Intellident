@@ -33,6 +33,7 @@ export default function SelectClinicPage() {
       body: JSON.stringify({ clinicId })
     });
     // Full navigation forces ClinicProvider to re-initialize with new clinic context
+    // eslint-disable-next-line react-hooks/immutability -- window.location is a browser global, not component state; this runs in an event handler, not render
     window.location.href = '/';
   };
 

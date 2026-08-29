@@ -16,7 +16,7 @@ export async function GET() {
 
     const role = await getMemberRole(clinicId, userEmail, userId);
     return NextResponse.json({ role });
-  } catch (error: any) {
+  } catch {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

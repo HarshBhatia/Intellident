@@ -25,6 +25,7 @@ export default function Navbar() {
   }, [pathname]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional hydration guard: must render false on server and flip true only after client mount
     setMounted(true);
   }, []);
 

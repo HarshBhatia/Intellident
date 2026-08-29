@@ -28,14 +28,10 @@ export function ThemeProvider({
   storageKey = 'intellident-theme',
   ...props
 }: ThemeProviderProps) {
-  const [theme, setTheme] = useState<Theme>(defaultTheme);
-
-  useEffect(() => {
-    const savedTheme = localStorage.getItem(storageKey) as Theme;
-    if (savedTheme) {
-      setTheme(savedTheme);
-    }
-  }, [storageKey]);
+  const [theme, setTheme] = useState<Theme>(() => {
+    if (typeof window === 'undefined') return defaultTheme;
+    return (localStorage.getItem(storageKey) as Theme) || defaultTheme;
+  });
 
   useEffect(() => {
     const root = window.document.documentElement;

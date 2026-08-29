@@ -19,7 +19,7 @@ export async function getAppointments(
   const cId = parseInt(clinicId);
   const { date, start, end, doctorEmail, status, visitType } = filters;
 
-  let rows: any[] = await sql`
+  let rows: Array<Appointment & { patient_name: string | null }> = await sql`
     SELECT a.*, p.name as patient_name
     FROM appointments a
     LEFT JOIN patients p ON a.patient_id = p.id
